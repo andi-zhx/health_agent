@@ -474,11 +474,14 @@
       fillAppointmentEquipmentByProject();
     });
     fillStaffSelect('apt-staff');
-    get('/api/appointments').then(function (list) {
+    var sortBy = (document.getElementById('apt-sort') || {}).value || 'time_desc';
+    get('/api/appointments?sort_by=' + encodeURIComponent(sortBy)).then(function (list) {
       var tbody = document.getElementById('apt-list');
       tbody.innerHTML = toList(list).map(function (a) {
         var meta = getStatusMeta(a.status);
-        var action = meta.editable ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button>' : '';
+        var action = meta.editable
+          ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-danger" data-apt-cancel="' + a.id + '">取消预约</button>'
+          : '';
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-apt-edit]').forEach(function (btn) {
@@ -496,6 +499,18 @@
           document.getElementById('apt-start').value = item.start_time || '';
           document.getElementById('apt-end').value = item.end_time || '';
           checkAppointmentAvailability();
+        });
+      });
+      tbody.querySelectorAll('[data-apt-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openConfirmModal('确认取消预约', [['状态', '取消预约']], function () {
+            post('/api/appointments/' + btn.dataset.aptCancel + '/cancel', {}).then(function (res) {
+              if (res.error) { showMsg('apt-msg', res.error, true); return; }
+              closeConfirmModal();
+              showMsg('apt-msg', '取消成功');
+              loadAppointmentsPage();
+            });
+          });
         });
       });
     });
@@ -548,12 +563,15 @@
       kept.forEach(function (opt) { projectSel.appendChild(opt); });
     });
     fillStaffSelect('home-staff');
-    get('/api/home-appointments').then(function (list) {
+    var sortBy = (document.getElementById('home-sort') || {}).value || 'time_desc';
+    get('/api/home-appointments?sort_by=' + encodeURIComponent(sortBy)).then(function (list) {
       var rows = toList(list);
       var tbody = document.getElementById('home-list');
       tbody.innerHTML = rows.map(function (a) {
         var meta = getStatusMeta(a.status);
-        var action = meta.editable ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button>' : '';
+        var action = meta.editable
+          ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-danger" data-home-cancel="' + a.id + '">取消预约</button>'
+          : '';
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-home-edit]').forEach(function (btn) {
@@ -571,6 +589,18 @@
           document.getElementById('home-contact-person').value = item.contact_person || '';
           document.getElementById('home-contact-phone').value = item.contact_phone || '';
           document.getElementById('home-notes').value = item.notes || '';
+        });
+      });
+      tbody.querySelectorAll('[data-home-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openConfirmModal('确认取消预约', [['状态', '取消预约']], function () {
+            post('/api/home-appointments/' + btn.dataset.homeCancel + '/cancel', {}).then(function (res) {
+              if (res.error) { showMsg('home-msg', res.error, true); return; }
+              closeConfirmModal();
+              showMsg('home-msg', '取消成功');
+              loadHomeAppointmentsPage();
+            });
+          });
         });
       });
     });
@@ -958,6 +988,7 @@
   document.getElementById('apt-date').addEventListener('change', checkAppointmentAvailability);
   document.getElementById('apt-start').addEventListener('change', applyTimeSelection);
   document.getElementById('apt-end').addEventListener('change', applyTimeSelection);
+  document.getElementById('apt-sort').addEventListener('change', loadAppointmentsPage);
   document.getElementById('btn-apt-cancel-edit').addEventListener('click', function () {
     setAppointmentEditMode(null);
     document.getElementById('apt-start').value = '';
@@ -966,19 +997,8 @@
   });
   document.getElementById('btn-apt-mark-cancel').addEventListener('click', function () {
     if (!appointmentEditId) return;
-    var body = {
-      customer_id: document.getElementById('apt-customer').value,
-      project_id: document.getElementById('apt-project').value,
-      equipment_id: document.getElementById('apt-equipment').value,
-      staff_id: document.getElementById('apt-staff').value,
-      appointment_date: document.getElementById('apt-date').value,
-      start_time: document.getElementById('apt-start').value,
-      end_time: document.getElementById('apt-end').value,
-      notes: document.getElementById('apt-notes').value,
-      status: 'cancelled'
-    };
     openConfirmModal('确认修改预约状态', [['状态', '取消预约']], function () {
-      put('/api/appointments/' + appointmentEditId, body).then(function (res) {
+      post('/api/appointments/' + appointmentEditId + '/cancel', {}).then(function (res) {
         if (res.error) { showMsg('apt-msg', res.error, true); return; }
         closeConfirmModal();
         showMsg('apt-msg', '修改成功');
@@ -1071,24 +1091,12 @@
     });
     showMsg('home-msg', '已退出编辑');
   });
+  document.getElementById('home-sort').addEventListener('change', loadHomeAppointmentsPage);
 
   document.getElementById('btn-home-mark-cancel').addEventListener('click', function () {
     if (!homeAppointmentEditId) return;
-    var body = {
-      customer_id: document.getElementById('home-customer').value,
-      project_id: document.getElementById('home-project').value,
-      staff_id: document.getElementById('home-staff').value,
-      appointment_date: document.getElementById('home-date').value,
-      start_time: document.getElementById('home-start').value,
-      end_time: document.getElementById('home-end').value,
-      location: document.getElementById('home-location').value,
-      contact_person: document.getElementById('home-contact-person').value,
-      contact_phone: document.getElementById('home-contact-phone').value,
-      notes: document.getElementById('home-notes').value,
-      status: 'cancelled'
-    };
     openConfirmModal('确认修改预约状态', [['状态', '取消预约']], function () {
-      put('/api/home-appointments/' + homeAppointmentEditId, body).then(function (res) {
+      post('/api/home-appointments/' + homeAppointmentEditId + '/cancel', {}).then(function (res) {
         if (res.error) { showMsg('home-msg', res.error, true); return; }
         closeConfirmModal();
         showMsg('home-msg', '修改成功');
