@@ -465,6 +465,10 @@
     return '<span class="status-pill ' + meta.cls + '">' + meta.text + '</span>';
   }
 
+  function renderOperationTime(record) {
+    return record.updated_at || record.created_at || '-';
+  }
+
   function loadAppointmentsPage() {
     setAppointmentEditMode(null);
     appointmentSlots = [];
@@ -480,9 +484,9 @@
       tbody.innerHTML = toList(list).map(function (a) {
         var meta = getStatusMeta(a.status);
         var action = meta.editable
-          ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-danger" data-apt-cancel="' + a.id + '">取消预约</button>'
+          ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button>'
           : '';
-        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td></tr>';
+        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-apt-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -499,18 +503,6 @@
           document.getElementById('apt-start').value = item.start_time || '';
           document.getElementById('apt-end').value = item.end_time || '';
           checkAppointmentAvailability();
-        });
-      });
-      tbody.querySelectorAll('[data-apt-cancel]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          openConfirmModal('确认取消预约', [['状态', '取消预约']], function () {
-            post('/api/appointments/' + btn.dataset.aptCancel + '/cancel', {}).then(function (res) {
-              if (res.error) { showMsg('apt-msg', res.error, true); return; }
-              closeConfirmModal();
-              showMsg('apt-msg', '取消成功');
-              loadAppointmentsPage();
-            });
-          });
         });
       });
     });
@@ -570,9 +562,9 @@
       tbody.innerHTML = rows.map(function (a) {
         var meta = getStatusMeta(a.status);
         var action = meta.editable
-          ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-danger" data-home-cancel="' + a.id + '">取消预约</button>'
+          ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button>'
           : '';
-        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td></tr>';
+        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-home-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -589,18 +581,6 @@
           document.getElementById('home-contact-person').value = item.contact_person || '';
           document.getElementById('home-contact-phone').value = item.contact_phone || '';
           document.getElementById('home-notes').value = item.notes || '';
-        });
-      });
-      tbody.querySelectorAll('[data-home-cancel]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          openConfirmModal('确认取消预约', [['状态', '取消预约']], function () {
-            post('/api/home-appointments/' + btn.dataset.homeCancel + '/cancel', {}).then(function (res) {
-              if (res.error) { showMsg('home-msg', res.error, true); return; }
-              closeConfirmModal();
-              showMsg('home-msg', '取消成功');
-              loadHomeAppointmentsPage();
-            });
-          });
         });
       });
     });

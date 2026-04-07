@@ -139,10 +139,25 @@ def duplicate_record_with_status(cursor, table_name, source_id, status):
     cursor.execute(f"SELECT * FROM {table_name} WHERE id=?", (source_id,))
     row = cursor.fetchone()
     if not row:
-        return None
-    data = dict(row)
+        return None, 'not_found'
+
+    row_data = dict(row)
+    source_status = (row_data.get('status') or '').strip().lower()
+    if source_status == 'cancelled':
+        return None, 'already_cancelled'
+
+    root_id = row_data.get('source_record_id') or row_data.get('id')
+    cursor.execute(
+        f"SELECT id FROM {table_name} WHERE source_record_id=? AND status='cancelled' LIMIT 1",
+        (root_id,),
+    )
+    if cursor.fetchone():
+        return None, 'already_cancelled'
+
+    data = dict(row_data)
     data.pop('id', None)
     data['status'] = status
+    data['source_record_id'] = root_id
     data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     columns = list(data.keys())
     placeholders = ','.join(['?'] * len(columns))
@@ -150,7 +165,7 @@ def duplicate_record_with_status(cursor, table_name, source_id, status):
         f"INSERT INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})",
         tuple(data[col] for col in columns),
     )
-    return cursor.lastrowid
+    return cursor.lastrowid, None
 
 
 def get_setting_value(key, default_value=''):
@@ -528,6 +543,7 @@ def init_db():
             notes TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            source_record_id INTEGER,
             FOREIGN KEY (customer_id) REFERENCES customers(id),
             FOREIGN KEY (equipment_id) REFERENCES equipment(id)
         )
@@ -544,6 +560,7 @@ def init_db():
         'notes': 'TEXT',
         'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
         'updated_at': "TEXT DEFAULT CURRENT_TIMESTAMP",
+        'source_record_id': 'INTEGER',
     })
 
     c.execute('''
@@ -704,6 +721,7 @@ def init_db():
             status TEXT DEFAULT 'scheduled',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            source_record_id INTEGER,
             FOREIGN KEY (customer_id) REFERENCES customers(id),
             FOREIGN KEY (project_id) REFERENCES therapy_projects(id),
             FOREIGN KEY (staff_id) REFERENCES staff(id)
@@ -729,6 +747,7 @@ def init_db():
         'status': "TEXT DEFAULT 'scheduled'",
         'updated_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
         'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'source_record_id': 'INTEGER',
     })
 
     c.execute('''
@@ -1635,10 +1654,13 @@ def api_appointment_update(aid):
 def api_appointment_cancel(aid):
     conn = get_db()
     c = conn.cursor()
-    duplicated_id = duplicate_record_with_status(c, 'appointments', aid, 'cancelled')
-    if not duplicated_id:
+    duplicated_id, err = duplicate_record_with_status(c, 'appointments', aid, 'cancelled')
+    if err == 'not_found':
         conn.close()
         return jsonify({'error': '预约记录不存在'}), 404
+    if err == 'already_cancelled':
+        conn.close()
+        return jsonify({'error': '已经提交过取消预约，请勿再次提交'}), 400
     conn.commit()
     conn.close()
     return jsonify({'message': '已取消'})
@@ -1743,10 +1765,13 @@ def api_home_appointments_create():
 def api_home_appointments_cancel(hid):
     conn = get_db()
     c = conn.cursor()
-    duplicated_id = duplicate_record_with_status(c, 'home_appointments', hid, 'cancelled')
-    if not duplicated_id:
+    duplicated_id, err = duplicate_record_with_status(c, 'home_appointments', hid, 'cancelled')
+    if err == 'not_found':
         conn.close()
         return jsonify({'error': '上门预约不存在'}), 404
+    if err == 'already_cancelled':
+        conn.close()
+        return jsonify({'error': '已经提交过取消预约，请勿再次提交'}), 400
     conn.commit()
     conn.close()
     return jsonify({'message': '已取消'})
