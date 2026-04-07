@@ -54,6 +54,26 @@ def row_list(rows):
     return [dict(r) for r in rows]
 
 
+def audit_log(action, module, target_id='', details=''):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        INSERT INTO audit_logs (username, action, module, target_id, details)
+        VALUES (?,?,?,?,?)
+        ''',
+        (
+            session.get('username', 'anonymous'),
+            action,
+            module,
+            str(target_id or ''),
+            str(details or ''),
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+
 def ensure_columns(cursor, table_name, columns):
     cursor.execute(f'PRAGMA table_info({table_name})')
     exists = {row[1] for row in cursor.fetchall()}
@@ -497,6 +517,7 @@ def init_db():
         'chronic_diseases': 'TEXT',
         'health_status': 'TEXT',
         'therapy_contraindications': 'TEXT',
+        'is_deleted': 'INTEGER DEFAULT 0',
     }
     for col, col_type in extra_customer_columns.items():
         if col not in customer_columns:
@@ -764,6 +785,18 @@ def init_db():
         )
     ''')
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            action TEXT,
+            module TEXT,
+            target_id TEXT,
+            details TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
               ('backup_directory', BACKUP_FOLDER))
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
@@ -952,11 +985,11 @@ def api_customers_list():
     c = conn.cursor()
     if q:
         c.execute(
-            'SELECT * FROM customers WHERE name LIKE ? OR id_card LIKE ? OR phone LIKE ? ORDER BY created_at DESC',
+            'SELECT * FROM customers WHERE is_deleted=0 AND (name LIKE ? OR id_card LIKE ? OR phone LIKE ?) ORDER BY created_at DESC',
             (f'%{q}%', f'%{q}%', f'%{q}%')
         )
     else:
-        c.execute('SELECT * FROM customers ORDER BY created_at DESC')
+        c.execute('SELECT * FROM customers WHERE is_deleted=0 ORDER BY created_at DESC')
     rows = c.fetchall()
     conn.close()
     return jsonify(row_list(rows))
@@ -966,7 +999,7 @@ def api_customers_list():
 def api_customer_get(cid):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT * FROM customers WHERE id = ?', (cid,))
+    c.execute('SELECT * FROM customers WHERE id = ? AND is_deleted=0', (cid,))
     row = c.fetchone()
     if not row:
         conn.close()
@@ -1024,7 +1057,7 @@ def api_customer_update(cid):
         return jsonify({'error': customer_error}), 400
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT id FROM customers WHERE id=?', (cid,))
+    c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (cid,))
     if not c.fetchone():
         conn.close()
         return jsonify({'error': '客户不存在'}), 404
@@ -1037,6 +1070,7 @@ def api_customer_update(cid):
     ))
     conn.commit()
     conn.close()
+    audit_log('修改客户', 'customers', cid, d.get('name') or '')
     return jsonify({'message': '更新成功'})
 
 
@@ -1044,30 +1078,12 @@ def api_customer_update(cid):
 def api_customer_delete(cid):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT id FROM customers WHERE id=?', (cid,))
+    c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (cid,))
     if not c.fetchone():
         conn.close()
         return jsonify({'error': '客户不存在'}), 404
 
-    dependency_tables = [
-        'appointments',
-        'home_appointments',
-        'health_records',
-        'health_assessments',
-        'equipment_usage',
-        'satisfaction_surveys',
-        'visit_checkins',
-    ]
-
-    for table_name in dependency_tables:
-        if not table_exists(c, table_name):
-            continue
-        c.execute(f'SELECT 1 FROM {table_name} WHERE customer_id=? LIMIT 1', (cid,))
-        if c.fetchone():
-            conn.close()
-            return jsonify({'error': '该客户已有业务记录，不能直接删除'}), 400
-
-    c.execute('DELETE FROM customers WHERE id=?', (cid,))
+    c.execute('UPDATE customers SET is_deleted=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', (cid,))
     conn.commit()
     conn.close()
     return jsonify({'message': '已删除'})
@@ -1687,6 +1703,7 @@ def api_appointment_cancel(aid):
     )
     conn.commit()
     conn.close()
+    audit_log('取消预约', 'appointments', aid, '门店预约取消')
     return jsonify({'message': '已取消'})
 
 
@@ -1730,7 +1747,7 @@ def api_home_appointments_create():
     conn = get_db()
     c = conn.cursor()
 
-    c.execute('SELECT id, name, phone FROM customers WHERE id=?', (d.get('customer_id'),))
+    c.execute('SELECT id, name, phone FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     customer = c.fetchone()
     if not customer:
         conn.close()
@@ -1803,6 +1820,7 @@ def api_home_appointments_cancel(hid):
     )
     conn.commit()
     conn.close()
+    audit_log('取消预约', 'home_appointments', hid, '上门预约取消')
     return jsonify({'message': '已取消'})
 
 
@@ -1821,7 +1839,7 @@ def api_home_appointments_update(hid):
         conn.close()
         return jsonify({'error': '上门预约不存在'}), 404
 
-    c.execute('SELECT id, name, phone FROM customers WHERE id=?', (d.get('customer_id'),))
+    c.execute('SELECT id, name, phone FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     customer = c.fetchone()
     if not customer:
         conn.close()
@@ -1959,6 +1977,7 @@ def api_equipment_usage_by_customer():
                COALESCE(SUM(eu.duration_minutes), 0) as total_duration_minutes
         FROM customers c
         LEFT JOIN equipment_usage eu ON c.id = eu.customer_id
+        WHERE c.is_deleted=0
         GROUP BY c.id, c.name
         ORDER BY usage_count DESC, total_duration_minutes DESC
     ''')
@@ -2022,6 +2041,7 @@ def api_auth_login():
     if username == config_user and password == config_pwd:
         session['logged_in'] = True
         session['username'] = username
+        audit_log('登录', 'auth', username, '登录成功')
         return jsonify({'message': '登录成功'})
     return jsonify({'error': '账号或密码错误'}), 401
 
@@ -2046,7 +2066,7 @@ def api_search():
     result = {}
 
     if kind in ('all', 'customers'):
-        c.execute('SELECT * FROM customers WHERE name LIKE ? OR id_card LIKE ? OR phone LIKE ? OR email LIKE ? OR address LIKE ? ORDER BY created_at DESC LIMIT 100',
+        c.execute('SELECT * FROM customers WHERE is_deleted=0 AND (name LIKE ? OR id_card LIKE ? OR phone LIKE ? OR email LIKE ? OR address LIKE ?) ORDER BY created_at DESC LIMIT 100',
                   (like, like, like, like, like))
         result['customers'] = row_list(c.fetchall())
 
@@ -2093,7 +2113,7 @@ def api_dashboard_stats():
     conn = get_db()
     c = conn.cursor()
     today = datetime.now().strftime('%Y-%m-%d')
-    c.execute('SELECT COUNT(*) as n FROM customers')
+    c.execute('SELECT COUNT(*) as n FROM customers WHERE is_deleted=0')
     total_customers = c.fetchone()['n']
     c.execute("SELECT COUNT(*) as n FROM appointments WHERE appointment_date=? AND status='scheduled'", (today,))
     today_appointments = c.fetchone()['n']
@@ -2199,7 +2219,7 @@ def api_dashboard_analytics():
         )
     ''')
     active_customers = c.fetchone()['n']
-    c.execute('SELECT COUNT(*) as n FROM customers')
+    c.execute('SELECT COUNT(*) as n FROM customers WHERE is_deleted=0')
     total_customers = c.fetchone()['n']
 
     conn.close()
@@ -2447,7 +2467,7 @@ def api_export_query_download():
     try:
         if scope == 'single':
             c = conn.cursor()
-            c.execute('SELECT id, name FROM customers WHERE id=?', (customer_id,))
+            c.execute('SELECT id, name FROM customers WHERE id=? AND is_deleted=0', (customer_id,))
             customer = c.fetchone()
             if not customer:
                 return jsonify({'error': '客户不存在'}), 404
@@ -2484,23 +2504,25 @@ def api_export_query_download():
                     where_clause = 'WHERE c.id = ?' if key != 'customers' else 'WHERE id = ?'
                     df = pd.read_sql_query(sql_tpl.format(where_clause=where_clause), conn, params=(customer_id,))
                 else:
-                    where_clause = ''
+                    where_clause = 'WHERE is_deleted=0' if key == 'customers' else ''
                     df = pd.read_sql_query(sql_tpl.format(where_clause=where_clause), conn)
                 df.to_excel(writer, index=False, sheet_name=sheet_name[:31])
     finally:
         conn.close()
 
+    audit_log('导出数据', 'export', customer_id or 'all', f'scope={scope}, dataset={dataset}, file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
 @app.route('/api/export/customers', methods=['GET'])
 def api_export_customers():
     conn = get_db()
-    df = pd.read_sql_query('SELECT * FROM customers ORDER BY created_at DESC', conn)
+    df = pd.read_sql_query('SELECT * FROM customers WHERE is_deleted=0 ORDER BY created_at DESC', conn)
     conn.close()
     fn = 'customers_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
     df.to_excel(fp, index=False, engine='openpyxl')
+    audit_log('导出数据', 'export', 'customers', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
@@ -2513,6 +2535,7 @@ def api_export_appointments():
     fn = 'appointments_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
     df.to_excel(fp, index=False, engine='openpyxl')
+    audit_log('导出数据', 'export', 'appointments', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
@@ -2525,6 +2548,7 @@ def api_export_usage():
     fn = 'equipment_usage_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
     df.to_excel(fp, index=False, engine='openpyxl')
+    audit_log('导出数据', 'export', 'equipment_usage', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
@@ -2590,6 +2614,8 @@ def api_system_backup():
         set_setting_value('backup_directory', backup_directory)
 
     result = create_db_backup(backup_type='manual')
+    if result.get('status') == 'success':
+        audit_log('备份数据库', 'system', result.get('filename'), result.get('backup_file'))
     code = 200 if result.get('status') == 'success' else 500
     return jsonify(result), code
 
