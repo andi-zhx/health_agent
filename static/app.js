@@ -29,6 +29,7 @@
     if (name === 'home') loadStats();
     if (name === 'customers') loadCustomers();
     if (name === 'health') loadHealthPage();
+    if (name === 'portrait') loadPortraitPage();
     if (name === 'appointments') loadAppointmentsPage();
     if (name === 'home-appointments') loadHomeAppointmentsPage();
     if (name === 'usage') loadUsagePage();
@@ -566,6 +567,101 @@
 
   function loadSurveysPage() {
     fillCustomerSelect('survey-customer');
+  }
+
+  function loadPortraitPage() {
+    get('/api/dashboard/health-portrait').then(function (res) {
+      if (res.error) {
+        showMsg('portrait-msg', res.error, true);
+        return;
+      }
+      showMsg('portrait-msg', '已基于最新健康档案生成画像，共覆盖客户 ' + (res.total_customers || 0) + ' 人');
+      renderCircleChart('portrait-gender-pie', toList(res.gender_distribution), false);
+      renderLegend('portrait-gender-legend', toList(res.gender_distribution));
+      renderHorizontalBars('portrait-age-bars', toList(res.age_distribution), '#27ae60');
+      renderCircleChart('portrait-risk-donut', toList(res.risk_distribution), true);
+      renderLegend('portrait-risk-legend', toList(res.risk_distribution));
+      renderHorizontalBars('portrait-disease-top10', toList(res.disease_top10).map(function (x) {
+        return { name: x.disease, count: x.count };
+      }), '#8e44ad');
+    });
+  }
+
+  function renderLegend(elId, list) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<div>暂无数据</div>';
+      return;
+    }
+    var total = list.reduce(function (sum, item) { return sum + (item.count || 0); }, 0) || 1;
+    box.innerHTML = list.map(function (item, idx) {
+      var color = chartColor(idx);
+      var ratio = Math.round(((item.count || 0) * 100) / total);
+      return '<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';margin-right:6px"></span>' + (item.name || '-') + '：' + (item.count || 0) + '（' + ratio + '%）</div>';
+    }).join('');
+  }
+
+  function renderCircleChart(elId, list, donut) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var total = list.reduce(function (sum, item) { return sum + (item.count || 0); }, 0);
+    if (!total) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var current = 0;
+    var cx = 80;
+    var cy = 80;
+    var radius = 60;
+    var innerRadius = donut ? 38 : 0;
+    var paths = list.map(function (item, idx) {
+      var value = item.count || 0;
+      var start = current / total * Math.PI * 2;
+      current += value;
+      var end = current / total * Math.PI * 2;
+      return piePath(cx, cy, radius, innerRadius, start, end, chartColor(idx));
+    }).join('');
+    box.innerHTML = '<svg class="' + (donut ? 'donut-svg' : 'pie-svg') + '" viewBox="0 0 160 160">' + paths + '</svg>';
+  }
+
+  function piePath(cx, cy, rOuter, rInner, start, end, color) {
+    var x1 = cx + rOuter * Math.cos(start);
+    var y1 = cy + rOuter * Math.sin(start);
+    var x2 = cx + rOuter * Math.cos(end);
+    var y2 = cy + rOuter * Math.sin(end);
+    var largeArc = end - start > Math.PI ? 1 : 0;
+    if (!rInner) {
+      return '<path d="M ' + cx + ' ' + cy + ' L ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' Z" fill="' + color + '"></path>';
+    }
+    var x3 = cx + rInner * Math.cos(end);
+    var y3 = cy + rInner * Math.sin(end);
+    var x4 = cx + rInner * Math.cos(start);
+    var y4 = cy + rInner * Math.sin(start);
+    return '<path d="M ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' L ' + x3 + ' ' + y3 + ' A ' + rInner + ' ' + rInner + ' 0 ' + largeArc + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '"></path>';
+  }
+
+  function renderHorizontalBars(elId, list, color) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var max = Math.max.apply(null, list.map(function (x) { return x.count || 0; }).concat([1]));
+    box.innerHTML = list.map(function (x) {
+      var width = Math.round(((x.count || 0) * 100) / max);
+      return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + '</div></div>';
+    }).join('');
+  }
+
+  function chartColor(idx) {
+    var colors = ['#3498db', '#9b59b6', '#1abc9c', '#f39c12', '#e74c3c', '#2ecc71', '#34495e', '#16a085', '#8e44ad', '#d35400'];
+    return colors[idx % colors.length];
   }
 
   document.querySelectorAll('.sidebar a').forEach(function (a) {

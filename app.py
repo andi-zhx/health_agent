@@ -11,6 +11,7 @@ import pandas as pd
 import json
 import shutil
 import logging
+import re
 from datetime import datetime
 from datetime import timedelta
 
@@ -242,6 +243,52 @@ HEALTH_ASSESSMENT_ALLOWED_VALUES = {
     'weekly_exercise_freq': {'<3次', '3-4次', '5-7次', '>7次'},
 }
 
+HEALTH_PORTRAIT_DISEASE_MAP = {
+    '循环系统': [
+        ('高血压', ['高血压', '血压偏高', '血压高']),
+        ('冠心病', ['冠心病']),
+        ('心衰', ['心衰', '心力衰竭']),
+        ('脑梗', ['脑梗', '脑梗死', '脑卒中']),
+    ],
+    '内分泌代谢': [
+        ('糖尿病', ['糖尿病', '血糖高']),
+        ('高血脂', ['高血脂', '血脂偏高', '血脂高']),
+        ('肥胖', ['肥胖']),
+        ('甲状腺疾病', ['甲状腺', '甲亢', '甲减']),
+    ],
+    '运动系统': [
+        ('颈椎病', ['颈椎病', '颈椎']),
+        ('腰椎病', ['腰椎病', '腰椎']),
+        ('关节炎', ['关节炎', '关节痛']),
+        ('骨质疏松', ['骨质疏松']),
+    ],
+    '消化系统': [
+        ('胃炎', ['胃炎']),
+        ('脂肪肝', ['脂肪肝']),
+        ('便秘', ['便秘']),
+    ],
+    '呼吸系统': [
+        ('慢阻肺', ['慢阻肺', 'copd']),
+        ('哮喘', ['哮喘']),
+    ],
+    '神经系统': [
+        ('头痛', ['头痛', '偏头痛']),
+        ('失眠', ['失眠', '睡眠差', '睡眠很差']),
+        ('脑梗后遗症', ['脑梗后遗症']),
+    ],
+    '妇科 / 男科 / 儿科': [
+        ('妇科问题', ['妇科', '月经', '宫颈', '卵巢']),
+        ('男科问题', ['男科', '前列腺']),
+        ('儿科问题', ['儿科']),
+    ],
+    '肿瘤 / 恶性疾病': [
+        ('肿瘤', ['肿瘤', '癌', '恶性']),
+    ],
+    '其他疾病': [
+        ('其他疾病', ['疾病', '病史']),
+    ],
+}
+
 
 def validate_health_assessment_enums(data):
     for field, allowed in HEALTH_ASSESSMENT_ALLOWED_VALUES.items():
@@ -251,6 +298,73 @@ def validate_health_assessment_enums(data):
         if value not in allowed:
             return f'{field} 的值非法: {value}'
     return None
+
+
+def extract_health_portrait(record):
+    text_fields = [
+        record.get('past_medical_history'),
+        record.get('family_history'),
+        record.get('pain_details'),
+        record.get('notes'),
+        record.get('chronic_diseases'),
+        record.get('medical_history'),
+        record.get('allergy_details'),
+        record.get('blood_pressure_test'),
+        record.get('blood_lipid_test'),
+    ]
+    source_text = ' '.join([str(v or '').lower() for v in text_fields])
+    normalized_text = re.sub(r'\s+', '', source_text)
+    diseases = []
+    disease_categories = set()
+    for category, pairs in HEALTH_PORTRAIT_DISEASE_MAP.items():
+        for disease_name, keywords in pairs:
+            if any(keyword.lower().replace(' ', '') in normalized_text for keyword in keywords):
+                diseases.append({'name': disease_name, 'category': category})
+                disease_categories.add(category)
+
+    if record.get('chronic_pain') == '有':
+        diseases.append({'name': '慢性疼痛', 'category': '运动系统'})
+        disease_categories.add('运动系统')
+    if record.get('sleep_quality') in ('很差', '差'):
+        diseases.append({'name': '睡眠质量差', 'category': '神经系统'})
+        disease_categories.add('神经系统')
+    if record.get('blood_pressure_test') == '监测：偏高':
+        diseases.append({'name': '血压偏高', 'category': '循环系统'})
+        disease_categories.add('循环系统')
+    if record.get('blood_lipid_test') == '监测：偏高':
+        diseases.append({'name': '血脂偏高', 'category': '内分泌代谢'})
+        disease_categories.add('内分泌代谢')
+
+    unique = {}
+    for item in diseases:
+        unique[item['name']] = item
+    disease_list = list(unique.values())
+    disease_count = len(disease_list)
+
+    age = record.get('age')
+    try:
+        age = int(age) if age is not None else None
+    except Exception:
+        age = None
+    smoking = record.get('smoking_status') == '有'
+    drinking = record.get('drinking_status') == '有'
+    weak_sleep = record.get('sleep_quality') in ('很差', '差')
+    weak_exercise = record.get('weekly_exercise_freq') in ('<3次', '')
+    risk_score = disease_count + (1 if smoking else 0) + (1 if drinking else 0) + (1 if weak_sleep else 0) + (1 if weak_exercise else 0)
+    if age and age >= 65:
+        risk_score += 1
+
+    risk_level = '低风险'
+    if risk_score >= 5:
+        risk_level = '高风险'
+    elif risk_score >= 3:
+        risk_level = '中风险'
+
+    return {
+        'risk_level': risk_level,
+        'diseases': disease_list,
+        'categories': list(disease_categories),
+    }
 
 
 def init_db():
@@ -1907,6 +2021,87 @@ def api_dashboard_analytics():
             'active_customers': active_customers,
             'total_customers': total_customers,
         }
+    })
+
+
+@app.route('/api/dashboard/health-portrait', methods=['GET'])
+def api_dashboard_health_portrait():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT h.*, c.gender, c.birth_date, c.chronic_diseases, c.medical_history
+        FROM health_assessments h
+        JOIN customers c ON h.customer_id = c.id
+        JOIN (
+            SELECT customer_id, MAX(assessment_date) as latest_date
+            FROM health_assessments
+            GROUP BY customer_id
+        ) latest ON latest.customer_id = h.customer_id AND latest.latest_date = h.assessment_date
+        ORDER BY h.customer_id DESC, h.id DESC
+    ''')
+    rows = row_list(c.fetchall())
+    conn.close()
+
+    dedup = {}
+    for row in rows:
+        dedup[row['customer_id']] = row
+    records = list(dedup.values())
+
+    age_bucket_order = ['0-17', '18-44', '45-59', '60+']
+    age_buckets = {k: 0 for k in age_bucket_order}
+    genders = {'男': 0, '女': 0, '未知': 0}
+    risks = {'低风险': 0, '中风险': 0, '高风险': 0}
+    disease_categories = {k: 0 for k in HEALTH_PORTRAIT_DISEASE_MAP.keys()}
+    disease_counter = {}
+
+    for row in records:
+        age = row.get('age')
+        if age in (None, '') and row.get('birth_date'):
+            try:
+                birth = datetime.strptime(row.get('birth_date')[:10], '%Y-%m-%d').date()
+                today = datetime.now().date()
+                age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+            except Exception:
+                age = None
+        try:
+            age_num = int(age) if age not in (None, '') else None
+        except Exception:
+            age_num = None
+        if age_num is not None:
+            if age_num <= 17:
+                age_buckets['0-17'] += 1
+            elif age_num <= 44:
+                age_buckets['18-44'] += 1
+            elif age_num <= 59:
+                age_buckets['45-59'] += 1
+            else:
+                age_buckets['60+'] += 1
+
+        gender = (row.get('gender') or '').strip()
+        if gender not in ('男', '女'):
+            gender = '未知'
+        genders[gender] += 1
+
+        portrait = extract_health_portrait(row)
+        risks[portrait['risk_level']] += 1
+        for item in portrait['diseases']:
+            disease_counter[item['name']] = disease_counter.get(item['name'], 0) + 1
+        for category in portrait['categories']:
+            disease_categories[category] = disease_categories.get(category, 0) + 1
+
+    top10 = sorted(
+        [{'disease': k, 'count': v} for k, v in disease_counter.items()],
+        key=lambda x: x['count'],
+        reverse=True,
+    )[:10]
+
+    return jsonify({
+        'total_customers': len(records),
+        'gender_distribution': [{'name': k, 'count': v} for k, v in genders.items()],
+        'age_distribution': [{'name': k, 'count': age_buckets[k]} for k in age_bucket_order],
+        'risk_distribution': [{'name': k, 'count': v} for k, v in risks.items()],
+        'disease_categories': [{'name': k, 'count': v} for k, v in disease_categories.items()],
+        'disease_top10': top10,
     })
 
 

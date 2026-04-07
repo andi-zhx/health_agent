@@ -64,6 +64,18 @@
     .health-item.full { width: 100%; overflow-x: auto; }
     .health-item .item-title { font-weight: 600; color: #111; margin-right: 4px; }
     .health-item input[type="text"], .health-item input[type="date"], .health-item select { min-width: 90px; }
+    .portrait-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; }
+    .portrait-panel { border: 1px solid #eee; border-radius: 8px; padding: 14px; }
+    .portrait-panel h3 { margin: 0 0 10px; font-size: 15px; }
+    .chart-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+    .pie-svg, .donut-svg { width: 160px; height: 160px; }
+    .legend { font-size: 12px; color: #666; min-width: 160px; }
+    .legend div { margin-bottom: 5px; }
+    .hbar .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .hbar .label { width: 110px; font-size: 12px; color: #666; }
+    .hbar .bar-track { flex: 1; height: 12px; border-radius: 99px; background: #edf2f7; overflow: hidden; }
+    .hbar .bar-fill { height: 100%; background: #3498db; }
+    .hbar .value { width: 24px; text-align: right; color: #2c3e50; font-weight: 600; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -73,6 +85,7 @@
       <a href="#" data-page="home" class="active">首页</a>
       <a href="#" data-page="customers">客户档案</a>
       <a href="#" data-page="health">健康档案</a>
+      <a href="#" data-page="portrait">健康画像</a>
       <a href="#" data-page="appointments">预约服务</a>
       <a href="#" data-page="home-appointments">上门预约</a>
             <a href="#" data-page="usage">仪器使用</a>
@@ -233,6 +246,30 @@
           </div>
           <table><thead><tr><th>客户</th><th>日期</th><th>身高</th><th>体重</th><th>疲劳</th><th>睡眠</th><th>锻炼频次</th><th>病史</th><th>操作</th></tr></thead><tbody id="health-list"></tbody></table>
           <div id="health-detail" class="health-section" style="display:none;margin-top:14px"></div>
+        </div>
+      </div>
+      <div id="page-portrait" class="page hide">
+        <div class="card">
+          <h2>健康画像</h2>
+          <div id="portrait-msg"></div>
+          <div class="portrait-grid">
+            <div class="portrait-panel">
+              <h3>客户基础属性概览（年龄 / 性别）</h3>
+              <div class="chart-row">
+                <div id="portrait-gender-pie"></div>
+                <div id="portrait-gender-legend" class="legend"></div>
+              </div>
+              <div id="portrait-age-bars" class="hbar" style="margin-top:12px"></div>
+            </div>
+            <div class="portrait-panel">
+              <h3>健康风险分层 + 高发疾病 TOP10</h3>
+              <div class="chart-row">
+                <div id="portrait-risk-donut"></div>
+                <div id="portrait-risk-legend" class="legend"></div>
+              </div>
+              <div id="portrait-disease-top10" class="hbar" style="margin-top:12px"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div id="page-appointments" class="page hide">
