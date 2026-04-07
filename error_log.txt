@@ -1,0 +1,8 @@
+导入失败：No module named 'flask'
+
+Traceback (most recent call last):
+  File "D:\python\AI agent\Kimi_Agent_医疗信息化系统方案\medical-simple\launch.py", line 54, in main
+    from app import app, init_db
+  File "D:\python\AI agent\Kimi_Agent_医疗信息化系统方案\medical-simple\app.py", line 7, in <module>
+    from flask import Flask, request, jsonify, send_from_directory
+ModuleNotFoundError: No module named 'flask'

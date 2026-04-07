@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>健康评估档案</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; color: #333; background: #f5f5f5; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar { width: 200px; background: #2c3e50; color: #ecf0f1; padding: 16px 0; flex-shrink: 0; }
+    .sidebar h1 { font-size: 16px; margin: 0 16px 20px; padding-bottom: 12px; border-bottom: 1px solid #34495e; }
+    .sidebar a { display: block; padding: 10px 16px; color: #bdc3c7; text-decoration: none; border-left: 3px solid transparent; }
+    .sidebar a:hover { background: #34495e; color: #fff; }
+    .sidebar a.active { background: #34495e; color: #fff; border-left-color: #3498db; }
+    .main { flex: 1; padding: 24px; overflow: auto; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 20px; margin-bottom: 20px; }
+    .card h2 { margin: 0 0 16px; font-size: 18px; font-weight: 600; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; align-items: center; }
+    .form-row label { min-width: 90px; }
+    input, select, textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #3498db; }
+    .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+    .btn-primary { background: #3498db; color: #fff; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-secondary { background: #95a5a6; color: #fff; }
+    .btn-danger { background: #e74c3c; color: #fff; }
+    .btn-small { padding: 4px 10px; font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f9fa; font-weight: 600; }
+    tr:hover { background: #f8f9fa; }
+    .stats { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; }
+    .stat-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); min-width: 140px; }
+    .stat-box .num { font-size: 24px; font-weight: 700; color: #2c3e50; }
+    .stat-box .label { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+    .hide { display: none !important; }
+    .search-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .search-bar input[type="text"] { width: 220px; }
+    .search-bar select { width: 140px; }
+    .result-section { margin-top: 20px; }
+    .result-section h3 { font-size: 15px; margin: 12px 0 8px; color: #2c3e50; }
+    .msg { padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; }
+    .msg.ok { background: #d4edda; color: #155724; }
+    .msg.err { background: #f8d7da; color: #721c24; }
+    .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .modal { background: #fff; border-radius: 8px; max-width: 520px; width: 100%; max-height: 90vh; overflow: auto; padding: 24px; }
+    .modal h3 { margin: 0 0 16px; }
+    .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    textarea { min-height: 60px; resize: vertical; width: 100%; }
+    .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .mini-table { width: 100%; font-size: 13px; }
+    .mini-table th, .mini-table td { padding: 8px 10px; }
+    .trend-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .trend-bar .date { width: 90px; color: #666; font-size: 12px; }
+    .trend-bar .bar { flex: 1; height: 12px; background: #ecf0f1; border-radius: 99px; overflow: hidden; }
+    .trend-bar .bar > span { display: block; height: 100%; background: #3498db; }
+    .trend-bar .value { width: 26px; text-align: right; color: #2c3e50; font-weight: 600; }
+    .health-group-title { width: 100%; margin: 0 0 10px; font-size: 15px; font-weight: 700; color: #111; }
+    .health-section { border: 1px solid #000; border-radius: 6px; padding: 12px; margin-bottom: 14px; background: #fff; }
+    .health-section .form-row:last-child { margin-bottom: 0; }
+    .health-items { display: flex; flex-wrap: wrap; gap: 10px; }
+    .health-item { border: 1px solid #000; border-radius: 4px; padding: 8px 10px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap; background: #fff; }
+    .health-item.full { width: 100%; overflow-x: auto; }
+    .health-item .item-title { font-weight: 600; color: #111; margin-right: 4px; }
+    .health-item input[type="text"], .health-item input[type="date"], .health-item select { min-width: 90px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <nav class="sidebar">
+      <h1>医疗档案管理</h1>
+      <a href="#" data-page="home" class="active">首页</a>
+      <a href="#" data-page="customers">客户档案</a>
+      <a href="#" data-page="health">健康档案</a>
+      <a href="#" data-page="appointments">预约服务</a>
+      <a href="#" data-page="home-appointments">上门预约</a>
+            <a href="#" data-page="usage">仪器使用</a>
+      <a href="#" data-page="surveys">满意度</a>
+      <a href="#" data-page="query-export">数据查询导出</a>
+    </nav>
+    <main class="main">
+      <div id="page-home" class="page">
+        <div class="card">
+          <h2>核心概览</h2>
+          <div class="stats" id="stats"></div>
+        </div>
+        <div class="analytics-grid">
+          <div class="card">
+            <h2>最近 7 天预约趋势</h2>
+            <div id="appointment-trend"></div>
+          </div>
+          <div class="card">
+            <h2>预约状态分布</h2>
+            <table class="mini-table"><thead><tr><th>状态</th><th>数量</th></tr></thead><tbody id="appointment-status"></tbody></table>
+          </div>
+          <div class="card">
+            <h2>设备使用统计（Top10）</h2>
+            <table class="mini-table"><thead><tr><th>设备</th><th>使用次数</th><th>总时长(分钟)</th></tr></thead><tbody id="equipment-usage-top"></tbody></table>
+          </div>
+          <div class="card">
+            <h2>客户满意度与活跃度</h2>
+            <table class="mini-table"><tbody id="satisfaction-summary"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div id="page-customers" class="page hide">
+        <div class="card">
+          <h2>客户档案</h2>
+          <div class="search-bar">
+            <input type="text" id="customer-search" placeholder="按姓名查询">
+            <button class="btn btn-primary" id="btn-customer-search">按姓名查询</button>
+            <button class="btn btn-secondary" id="btn-customer-reset">显示全部</button>
+            <button class="btn btn-primary" id="btn-customer-add">新增客户</button>
+          </div>
+          <div id="customer-msg"></div>
+          <table>
+            <thead><tr><th>姓名</th><th>身份证</th><th>电话</th><th>操作</th></tr></thead>
+            <tbody id="customer-list"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="page-health" class="page hide">
+        <div class="card">
+          <h2>健康评估档案</h2>
+          <div class="health-section">
+            <div class="form-row">
+              <label>日期</label>
+              <input type="date" id="health-date">
+              <label>填表人</label>
+              <input type="text" id="ha-assessor" placeholder="请输入填表人" style="width:160px">
+            </div>
+          </div>
+          <div class="health-section">
+            <div class="form-row">
+              <div class="health-group-title">基础信息</div>
+              <label>姓名</label>
+              <select id="health-customer"></select>
+              <label>年龄</label>
+              <input type="text" inputmode="numeric" id="ha-age" placeholder="可选" style="width:90px">
+              <label>身高(cm)</label>
+              <input type="text" inputmode="numeric" id="ha-height-cm" placeholder="可选" style="width:90px">
+              <label>体重(kg)</label>
+              <input type="text" inputmode="numeric" id="ha-weight-kg" placeholder="可选" style="width:90px">
+              <label>地址</label>
+              <input type="text" id="ha-address" placeholder="请输入地址" style="flex:1;max-width:320px">
+            </div>
+          </div>
+          <div class="health-section">
+            <div class="form-row">
+              <div class="health-group-title">健康状况与习惯</div>
+              <div class="health-items">
+                <div class="health-item full"><span class="item-title">既往史</span><input type="text" id="ha-past-medical-history" style="flex:1;min-width:260px"></div>
+                <div class="health-item full"><span class="item-title">家族史</span><input type="text" id="ha-family-history" style="flex:1;min-width:260px"></div>
+                <div class="health-item full"><span class="item-title">过敏史</span><label><input type="radio" name="ha-allergy-history" value="无">无</label><label><input type="radio" name="ha-allergy-history" value="有">有</label><span>过敏史：</span><input type="text" id="ha-allergy-details" style="flex:1;min-width:180px"></div>
+                <div class="health-item full"><span class="item-title">吸烟情况</span><label><input type="radio" name="ha-smoking-status" value="无">无</label><label><input type="radio" name="ha-smoking-status" value="有">有</label><span>烟龄</span><input type="text" inputmode="numeric" id="ha-smoking-years" style="width:90px"><span>年</span><input type="text" inputmode="numeric" id="ha-cigarettes-per-day" style="width:90px"><span>支/日</span></div>
+                <div class="health-item full"><span class="item-title">饮酒</span><label><input type="radio" name="ha-drinking-status" value="无">无</label><label><input type="radio" name="ha-drinking-status" value="有">有</label><span>饮酒</span><input type="text" inputmode="numeric" id="ha-drinking-years" style="width:90px"><span>年</span></div>
+                <div class="health-item full"><span class="item-title">近一个月有无感觉疲劳</span><label><input type="radio" name="ha-fatigue-last-month" value="无">无</label><label><input type="radio" name="ha-fatigue-last-month" value="稍微疲劳">稍微疲劳</label><label><input type="radio" name="ha-fatigue-last-month" value="比较疲劳">比较疲劳</label></div>
+                <div class="health-item full"><span class="item-title">目前的睡眠状况</span><label><input type="radio" name="ha-sleep-quality" value="很差">很差</label><label><input type="radio" name="ha-sleep-quality" value="差">差</label><label><input type="radio" name="ha-sleep-quality" value="一般">一般</label></div>
+                <div class="health-item full"><span class="item-title">睡眠时间</span><label><input type="radio" name="ha-sleep-hours" value="<6小时">&lt;6小时</label><label><input type="radio" name="ha-sleep-hours" value="6-8小时">6-8小时</label><label><input type="radio" name="ha-sleep-hours" value="9-10小时">9-10小时</label></div>
+                <div class="health-item full"><span class="item-title">近半年血压检测情况</span><label><input type="radio" name="ha-blood-pressure-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-pressure-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-pressure-test" value="监测：偏低">监测：偏低</label><label><input type="radio" name="ha-blood-pressure-test" value="监测：偏高">监测：偏高</label></div>
+                <div class="health-item full"><span class="item-title">近半年血脂检测情况</span><label><input type="radio" name="ha-blood-lipid-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-lipid-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-lipid-test" value="监测：偏高">监测：偏高</label></div>
+                <div class="health-item full"><span class="item-title">是否经常肩颈部、腰部、关节疼痛情况</span><label><input type="radio" name="ha-chronic-pain" value="无">无</label><label><input type="radio" name="ha-chronic-pain" value="有">有</label><span>详细情况：</span><input type="text" id="ha-pain-details" style="flex:1;min-width:220px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="health-section">
+            <div class="form-row">
+              <div class="health-items">
+                <div class="health-item full"><span class="item-title">锻炼方式（多选）</span>
+                  <div id="health-exercise-methods" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
+                    <label><input type="checkbox" name="health-exercise-method" value="散步">散步</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="一般家务">一般家务</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="打太极">打太极</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="快步走">快步走</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="爬楼梯">爬楼梯</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="跳广场舞">跳广场舞</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="打网球">打网球</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="打羽毛球">打羽毛球</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="打乒乓球">打乒乓球</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="骑自行车">骑自行车</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="打篮球">打篮球</label>
+                    <label><input type="checkbox" name="health-exercise-method" value="跑步">跑步</label>
+                  </div>
+                </div>
+                <div class="health-item full"><span class="item-title">平均每周锻炼频次</span><label><input type="radio" name="ha-weekly-exercise-freq" value="<3次">&lt;3次</label><label><input type="radio" name="ha-weekly-exercise-freq" value="3-4次">3-4次</label><label><input type="radio" name="ha-weekly-exercise-freq" value="5-7次">5-7次</label><label><input type="radio" name="ha-weekly-exercise-freq" value=">7次">&gt;7次</label></div>
+                <div class="health-item full"><span class="item-title">其他健康所需（多选）</span>
+                  <div id="health-needs" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
+                    <label><input type="checkbox" name="health-need" value="疾病筛查">疾病筛查</label>
+                    <label><input type="checkbox" name="health-need" value="就医陪诊">就医陪诊</label>
+                    <label><input type="checkbox" name="health-need" value="中医养生">中医养生</label>
+                    <label><input type="checkbox" name="health-need" value="康复治疗">康复治疗</label>
+                    <label><input type="checkbox" name="health-need" value="健康体检">健康体检</label>
+                    <label><input type="checkbox" name="health-need" value="心理咨询">心理咨询</label>
+                    <label><input type="checkbox" name="health-need" value="计划免疫">计划免疫</label>
+                    <label><input type="checkbox" name="health-need" value="运动养生">运动养生</label>
+                    <label><input type="checkbox" name="health-need" value="健康教育">健康教育</label>
+                    <label><input type="checkbox" name="health-need" value="远程医疗服务">远程医疗服务</label>
+                  </div>
+                  <span>其他</span><input type="text" id="ha-health-needs-other" style="min-width:180px">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>备注</label>
+            <textarea id="ha-notes" placeholder="可选" style="flex:1;max-width:520px"></textarea>
+          </div>
+          <input type="hidden" id="health-height">
+          <input type="hidden" id="health-weight">
+          <input type="hidden" id="health-bp">
+          <input type="hidden" id="health-symptoms">
+          <input type="hidden" id="health-diagnosis">
+          <input type="hidden" id="health-notes">
+          <div class="form-row">
+            <input type="hidden" id="health-id">
+            <button class="btn btn-primary" id="btn-health-save">保存评估</button>
+            <button class="btn btn-secondary" id="btn-health-cancel-edit" style="display:none">退出编辑</button>
+          </div>
+          <div id="health-msg"></div>
+          <h3>历史记录</h3>
+          <div class="search-bar">
+            <input type="text" id="health-search" placeholder="按姓名查询历史档案">
+            <button class="btn btn-primary" id="btn-health-search">查询</button>
+            <button class="btn btn-secondary" id="btn-health-reset">显示全部</button>
+          </div>
+          <table><thead><tr><th>客户</th><th>日期</th><th>身高</th><th>体重</th><th>疲劳</th><th>睡眠</th><th>锻炼频次</th><th>病史</th><th>操作</th></tr></thead><tbody id="health-list"></tbody></table>
+          <div id="health-detail" class="health-section" style="display:none;margin-top:14px"></div>
+        </div>
+      </div>
+      <div id="page-appointments" class="page hide">
+        <div class="card">
+          <h2>预约服务</h2>
+          <div class="form-row"><label>客户</label><select id="apt-customer"></select></div>
+          <div class="form-row"><label>项目</label><select id="apt-project"></select></div>
+          <div class="form-row"><label>设备</label><select id="apt-equipment"></select></div>
+          <div class="form-row"><label>人员</label><select id="apt-staff"></select></div>
+          <div class="form-row">
+            <label>预约时间</label>
+            <input type="date" id="apt-date">
+            <label>开始</label><select id="apt-start"><option value="">请选择开始时间</option></select>
+            <label>结束</label><select id="apt-end"><option value="">请选择结束时间</option></select>
+            <label>备注</label>
+            <input type="text" id="apt-notes" placeholder="可选">
+          </div>
+          <div class="form-row hide" id="apt-edit-actions">
+            <button class="btn btn-danger" id="btn-apt-mark-cancel">改为取消预约</button>
+            <button class="btn btn-secondary" id="btn-apt-cancel-edit">退出编辑</button>
+          </div>
+          <div class="form-row">
+            <button class="btn btn-primary" id="btn-apt-check">查询空余时段</button>
+            <button class="btn btn-primary" id="btn-apt-save">保存预约</button>
+          </div>
+          <div id="apt-availability" style="color:#2c3e50;margin-bottom:8px"></div>
+          <div id="apt-msg"></div>
+          <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>人员</th><th>日期</th><th>时间</th><th>状态</th><th>操作</th></tr></thead><tbody id="apt-list"></tbody></table>
+        </div>
+      </div>
+      <div id="page-home-appointments" class="page hide">
+        <div class="card">
+          <h2>上门预约</h2>
+          <div class="form-row">
+            <label>客户</label><select id="home-customer"></select>
+            <label>项目</label><select id="home-project"></select>
+            <label>人员</label><select id="home-staff"></select>
+            <label>日期</label><input type="date" id="home-date">
+          </div>
+          <div class="form-row" style="flex-wrap:nowrap">
+            <label>开始时间</label><input type="time" id="home-start" min="08:30" max="16:00" step="900">
+          </div>
+          <div class="form-row" style="flex-wrap:nowrap">
+            <label>结束时间</label><input type="time" id="home-end" min="08:30" max="16:00" step="900">
+          </div>
+          <div class="form-row">
+            <label>地点</label><input type="text" id="home-location" style="flex:1">
+            <label>联系人</label><input type="text" id="home-contact-person">
+            <label>电话</label><input type="text" id="home-contact-phone">
+          </div>
+          <div class="form-row">
+            <label>备注</label><input type="text" id="home-notes" style="flex:1">
+            <button class="btn btn-primary" id="btn-home-save">保存上门预约</button>
+            <button class="btn btn-secondary hide" id="btn-home-cancel-edit">退出编辑</button>
+          </div>
+          <div id="home-msg"></div>
+          <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>状态</th><th>操作</th></tr></thead><tbody id="home-list"></tbody></table>
+        </div>
+      </div>
+      <div id="page-usage" class="page hide">
+        <div class="card">
+          <h2>仪器使用统计（自动汇总预约服务）</h2>
+          <p style="color:#666; margin-top:0">系统自动统计“预约服务”中的项目预约次数，按受欢迎程度展示（无需手工录入）。</p>
+          <div id="usage-msg"></div>
+          <div id="usage-popularity-chart"></div>
+          <table><thead><tr><th>排名</th><th>服务项目</th><th>预约次数</th><th>占比</th></tr></thead><tbody id="usage-list"></tbody></table>
+        </div>
+      </div>
+      <div id="page-surveys" class="page hide">
+        <div class="card">
+          <h2>满意度调查</h2>
+          <div class="form-row">
+            <label>客户</label>
+            <select id="survey-customer"></select>
+            <label>服务</label>
+            <input type="number" id="survey-service" min="1" max="5" value="5" style="width:50px">
+            <label>设备</label>
+            <input type="number" id="survey-equipment" min="1" max="5" value="5" style="width:50px">
+            <label>环境</label>
+            <input type="number" id="survey-env" min="1" max="5" value="5" style="width:50px">
+            <label>人员</label>
+            <input type="number" id="survey-staff" min="1" max="5" value="5" style="width:50px">
+            <label>综合</label>
+            <input type="number" id="survey-overall" min="1" max="5" value="5" style="width:50px">
+          </div>
+          <div class="form-row">
+            <label>反馈/建议</label>
+            <textarea id="survey-feedback" placeholder="可选" style="flex:1;max-width:400px"></textarea>
+          </div>
+          <div class="form-row">
+            <button class="btn btn-primary" id="btn-survey-save">提交</button>
+          </div>
+          <div id="survey-msg"></div>
+        </div>
+      </div>
+      <div id="page-query-export" class="page hide">
+        <div class="card">
+          <h2>数据查询导出</h2>
+          <p style="color:#666; margin-bottom:16px">支持综合查询、单个人记录下载（可分类型或全量）以及全量数据下载。</p>
+          <div class="search-bar">
+            <input type="text" id="search-q" placeholder="输入关键词：姓名、电话、身份证、症状等">
+            <select id="search-type">
+              <option value="all">全部</option>
+              <option value="customers">客户信息</option>
+              <option value="health">健康档案</option>
+              <option value="appointments">预约记录</option>
+                            <option value="usage">仪器使用</option>
+              <option value="surveys">满意度</option>
+            </select>
+            <button class="btn btn-primary" id="btn-search">查询</button>
+          </div>
+          <div id="search-result"></div>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <h3 style="margin-top:0">数据下载</h3>
+          <div class="form-row">
+            <label>下载范围</label>
+            <select id="qe-scope" style="width:180px">
+              <option value="single">单个人</option>
+              <option value="all">全量</option>
+            </select>
+            <label id="qe-customer-label">客户</label>
+            <select id="qe-customer" style="min-width:240px"></select>
+          </div>
+          <div class="form-row">
+            <label>下载内容</label>
+            <select id="qe-dataset" style="width:220px">
+              <option value="all">全量信息</option>
+              <option value="customers">客户档案</option>
+              <option value="health">健康档案</option>
+              <option value="appointments">预约记录</option>
+                            <option value="usage">仪器使用</option>
+              <option value="surveys">满意度</option>
+            </select>
+            <button class="btn btn-primary" id="btn-query-export-download">下载Excel</button>
+          </div>
+          <input type="file" id="backup-folder-picker" webkitdirectory directory style="display:none">
+          <div class="form-row">
+            <label>数据库备份路径</label>
+            <input type="text" id="backup-path" placeholder="例如：D:/db-backups 或 /Users/me/db-backups" style="min-width:380px">
+            <button class="btn btn-secondary" id="btn-backup-path-save">保存路径</button>
+            <button class="btn btn-secondary" id="btn-backup-path-select">更改路径</button>
+            <button class="btn btn-secondary" id="btn-backup-now">立即备份数据库</button>
+          </div>
+          <div id="query-export-msg"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <div id="modal-customer" class="modal-mask hide">
+    <div class="modal">
+      <h3 id="modal-customer-title">新增客户</h3>
+      <input type="hidden" id="modal-customer-id">
+      <div class="form-row"><label>姓名</label><input type="text" id="mc-name" required></div>
+      <div class="form-row"><label>身份证</label><input type="text" id="mc-id_card" required></div>
+      <div class="form-row"><label>电话</label><input type="text" id="mc-phone" required></div>
+            <div class="form-row"><label>地址</label><input type="text" id="mc-address"></div>
+      <div class="form-row"><label>性别</label><select id="mc-gender"><option value="">-</option><option value="男">男</option><option value="女">女</option></select></div>
+      <div class="form-row"><label>出生日期</label><input type="date" id="mc-birth_date"></div>
+                                          <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-modal-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-modal-save">保存</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-edit-confirm" class="modal-mask hide">
+    <div class="modal">
+      <h3 id="modal-confirm-title">确认修改</h3>
+      <div id="modal-confirm-content" style="line-height:1.8;color:#2c3e50"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-confirm-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-confirm-submit">确认修改</button>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
