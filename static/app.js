@@ -616,16 +616,77 @@
         showMsg('portrait-msg', res.error, true);
         return;
       }
+      var d1 = res.dimension1 || {};
+      var d2 = res.dimension2 || {};
+      var d3 = res.dimension3 || {};
       showMsg('portrait-msg', '已基于最新健康档案生成画像，共覆盖客户 ' + (res.total_customers || 0) + ' 人');
-      renderCircleChart('portrait-gender-pie', toList(res.gender_distribution), false);
-      renderLegend('portrait-gender-legend', toList(res.gender_distribution));
-      renderHorizontalBars('portrait-age-bars', toList(res.age_distribution), '#27ae60');
-      renderCircleChart('portrait-risk-donut', toList(res.risk_distribution), true);
-      renderLegend('portrait-risk-legend', toList(res.risk_distribution));
-      renderHorizontalBars('portrait-disease-top10', toList(res.disease_top10).map(function (x) {
-        return { name: x.disease, count: x.count };
-      }), '#8e44ad');
+      renderKpiCards('portrait-kpi-cards', [
+        { name: '总人数', value: (d1.cards || {}).total_people || 0 },
+        { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%' },
+        { name: '66岁以上占比', value: ((d1.cards || {}).senior_ratio || 0) + '%' }
+      ]);
+      renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
+      renderLegend('portrait-gender-legend', toList(d1.gender_distribution));
+      renderHorizontalBars('portrait-age-bars', toList(d1.age_distribution), '#27ae60');
+      renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
+      renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
+      renderTagCloud('portrait-tag-cloud', toList(d1.tag_cloud));
+
+      renderCircleChart('portrait-risk-donut', toList(d2.risk_distribution), true);
+      renderLegend('portrait-risk-legend', toList(d2.risk_distribution));
+      renderHorizontalBars('portrait-disease-top10', toList(d2.past_history_top10), '#8e44ad');
+      renderHorizontalBars('portrait-family-top10', toList(d2.family_history_top10), '#c0392b');
+      renderHighRiskTable('portrait-high-risk-list', toList(d2.high_risk_customers));
+
+      renderKpiCards('portrait-habit-kpi', [
+        { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
+        { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
+        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' },
+        { name: '低运动+不良习惯', value: d3.low_exercise_bad_habit_people || 0 }
+      ]);
+      renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
+      renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
+      renderHorizontalBars('portrait-heatmap', toList(d3.behavior_heatmap), '#f39c12');
     });
+  }
+
+  function renderKpiCards(elId, items) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var list = toList(items);
+    if (!list.length) {
+      box.innerHTML = '<div style="color:#666">暂无数据</div>';
+      return;
+    }
+    box.innerHTML = list.map(function (x) {
+      return '<div class="kpi-card"><div class="k">' + (x.name || '-') + '</div><div class="v">' + (x.value == null ? '-' : x.value) + '</div></div>';
+    }).join('');
+  }
+
+  function renderTagCloud(elId, items) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var list = toList(items);
+    if (!list.length) {
+      box.innerHTML = '<span style="color:#666">暂无标签</span>';
+      return;
+    }
+    box.innerHTML = list.slice(0, 18).map(function (x) {
+      return '<span class="tag-item">' + (x.name || '-') + ' · ' + (x.count || 0) + '</span>';
+    }).join('');
+  }
+
+  function renderHighRiskTable(elId, items) {
+    var tbody = document.getElementById(elId);
+    if (!tbody) return;
+    var list = toList(items);
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.slice(0, 12).map(function (x) {
+      return '<tr><td>' + (x.customer_name || '-') + '</td><td>' + (x.risk_level || '-') + '</td><td>' + (x.warnings || '-') + '</td></tr>';
+    }).join('');
   }
 
   function renderLegend(elId, list) {
