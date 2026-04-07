@@ -12,6 +12,7 @@ import json
 import shutil
 import logging
 import re
+from collections import Counter
 from datetime import datetime
 from datetime import timedelta
 
@@ -365,6 +366,75 @@ def extract_health_portrait(record):
         'diseases': disease_list,
         'categories': list(disease_categories),
     }
+
+
+def safe_int(value):
+    try:
+        if value in (None, ''):
+            return None
+        return int(float(value))
+    except Exception:
+        return None
+
+
+def safe_float(value):
+    try:
+        if value in (None, ''):
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def normalize_multi_text(value):
+    if value in (None, ''):
+        return []
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip()]
+    try:
+        parsed = json.loads(value)
+        if isinstance(parsed, list):
+            return [str(v).strip() for v in parsed if str(v).strip()]
+    except Exception:
+        pass
+    raw = str(value).replace('；', ',').replace('、', ',').replace('/', ',').replace('|', ',')
+    return [x.strip() for x in raw.split(',') if x.strip()]
+
+
+def classify_bmi(height_cm, weight_kg):
+    h = safe_float(height_cm)
+    w = safe_float(weight_kg)
+    if not h or not w or h <= 0:
+        return None, None
+    h_m = h / 100.0
+    bmi = round(w / (h_m * h_m), 1)
+    if bmi < 18.5:
+        level = '偏瘦'
+    elif bmi < 24:
+        level = '正常'
+    elif bmi < 28:
+        level = '超重'
+    else:
+        level = '肥胖'
+    return bmi, level
+
+
+def classify_age_segment(age):
+    if age is None:
+        return None
+    if age < 50:
+        return '<50岁'
+    if age <= 60:
+        return '50-60岁'
+    if age <= 65:
+        return '61-65岁'
+    if age <= 70:
+        return '66-70岁'
+    if age <= 75:
+        return '71-75岁'
+    if age <= 80:
+        return '76-80岁'
+    return '>80岁'
 
 
 def init_db():
@@ -2054,61 +2124,193 @@ def api_dashboard_health_portrait():
         dedup[row['customer_id']] = row
     records = list(dedup.values())
 
-    age_bucket_order = ['0-17', '18-44', '45-59', '60+']
-    age_buckets = {k: 0 for k in age_bucket_order}
+    age_segments = ['<50岁', '50-60岁', '61-65岁', '66-70岁', '71-75岁', '76-80岁', '>80岁']
+    age_distribution = {k: 0 for k in age_segments}
     genders = {'男': 0, '女': 0, '未知': 0}
+    bmi_levels = {'偏瘦': 0, '正常': 0, '超重': 0, '肥胖': 0}
     risks = {'低风险': 0, '中风险': 0, '高风险': 0}
-    disease_categories = {k: 0 for k in HEALTH_PORTRAIT_DISEASE_MAP.keys()}
-    disease_counter = {}
+
+    past_disease_counter = Counter()
+    family_disease_counter = Counter()
+    allergy_counter = Counter()
+    pain_counter = Counter()
+    behavior_tag_counter = Counter()
+    exercise_counter = Counter()
+    demand_counter = Counter()
+    fatigue_counter = Counter()
+
+    smoking_people = 0
+    drinking_people = 0
+    smoking_drinking_people = 0
+    sleep_abnormal_people = 0
+    poor_sleep_people = 0
+    family_history_people = 0
+    allergy_people = 0
+    chronic_pain_people = 0
+    dual_history_high_risk_people = 0
+    history_plus_bp_abnormal_people = 0
+    low_exercise_bad_habit_people = 0
+    bmi_abnormal = 0
+
+    high_risk_customers = []
 
     for row in records:
-        age = row.get('age')
-        if age in (None, '') and row.get('birth_date'):
+        age = safe_int(row.get('age'))
+        if age is None and row.get('birth_date'):
             try:
                 birth = datetime.strptime(row.get('birth_date')[:10], '%Y-%m-%d').date()
                 today = datetime.now().date()
                 age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
             except Exception:
                 age = None
-        try:
-            age_num = int(age) if age not in (None, '') else None
-        except Exception:
-            age_num = None
-        if age_num is not None:
-            if age_num <= 17:
-                age_buckets['0-17'] += 1
-            elif age_num <= 44:
-                age_buckets['18-44'] += 1
-            elif age_num <= 59:
-                age_buckets['45-59'] += 1
-            else:
-                age_buckets['60+'] += 1
+        age_seg = classify_age_segment(age)
+        if age_seg:
+            age_distribution[age_seg] += 1
 
         gender = (row.get('gender') or '').strip()
-        if gender not in ('男', '女'):
-            gender = '未知'
-        genders[gender] += 1
+        genders[gender if gender in ('男', '女') else '未知'] += 1
+
+        _, bmi_level = classify_bmi(row.get('height_cm'), row.get('weight_kg'))
+        if bmi_level:
+            bmi_levels[bmi_level] += 1
+            if bmi_level != '正常':
+                bmi_abnormal += 1
 
         portrait = extract_health_portrait(row)
-        risks[portrait['risk_level']] += 1
-        for item in portrait['diseases']:
-            disease_counter[item['name']] = disease_counter.get(item['name'], 0) + 1
-        for category in portrait['categories']:
-            disease_categories[category] = disease_categories.get(category, 0) + 1
+        risk_level = portrait['risk_level']
+        risks[risk_level] += 1
 
-    top10 = sorted(
-        [{'disease': k, 'count': v} for k, v in disease_counter.items()],
-        key=lambda x: x['count'],
-        reverse=True,
-    )[:10]
+        past_history_items = normalize_multi_text(row.get('past_medical_history'))
+        family_history_items = normalize_multi_text(row.get('family_history'))
+        allergy_items = normalize_multi_text(row.get('allergy_details'))
+        pain_items = normalize_multi_text(row.get('pain_details'))
+        exercise_items = normalize_multi_text(row.get('exercise_methods'))
+        demand_items = normalize_multi_text(row.get('health_needs'))
+
+        for item in past_history_items:
+            past_disease_counter[item] += 1
+        for item in family_history_items:
+            family_disease_counter[item] += 1
+        for item in allergy_items:
+            allergy_counter[item] += 1
+        for item in pain_items:
+            pain_counter[item] += 1
+        for item in exercise_items:
+            exercise_counter[item] += 1
+        for item in demand_items:
+            demand_counter[item] += 1
+
+        smoking = row.get('smoking_status') == '有'
+        drinking = row.get('drinking_status') == '有'
+        low_exercise = row.get('weekly_exercise_freq') == '<3次'
+        sleep_abnormal = row.get('sleep_hours') in ('<6小时', '>10小时')
+        poor_sleep = row.get('sleep_quality') in ('很差', '差')
+        has_past_history = bool(past_history_items)
+        has_family_history = bool(family_history_items)
+
+        if smoking:
+            smoking_people += 1
+            behavior_tag_counter['烟民'] += 1
+        if drinking:
+            drinking_people += 1
+        if smoking and drinking:
+            smoking_drinking_people += 1
+        if sleep_abnormal:
+            sleep_abnormal_people += 1
+        if poor_sleep:
+            poor_sleep_people += 1
+            behavior_tag_counter['熬夜族'] += 1
+        if low_exercise:
+            behavior_tag_counter['久坐不动族'] += 1
+        if has_family_history:
+            family_history_people += 1
+        if row.get('allergy_history') == '有' or allergy_items:
+            allergy_people += 1
+        if row.get('chronic_pain') == '有':
+            chronic_pain_people += 1
+
+        fatigue = (row.get('fatigue_last_month') or '').strip()
+        if fatigue and fatigue != '无':
+            fatigue_counter[fatigue] += 1
+
+        if has_family_history and has_past_history:
+            dual_history_high_risk_people += 1
+        if has_past_history and row.get('blood_pressure_test') == '监测：偏高':
+            history_plus_bp_abnormal_people += 1
+        if low_exercise and (smoking or drinking or poor_sleep):
+            low_exercise_bad_habit_people += 1
+        if bmi_level == '肥胖' and age and age >= 60:
+            behavior_tag_counter['老年肥胖人群'] += 1
+        if age and 50 <= age <= 60 and row.get('blood_pressure_test') == '监测：偏高':
+            behavior_tag_counter['中年高血压风险人群'] += 1
+
+        warnings = []
+        if has_family_history and has_past_history:
+            warnings.append('既往史+家族史双高')
+        if row.get('blood_pressure_test') == '监测：偏高':
+            warnings.append('近半年血压偏高')
+        if bmi_level in ('超重', '肥胖'):
+            warnings.append('BMI异常')
+        if smoking:
+            warnings.append('吸烟')
+        if low_exercise:
+            warnings.append('运动不足')
+        if risk_level == '高风险' or warnings:
+            high_risk_customers.append({
+                'customer_id': row.get('customer_id'),
+                'customer_name': row.get('customer_name') or f"客户{row.get('customer_id')}",
+                'risk_level': risk_level,
+                'warnings': '、'.join(warnings) if warnings else '-',
+            })
+
+    total = len(records)
+    high_risk_customers.sort(key=lambda x: (x['risk_level'] != '高风险', -len(x['warnings'])))
+    senior_count = age_distribution['66-70岁'] + age_distribution['71-75岁'] + age_distribution['76-80岁'] + age_distribution['>80岁']
 
     return jsonify({
-        'total_customers': len(records),
-        'gender_distribution': [{'name': k, 'count': v} for k, v in genders.items()],
-        'age_distribution': [{'name': k, 'count': age_buckets[k]} for k in age_bucket_order],
-        'risk_distribution': [{'name': k, 'count': v} for k, v in risks.items()],
-        'disease_categories': [{'name': k, 'count': v} for k, v in disease_categories.items()],
-        'disease_top10': top10,
+        'total_customers': total,
+        'dimension1': {
+            'cards': {
+                'total_people': total,
+                'bmi_abnormal_rate': round((bmi_abnormal * 100.0 / total), 1) if total else 0,
+                'senior_ratio': round((senior_count * 100.0 / total), 1) if total else 0,
+            },
+            'gender_distribution': [{'name': k, 'count': v} for k, v in genders.items()],
+            'age_distribution': [{'name': k, 'count': age_distribution[k]} for k in age_segments],
+            'bmi_distribution': [{'name': k, 'count': v} for k, v in bmi_levels.items()],
+            'tag_cloud': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
+        },
+        'dimension2': {
+            'risk_distribution': [{'name': k, 'count': v} for k, v in risks.items()],
+            'past_history_top10': [{'name': k, 'count': v} for k, v in past_disease_counter.most_common(10)],
+            'family_history_top10': [{'name': k, 'count': v} for k, v in family_disease_counter.most_common(10)],
+            'allergy_top10': [{'name': k, 'count': v} for k, v in allergy_counter.most_common(10)],
+            'pain_top10': [{'name': k, 'count': v} for k, v in pain_counter.most_common(10)],
+            'family_history_ratio': round((family_history_people * 100.0 / total), 1) if total else 0,
+            'allergy_ratio': round((allergy_people * 100.0 / total), 1) if total else 0,
+            'chronic_pain_ratio': round((chronic_pain_people * 100.0 / total), 1) if total else 0,
+            'dual_history_high_risk_people': dual_history_high_risk_people,
+            'history_plus_bp_abnormal_people': history_plus_bp_abnormal_people,
+            'high_risk_customers': high_risk_customers[:50],
+        },
+        'dimension3': {
+            'smoking_ratio': round((smoking_people * 100.0 / total), 1) if total else 0,
+            'drinking_ratio': round((drinking_people * 100.0 / total), 1) if total else 0,
+            'smoking_drinking_ratio': round((smoking_drinking_people * 100.0 / total), 1) if total else 0,
+            'sleep_abnormal_ratio': round((sleep_abnormal_people * 100.0 / total), 1) if total else 0,
+            'poor_sleep_quality_ratio': round((poor_sleep_people * 100.0 / total), 1) if total else 0,
+            'low_exercise_bad_habit_people': low_exercise_bad_habit_people,
+            'exercise_top10': [{'name': k, 'count': v} for k, v in exercise_counter.most_common(10)],
+            'health_needs_top10': [{'name': k, 'count': v} for k, v in demand_counter.most_common(10)],
+            'fatigue_distribution': [{'name': k, 'count': v} for k, v in fatigue_counter.items()],
+            'behavior_tags': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
+            'behavior_heatmap': [
+                {'name': '睡眠异常', 'count': sleep_abnormal_people},
+                {'name': '低运动频次', 'count': sum(1 for r in records if r.get('weekly_exercise_freq') == '<3次')},
+                {'name': '吸烟', 'count': smoking_people},
+                {'name': '饮酒', 'count': drinking_people},
+            ],
+        },
     })
 
 

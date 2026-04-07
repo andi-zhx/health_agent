@@ -76,6 +76,14 @@
     .hbar .bar-track { flex: 1; height: 12px; border-radius: 99px; background: #edf2f7; overflow: hidden; }
     .hbar .bar-fill { height: 100%; background: #3498db; }
     .hbar .value { width: 24px; text-align: right; color: #2c3e50; font-weight: 600; font-size: 12px; }
+    .kpi-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
+    .kpi-card { min-width:130px; background:#f8fbff; border:1px solid #e5eef8; border-radius:8px; padding:10px; }
+    .kpi-card .k { color:#607d8b; font-size:12px; }
+    .kpi-card .v { font-size:20px; font-weight:700; color:#1f2d3d; margin-top:4px; }
+    .tag-cloud { display:flex; flex-wrap:wrap; gap:8px; }
+    .tag-item { background:#eef6ff; color:#2f6da7; border-radius:999px; padding:4px 10px; font-size:12px; }
+    .mini-risk-table { width:100%; margin-top:8px; font-size:12px; }
+    .mini-risk-table th, .mini-risk-table td { padding:6px 8px; border-bottom:1px solid #f0f0f0; }
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
     .status-pill-success { background: #27ae60; }
     .status-pill-cancelled { background: #e74c3c; }
@@ -258,20 +266,42 @@
           <div id="portrait-msg"></div>
           <div class="portrait-grid">
             <div class="portrait-panel">
-              <h3>客户基础属性概览（年龄 / 性别）</h3>
+              <h3>维度1：人口学属性画像（基础分层）</h3>
+              <div id="portrait-kpi-cards" class="kpi-row"></div>
               <div class="chart-row">
                 <div id="portrait-gender-pie"></div>
                 <div id="portrait-gender-legend" class="legend"></div>
               </div>
               <div id="portrait-age-bars" class="hbar" style="margin-top:12px"></div>
+              <div class="chart-row" style="margin-top:12px">
+                <div id="portrait-bmi-pie"></div>
+                <div id="portrait-bmi-legend" class="legend"></div>
+              </div>
+              <h4>客群标签云</h4>
+              <div id="portrait-tag-cloud" class="tag-cloud"></div>
             </div>
             <div class="portrait-panel">
-              <h3>健康风险分层 + 高发疾病 TOP10</h3>
+              <h3>维度2：疾病风险与遗传画像（核心）</h3>
               <div class="chart-row">
                 <div id="portrait-risk-donut"></div>
                 <div id="portrait-risk-legend" class="legend"></div>
               </div>
-              <div id="portrait-disease-top10" class="hbar" style="margin-top:12px"></div>
+              <h4>既往史 TOP10</h4>
+              <div id="portrait-disease-top10" class="hbar"></div>
+              <h4>家族史 TOP10</h4>
+              <div id="portrait-family-top10" class="hbar"></div>
+              <h4>高风险客户清单</h4>
+              <table class="mini-risk-table"><thead><tr><th>客户</th><th>风险等级</th><th>预警项</th></tr></thead><tbody id="portrait-high-risk-list"></tbody></table>
+            </div>
+            <div class="portrait-panel">
+              <h3>维度3：生活方式行为画像（可干预）</h3>
+              <div id="portrait-habit-kpi" class="kpi-row"></div>
+              <h4>运动方式 TOP10</h4>
+              <div id="portrait-exercise-top10" class="hbar"></div>
+              <h4>健康服务需求 TOP10</h4>
+              <div id="portrait-needs-top10" class="hbar"></div>
+              <h4>行为热力（睡眠-运动-吸烟-饮酒）</h4>
+              <div id="portrait-heatmap" class="hbar"></div>
             </div>
           </div>
         </div>
