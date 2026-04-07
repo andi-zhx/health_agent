@@ -11,9 +11,30 @@
     });
   }
 
-  function get(url) { return fetch(API + url).then(parseJsonResponse).catch(function () { return { error: '网络请求失败，请稍后重试' }; }); }
-  function post(url, body) { return fetch(API + url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(parseJsonResponse).catch(function () { return { error: '网络请求失败，请稍后重试' }; }); }
-  function put(url, body) { return fetch(API + url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(parseJsonResponse).catch(function () { return { error: '网络请求失败，请稍后重试' }; }); }
+  function showLoginScreen(msg) {
+    var loginScreen = document.getElementById('login-screen');
+    var appShell = document.getElementById('app-shell');
+    if (loginScreen) loginScreen.classList.remove('hide');
+    if (appShell) appShell.classList.add('hide');
+    if (msg) showMsg('login-msg', msg, true);
+  }
+
+  function requestJson(url, options) {
+    return fetch(API + url, options || {}).then(function (response) {
+      return parseJsonResponse(response).then(function (data) {
+        if (response.status === 401 && url !== '/api/auth/login') {
+          showLoginScreen((data && data.error) || '未登录或登录已失效，请重新登录');
+        }
+        return data;
+      });
+    }).catch(function () {
+      return { error: '网络请求失败，请稍后重试' };
+    });
+  }
+
+  function get(url) { return requestJson(url); }
+  function post(url, body) { return requestJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+  function put(url, body) { return requestJson(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
 
   function toList(data) {
     return Array.isArray(data) ? data : [];
