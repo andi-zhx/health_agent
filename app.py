@@ -46,6 +46,7 @@ logging.basicConfig(
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON;')
     conn.execute('PRAGMA journal_mode=WAL;')
     return conn
 
@@ -1034,6 +1035,29 @@ def api_customer_update(cid):
 def api_customer_delete(cid):
     conn = get_db()
     c = conn.cursor()
+    c.execute('SELECT id FROM customers WHERE id=?', (cid,))
+    if not c.fetchone():
+        conn.close()
+        return jsonify({'error': '客户不存在'}), 404
+
+    dependency_tables = [
+        'appointments',
+        'home_appointments',
+        'health_records',
+        'health_assessments',
+        'equipment_usage',
+        'satisfaction_surveys',
+        'visit_checkins',
+    ]
+
+    for table_name in dependency_tables:
+        if not table_exists(c, table_name):
+            continue
+        c.execute(f'SELECT 1 FROM {table_name} WHERE customer_id=? LIMIT 1', (cid,))
+        if c.fetchone():
+            conn.close()
+            return jsonify({'error': '该客户已有业务记录，不能直接删除'}), 400
+
     c.execute('DELETE FROM customers WHERE id=?', (cid,))
     conn.commit()
     conn.close()
