@@ -1787,6 +1787,8 @@ def api_dashboard_stats():
 def api_dashboard_analytics():
     conn = get_db()
     c = conn.cursor()
+    equipment_start_date = (request.args.get('equipment_start_date') or '').strip()
+    equipment_end_date = (request.args.get('equipment_end_date') or '').strip()
 
     # 最近 7 天预约趋势（包含 0 值日期）
     today = datetime.now().date()
@@ -1815,16 +1817,27 @@ def api_dashboard_analytics():
     appointment_status = row_list(c.fetchall())
 
     # 设备使用统计（总时长 + 次数）
-    c.execute('''
+    equipment_join_conditions = []
+    equipment_params = []
+    if equipment_start_date:
+        equipment_join_conditions.append('eu.usage_date >= ?')
+        equipment_params.append(equipment_start_date)
+    if equipment_end_date:
+        equipment_join_conditions.append('eu.usage_date <= ?')
+        equipment_params.append(equipment_end_date)
+    equipment_join_sql = ' AND '.join(equipment_join_conditions)
+    if equipment_join_sql:
+        equipment_join_sql = ' AND ' + equipment_join_sql
+    c.execute(f'''
         SELECT e.name as equipment_name,
                COUNT(eu.id) as usage_count,
                COALESCE(SUM(eu.duration_minutes), 0) as total_duration_minutes
         FROM equipment e
-        LEFT JOIN equipment_usage eu ON e.id = eu.equipment_id
+        LEFT JOIN equipment_usage eu ON e.id = eu.equipment_id{equipment_join_sql}
         GROUP BY e.id, e.name
         ORDER BY total_duration_minutes DESC, usage_count DESC
         LIMIT 10
-    ''')
+    ''', equipment_params)
     equipment_usage_top = row_list(c.fetchall())
 
     # 满意度分析

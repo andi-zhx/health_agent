@@ -69,7 +69,7 @@
 <body>
   <div class="app">
     <nav class="sidebar">
-      <h1>医疗档案管理</h1>
+      <h1>健康管理系统</h1>
       <a href="#" data-page="home" class="active">首页</a>
       <a href="#" data-page="customers">客户档案</a>
       <a href="#" data-page="health">健康档案</a>
@@ -82,6 +82,9 @@
     <main class="main">
       <div id="page-home" class="page">
         <div class="card">
+          <h2>当前日期：<span id="current-date"></span></h2>
+        </div>
+        <div class="card">
           <h2>核心概览</h2>
           <div class="stats" id="stats"></div>
         </div>
@@ -91,11 +94,14 @@
             <div id="appointment-trend"></div>
           </div>
           <div class="card">
-            <h2>预约状态分布</h2>
-            <table class="mini-table"><thead><tr><th>状态</th><th>数量</th></tr></thead><tbody id="appointment-status"></tbody></table>
-          </div>
-          <div class="card">
             <h2>设备使用统计（Top10）</h2>
+            <div class="form-row">
+              <label>开始日期</label>
+              <input type="date" id="equipment-range-start">
+              <label>结束日期</label>
+              <input type="date" id="equipment-range-end">
+              <button class="btn btn-secondary btn-small" id="btn-equipment-range-query">查询</button>
+            </div>
             <table class="mini-table"><thead><tr><th>设备</th><th>使用次数</th><th>总时长(分钟)</th></tr></thead><tbody id="equipment-usage-top"></tbody></table>
           </div>
           <div class="card">
@@ -196,7 +202,7 @@
                     <label><input type="checkbox" name="health-need" value="计划免疫">计划免疫</label>
                     <label><input type="checkbox" name="health-need" value="运动养生">运动养生</label>
                     <label><input type="checkbox" name="health-need" value="健康教育">健康教育</label>
-                    <label><input type="checkbox" name="health-need" value="远程医疗服务">远程医疗服务</label>
+                    <label><input type="checkbox" name="health-need" value="远程健康服务">远程健康服务</label>
                   </div>
                   <span>其他</span><input type="text" id="ha-health-needs-other" style="min-width:180px">
                 </div>

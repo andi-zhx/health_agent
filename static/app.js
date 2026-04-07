@@ -45,24 +45,21 @@
   }
 
   function loadStats() {
+    renderCurrentDate();
     get('/api/dashboard/stats').then(function (data) {
       var html = [
         { num: data.total_customers, label: '客户总数' },
-        { num: data.today_appointments, label: '今日预约' },
-        { num: data.pending_appointments, label: '待处理预约' },
-        { num: data.available_equipment + '/' + data.total_equipment, label: '可用设备' }
+        { num: data.today_appointments, label: '今日预约' }
       ].map(function (s) { return '<div class="stat-box"><div class="num">' + s.num + '</div><div class="label">' + s.label + '</div></div>'; }).join('');
       document.getElementById('stats').innerHTML = html;
     }).catch(function () {});
 
-    get('/api/dashboard/analytics').then(function (data) {
+    get('/api/dashboard/analytics' + buildEquipmentRangeQuery()).then(function (data) {
       renderAppointmentTrend(data.appointment_trend || []);
-      renderAppointmentStatus(data.appointment_status || []);
       renderEquipmentUsageTop(data.equipment_usage_top || []);
       renderSatisfactionSummary(data.satisfaction || {}, data.customer_activity || {});
     }).catch(function () {
       document.getElementById('appointment-trend').innerHTML = '<p style="color:#666">暂无数据</p>';
-      document.getElementById('appointment-status').innerHTML = '<tr><td colspan="2">暂无数据</td></tr>';
       document.getElementById('equipment-usage-top').innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
       document.getElementById('satisfaction-summary').innerHTML = '<tr><td>暂无数据</td><td>-</td></tr>';
     });
@@ -82,17 +79,20 @@
     }).join('');
   }
 
-  function renderAppointmentStatus(list) {
-    var tbody = document.getElementById('appointment-status');
-    if (!tbody) return;
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="2">暂无数据</td></tr>';
-      return;
-    }
-    tbody.innerHTML = list.map(function (x) {
-      var label = x.status === 'scheduled' ? '已预约' : (x.status === 'cancelled' ? '已取消' : (x.status || '-'));
-      return '<tr><td>' + label + '</td><td>' + x.n + '</td></tr>';
-    }).join('');
+  function renderCurrentDate() {
+    var box = document.getElementById('current-date');
+    if (!box) return;
+    var now = new Date();
+    box.textContent = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
+  }
+
+  function buildEquipmentRangeQuery() {
+    var start = (document.getElementById('equipment-range-start') || {}).value || '';
+    var end = (document.getElementById('equipment-range-end') || {}).value || '';
+    var params = [];
+    if (start) params.push('equipment_start_date=' + encodeURIComponent(start));
+    if (end) params.push('equipment_end_date=' + encodeURIComponent(end));
+    return params.length ? ('?' + params.join('&')) : '';
   }
 
   function renderEquipmentUsageTop(list) {
@@ -563,6 +563,12 @@
   document.querySelectorAll('.sidebar a').forEach(function (a) {
     a.addEventListener('click', function (e) { e.preventDefault(); showPage(a.dataset.page); });
   });
+  var btnEquipmentRangeQuery = document.getElementById('btn-equipment-range-query');
+  if (btnEquipmentRangeQuery) {
+    btnEquipmentRangeQuery.addEventListener('click', function () {
+      loadStats();
+    });
+  }
 
   document.getElementById('btn-customer-search').addEventListener('click', loadCustomers);
   document.getElementById('btn-customer-reset').addEventListener('click', function () {
