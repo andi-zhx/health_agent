@@ -184,6 +184,7 @@
   var homeAppointmentEditId = null;
   var appointmentProjects = [];
   var appointmentEquipment = [];
+  var healthCustomerList = [];
   var projectEquipmentMap = { '听力测试': '听力耳机', '高压氧仓': '高压氧仓', '艾灸': '艾灸', '按摩': '按摩机' };
 
   function escapeHtml(value) {
@@ -199,6 +200,30 @@
     var sel = document.getElementById('health-customer');
     if (!sel || sel.selectedIndex < 0) return '';
     return sel.options[sel.selectedIndex].text || '';
+  }
+
+  function renderHealthCustomerSelect(keyword) {
+    var sel = document.getElementById('health-customer');
+    if (!sel) return;
+    var old = sel.value;
+    var q = String(keyword || '').trim();
+    var matched = healthCustomerList.filter(function (c) {
+      return !q || String(c.name || '').indexOf(q) !== -1;
+    });
+    sel.innerHTML = '<option value="">请选择客户</option>' + matched.map(function (c) {
+      return '<option value="' + c.id + '">' + c.name + ' ' + (c.phone || '') + '</option>';
+    }).join('');
+    if (old && matched.some(function (c) { return String(c.id) === String(old); })) {
+      sel.value = old;
+    }
+  }
+
+  function initHealthCustomerPicker() {
+    get('/api/customers').then(function (list) {
+      healthCustomerList = toList(list);
+      var searchInput = document.getElementById('health-customer-search');
+      renderHealthCustomerSelect(searchInput ? searchInput.value : '');
+    });
   }
 
   function setHealthEditMode(isEditing) {
@@ -322,7 +347,7 @@
   }
 
   function loadHealthPage() {
-    fillCustomerSelect('health-customer');
+    initHealthCustomerPicker();
     var q = (document.getElementById('health-search').value || '').trim();
     get('/api/health-assessments' + (q ? '?search=' + encodeURIComponent(q) : '')).then(function (list) {
       var tbody = document.getElementById('health-list');
@@ -700,6 +725,9 @@
   document.getElementById('btn-health-reset').addEventListener('click', function () {
     document.getElementById('health-search').value = '';
     loadHealthPage();
+  });
+  document.getElementById('health-customer-search').addEventListener('input', function (e) {
+    renderHealthCustomerSelect(e.target.value);
   });
   document.getElementById('btn-health-cancel-edit').addEventListener('click', function () {
     if (editingHealthSnapshot && editingHealthSnapshot.id) {
@@ -1140,6 +1168,10 @@
     document.querySelectorAll('input[name^="ha-"]').forEach(function (el) { if (el.type === 'radio') el.checked = false; });
     document.querySelectorAll('input[name="health-exercise-method"], input[name="health-need"]').forEach(function (el) { el.checked = false; });
     document.getElementById('health-id').value = data.id || '';
+    if (data.customer_name && !document.getElementById('health-customer-search').value) {
+      document.getElementById('health-customer-search').value = data.customer_name;
+      renderHealthCustomerSelect(data.customer_name);
+    }
     document.getElementById('health-customer').value = data.customer_id || '';
     document.getElementById('health-date').value = (data.assessment_date || today || '').slice(0, 10);
     document.getElementById('ha-assessor').value = data.assessor || '';
