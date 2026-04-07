@@ -76,6 +76,9 @@
     .hbar .bar-track { flex: 1; height: 12px; border-radius: 99px; background: #edf2f7; overflow: hidden; }
     .hbar .bar-fill { height: 100%; background: #3498db; }
     .hbar .value { width: 24px; text-align: right; color: #2c3e50; font-weight: 600; font-size: 12px; }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
+    .status-pill-success { background: #27ae60; }
+    .status-pill-cancelled { background: #e74c3c; }
   </style>
 </head>
 <body>
@@ -322,8 +325,13 @@
           </div>
           <div class="form-row">
             <label>备注</label><input type="text" id="home-notes" style="flex:1">
+          </div>
+          <div class="form-row hide" id="home-edit-actions">
+            <button class="btn btn-danger" id="btn-home-mark-cancel">改为取消预约</button>
+            <button class="btn btn-secondary" id="btn-home-cancel-edit">退出编辑</button>
+          </div>
+          <div class="form-row">
             <button class="btn btn-primary" id="btn-home-save">保存上门预约</button>
-            <button class="btn btn-secondary hide" id="btn-home-cancel-edit">退出编辑</button>
           </div>
           <div id="home-msg"></div>
           <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>状态</th><th>操作</th></tr></thead><tbody id="home-list"></tbody></table>
