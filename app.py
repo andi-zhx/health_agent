@@ -203,6 +203,28 @@ def is_valid_home_time_range(start_time, end_time):
     return '08:30' <= start_time < end_time <= '16:00'
 
 
+def is_today_or_future(date_str):
+    if not date_str:
+        return False
+    try:
+        return datetime.strptime(date_str, '%Y-%m-%d').date() >= datetime.now().date()
+    except ValueError:
+        return False
+
+
+def validate_customer_payload(d):
+    id_card = (d.get('id_card') or '').strip()
+    phone = (d.get('phone') or '').strip()
+    address = (d.get('address') or '').strip()
+    if len(id_card) != 18:
+        return '身份证号必须为18位'
+    if len(phone) != 11 or not phone.isdigit():
+        return '手机号必须为11位数字'
+    if not address:
+        return '地址为必填项'
+    return None
+
+
 
 def get_project_required_equipment_name(project_name):
     return PROJECT_EQUIPMENT_MAP.get(project_name)
@@ -750,6 +772,9 @@ def api_customer_get(cid):
 @app.route('/api/customers', methods=['POST'])
 def api_customer_create():
     d = request.json or {}
+    customer_error = validate_customer_payload(d)
+    if customer_error:
+        return jsonify({'error': customer_error}), 400
     conn = get_db()
     c = conn.cursor()
     try:
@@ -773,6 +798,9 @@ def api_customer_create():
 @app.route('/api/customers/<int:cid>', methods=['PUT'])
 def api_customer_update(cid):
     d = request.json or {}
+    customer_error = validate_customer_payload(d)
+    if customer_error:
+        return jsonify({'error': customer_error}), 400
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT id FROM customers WHERE id=?', (cid,))
@@ -1163,6 +1191,8 @@ def api_appointment_create():
     d = request.json or {}
     if not all(d.get(k) for k in ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time')):
         return jsonify({'error': '缺少必填字段'}), 400
+    if not is_today_or_future(d.get('appointment_date')):
+        return jsonify({'error': '预约时间仅可选择当天及以后日期'}), 400
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (d.get('project_id'),))
@@ -1317,6 +1347,8 @@ def api_appointment_update(aid):
     d = request.json or {}
     if not all(d.get(k) for k in ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time')):
         return jsonify({'error': '缺少必填字段'}), 400
+    if not is_today_or_future(d.get('appointment_date')):
+        return jsonify({'error': '预约时间仅可选择当天及以后日期'}), 400
 
     conn = get_db()
     c = conn.cursor()

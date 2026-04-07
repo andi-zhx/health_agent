@@ -82,7 +82,7 @@
     <main class="main">
       <div id="page-home" class="page">
         <div class="card">
-          <h2>当前日期：<span id="current-date"></span></h2>
+          <h2 id="current-date"></h2>
         </div>
         <div class="card">
           <h2>核心概览</h2>
@@ -386,9 +386,9 @@
       <h3 id="modal-customer-title">新增客户</h3>
       <input type="hidden" id="modal-customer-id">
       <div class="form-row"><label>姓名</label><input type="text" id="mc-name" required></div>
-      <div class="form-row"><label>身份证</label><input type="text" id="mc-id_card" required></div>
-      <div class="form-row"><label>电话</label><input type="text" id="mc-phone" required></div>
-            <div class="form-row"><label>地址</label><input type="text" id="mc-address"></div>
+      <div class="form-row"><label>身份证</label><input type="text" id="mc-id_card" maxlength="18" required></div>
+      <div class="form-row"><label>电话</label><input type="text" id="mc-phone" maxlength="11" required></div>
+            <div class="form-row"><label>地址</label><input type="text" id="mc-address" required></div>
       <div class="form-row"><label>性别</label><select id="mc-gender"><option value="">-</option><option value="男">男</option><option value="女">女</option></select></div>
       <div class="form-row"><label>出生日期</label><input type="date" id="mc-birth_date"></div>
                                           <div class="modal-actions">
