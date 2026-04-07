@@ -234,9 +234,9 @@ HEALTH_ASSESSMENT_ALLOWED_VALUES = {
     'allergy_history': {'无', '有'},
     'smoking_status': {'无', '有'},
     'drinking_status': {'无', '有'},
-    'fatigue_last_month': {'无', '稍微疲劳', '比较疲劳'},
-    'sleep_quality': {'很差', '差', '一般'},
-    'sleep_hours': {'<6小时', '6-8小时', '9-10小时'},
+    'fatigue_last_month': {'无', '稍微疲劳', '比较疲劳', '非常疲劳'},
+    'sleep_quality': {'很差', '差', '一般', '良好'},
+    'sleep_hours': {'<6小时', '6-8小时', '9-10小时', '>10小时'},
     'blood_pressure_test': {'未监测', '监测：正常', '监测：偏低', '监测：偏高'},
     'blood_lipid_test': {'未监测', '监测：正常', '监测：偏高'},
     'chronic_pain': {'无', '有'},
@@ -1812,7 +1812,7 @@ def api_equipment_usage_service_stats():
                COUNT(a.id) as appointment_count
         FROM appointments a
         LEFT JOIN therapy_projects p ON a.project_id = p.id
-        WHERE a.status='scheduled'
+        WHERE a.status <> 'cancelled'
         GROUP BY COALESCE(p.name, '未分类项目')
         ORDER BY appointment_count DESC, project_name ASC
     ''')
@@ -1962,24 +1962,31 @@ def api_dashboard_analytics():
     ''')
     appointment_status = row_list(c.fetchall())
 
-    # 设备使用统计（总时长 + 次数）
-    equipment_join_conditions = []
+    # 设备使用统计（按预约服务历史记录汇总总时长 + 次数）
+    equipment_join_conditions = ["a.status <> 'cancelled'"]
     equipment_params = []
     if equipment_start_date:
-        equipment_join_conditions.append('eu.usage_date >= ?')
+        equipment_join_conditions.append('a.appointment_date >= ?')
         equipment_params.append(equipment_start_date)
     if equipment_end_date:
-        equipment_join_conditions.append('eu.usage_date <= ?')
+        equipment_join_conditions.append('a.appointment_date <= ?')
         equipment_params.append(equipment_end_date)
     equipment_join_sql = ' AND '.join(equipment_join_conditions)
     if equipment_join_sql:
         equipment_join_sql = ' AND ' + equipment_join_sql
     c.execute(f'''
         SELECT e.name as equipment_name,
-               COUNT(eu.id) as usage_count,
-               COALESCE(SUM(eu.duration_minutes), 0) as total_duration_minutes
+               COUNT(a.id) as usage_count,
+               COALESCE(SUM(
+                   CASE
+                       WHEN a.start_time IS NOT NULL AND a.end_time IS NOT NULL
+                            AND a.end_time > a.start_time
+                       THEN (strftime('%s', '2000-01-01 ' || a.end_time) - strftime('%s', '2000-01-01 ' || a.start_time)) / 60
+                       ELSE 0
+                   END
+               ), 0) as total_duration_minutes
         FROM equipment e
-        LEFT JOIN equipment_usage eu ON e.id = eu.equipment_id{equipment_join_sql}
+        LEFT JOIN appointments a ON e.id = a.equipment_id{equipment_join_sql}
         GROUP BY e.id, e.name
         ORDER BY total_duration_minutes DESC, usage_count DESC
         LIMIT 10
