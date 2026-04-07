@@ -122,6 +122,10 @@ def load_projects_with_parallel_strategy(cursor, enabled_only=False, scene=None)
             by_name[sp['name']] = sp
 
     projects.sort(key=lambda x: x.get('id') or 0, reverse=True)
+    if scene == 'home' and table_exists(cursor, 'project_rules'):
+        cursor.execute("SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled'")
+        allowed_names = {r['project_name'] for r in cursor.fetchall()}
+        projects = [p for p in projects if p.get('name') in allowed_names]
     return projects
 
 
@@ -228,12 +232,14 @@ def require_login():
 
 
 
-PROJECT_EQUIPMENT_MAP = {
+DEFAULT_PROJECT_EQUIPMENT_MAP = {
     '听力测试': '听力耳机',
     '高压氧仓': '高压氧仓',
     '艾灸': '艾灸',
     '按摩': '按摩机',
 }
+
+DEFAULT_ALLOWED_HOME_PROJECTS = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
 
 
 def generate_time_slots(start='08:30', end='16:00', interval_minutes=15):
@@ -379,9 +385,63 @@ def error_response(message, status=400, error_code='VALIDATION_ERROR'):
     return jsonify({'success': False, 'message': message, 'error_code': error_code}), status
 
 
+def parse_list_params(default_page_size=20, max_page_size=100):
+    page = request.args.get('page', default=1, type=int) or 1
+    page_size = request.args.get('page_size', default=default_page_size, type=int) or default_page_size
+    page = max(page, 1)
+    page_size = min(max(page_size, 1), max_page_size)
+    offset = (page - 1) * page_size
+    return page, page_size, offset
 
-def get_project_required_equipment_name(project_name):
-    return PROJECT_EQUIPMENT_MAP.get(project_name)
+
+def paginate_result(items, total, page, page_size):
+    return {
+        'items': items,
+        'pagination': {
+            'page': page,
+            'page_size': page_size,
+            'total': total,
+            'total_pages': (total + page_size - 1) // page_size if page_size else 0,
+        }
+    }
+
+
+def get_project_required_equipment_name(project_name, cursor=None):
+    own_conn = None
+    c = cursor
+    try:
+        if c is None:
+            own_conn = get_db()
+            c = own_conn.cursor()
+        c.execute(
+            "SELECT equipment_name FROM project_equipment_mapping WHERE project_name=? AND status='enabled' LIMIT 1",
+            (project_name,),
+        )
+        row = c.fetchone()
+        return row['equipment_name'] if row else None
+    finally:
+        if own_conn is not None:
+            own_conn.close()
+
+
+def is_project_home_allowed(project_name, cursor=None):
+    own_conn = None
+    c = cursor
+    try:
+        if c is None:
+            own_conn = get_db()
+            c = own_conn.cursor()
+        c.execute(
+            "SELECT allow_home FROM project_rules WHERE project_name=? AND status='enabled' LIMIT 1",
+            (project_name,),
+        )
+        row = c.fetchone()
+        return bool(row and row['allow_home'] == 1)
+    finally:
+        if own_conn is not None:
+            own_conn.close()
+
+
 
 HEALTH_ASSESSMENT_ALLOWED_VALUES = {
     'allergy_history': {'无', '有'},
@@ -910,6 +970,29 @@ def init_db():
               ('login_password', '123456'))
 
     c.execute('''
+        CREATE TABLE IF NOT EXISTS project_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_name TEXT NOT NULL UNIQUE,
+            allow_home INTEGER DEFAULT 0,
+            project_category TEXT,
+            status TEXT DEFAULT 'enabled',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS project_equipment_mapping (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_name TEXT NOT NULL UNIQUE,
+            equipment_name TEXT NOT NULL,
+            status TEXT DEFAULT 'enabled',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    c.execute('''
         CREATE TABLE IF NOT EXISTS satisfaction_surveys (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer_id INTEGER NOT NULL,
@@ -1057,6 +1140,21 @@ def init_db():
                 row,
             )
 
+    for project_name, equipment_name in DEFAULT_PROJECT_EQUIPMENT_MAP.items():
+        c.execute('''
+            INSERT OR IGNORE INTO project_equipment_mapping (project_name, equipment_name, status)
+            VALUES (?,?,?)
+        ''', (project_name, equipment_name, 'enabled'))
+
+    c.execute('SELECT name, category FROM therapy_projects')
+    all_projects = row_list(c.fetchall())
+    for project in all_projects:
+        allow_home = 1 if project['name'] in DEFAULT_ALLOWED_HOME_PROJECTS else 0
+        c.execute('''
+            INSERT OR IGNORE INTO project_rules (project_name, allow_home, project_category, status)
+            VALUES (?,?,?,?)
+        ''', (project['name'], allow_home, project.get('category'), 'enabled'))
+
     c.execute("SELECT COUNT(*) FROM staff")
     if c.fetchone()[0] == 0:
         for row in [
@@ -1085,19 +1183,46 @@ def static_file(path):
 # ========== 客户 ==========
 @app.route('/api/customers', methods=['GET'])
 def api_customers_list():
-    q = request.args.get('search', '')
+    q = (request.args.get('search', '') or '').strip()
+    status = (request.args.get('status', '') or '').strip().lower()
+    date_from = (request.args.get('date_from', '') or '').strip()
+    date_to = (request.args.get('date_to', '') or '').strip()
+    sort_by = (request.args.get('sort_by', '') or 'created_desc').strip()
+    page, page_size, offset = parse_list_params()
+    sort_map = {
+        'created_desc': 'created_at DESC, id DESC',
+        'created_asc': 'created_at ASC, id ASC',
+        'name_asc': 'name COLLATE NOCASE ASC, id DESC',
+        'name_desc': 'name COLLATE NOCASE DESC, id DESC',
+    }
+    order_sql = sort_map.get(sort_by, sort_map['created_desc'])
     conn = get_db()
     c = conn.cursor()
+    conditions = ['is_deleted=0']
+    params = []
     if q:
-        c.execute(
-            'SELECT * FROM customers WHERE is_deleted=0 AND (name LIKE ? OR id_card LIKE ? OR phone LIKE ?) ORDER BY created_at DESC',
-            (f'%{q}%', f'%{q}%', f'%{q}%')
-        )
-    else:
-        c.execute('SELECT * FROM customers WHERE is_deleted=0 ORDER BY created_at DESC')
-    rows = c.fetchall()
+        conditions.append('(name LIKE ? OR id_card LIKE ? OR phone LIKE ?)')
+        params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
+    if status == 'deleted':
+        conditions = ['is_deleted=1']
+    elif status == 'active':
+        conditions.append('is_deleted=0')
+    if date_from:
+        conditions.append('date(created_at) >= date(?)')
+        params.append(date_from)
+    if date_to:
+        conditions.append('date(created_at) <= date(?)')
+        params.append(date_to)
+    where_sql = ' AND '.join(conditions)
+    c.execute(f'SELECT COUNT(*) as n FROM customers WHERE {where_sql}', params)
+    total = c.fetchone()['n']
+    c.execute(
+        f'SELECT * FROM customers WHERE {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?',
+        params + [page_size, offset]
+    )
+    rows = row_list(c.fetchall())
     conn.close()
-    return success_response(row_list(rows))
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/customers/<int:cid>', methods=['GET'])
@@ -1430,9 +1555,20 @@ def api_staff_update(sid):
 def api_health_assessments_list():
     customer_id = request.args.get('customer_id', type=int)
     search = (request.args.get('search', '') or '').strip()
+    status = (request.args.get('status', '') or '').strip().lower()
+    date_from = (request.args.get('date_from', '') or '').strip()
+    date_to = (request.args.get('date_to', '') or '').strip()
+    sort_by = (request.args.get('sort_by', '') or 'date_desc').strip()
+    page, page_size, offset = parse_list_params()
+    sort_map = {
+        'date_desc': 'h.assessment_date DESC, h.id DESC',
+        'date_asc': 'h.assessment_date ASC, h.id ASC',
+        'name_asc': 'c.name COLLATE NOCASE ASC, h.assessment_date DESC, h.id DESC',
+    }
+    order_sql = sort_map.get(sort_by, sort_map['date_desc'])
     conn = get_db()
     c = conn.cursor()
-    sql = 'SELECT h.*, c.name as customer_name FROM health_assessments h JOIN customers c ON h.customer_id=c.id WHERE 1=1'
+    sql = 'FROM health_assessments h JOIN customers c ON h.customer_id=c.id WHERE 1=1'
     params = []
     if customer_id:
         sql += ' AND h.customer_id=?'
@@ -1440,14 +1576,24 @@ def api_health_assessments_list():
     if search:
         sql += ' AND c.name LIKE ?'
         params.append(f'%{search}%')
-    sql += ' ORDER BY h.assessment_date DESC, h.id DESC'
-    c.execute(sql, params)
+    if status:
+        sql += ' AND LOWER(COALESCE(h.fatigue_last_month, "")) LIKE ?'
+        params.append(f'%{status}%')
+    if date_from:
+        sql += ' AND date(h.assessment_date) >= date(?)'
+        params.append(date_from)
+    if date_to:
+        sql += ' AND date(h.assessment_date) <= date(?)'
+        params.append(date_to)
+    c.execute(f'SELECT COUNT(*) as n {sql}', params)
+    total = c.fetchone()['n']
+    c.execute(f'SELECT h.*, c.name as customer_name {sql} ORDER BY {order_sql} LIMIT ? OFFSET ?', params + [page_size, offset])
     rows = row_list(c.fetchall())
     conn.close()
     for r in rows:
         r['exercise_methods'] = decode_multi_value(r.get('exercise_methods'))
         r['health_needs'] = decode_multi_value(r.get('health_needs'))
-    return jsonify(rows)
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/health-assessments', methods=['POST'])
@@ -1535,25 +1681,48 @@ def api_health_assessment_delete(hid):
 @app.route('/api/appointments', methods=['GET'])
 def api_appointments_list():
     sort_by = (request.args.get('sort_by') or 'time_desc').strip()
-    order_sql = 'a.appointment_date DESC, a.start_time DESC, a.id DESC'
-    if sort_by == 'name_asc':
-        order_sql = 'c.name COLLATE NOCASE ASC, a.appointment_date DESC, a.start_time DESC, a.id DESC'
+    status = (request.args.get('status', '') or '').strip().lower()
+    date_from = (request.args.get('date_from', '') or '').strip()
+    date_to = (request.args.get('date_to', '') or '').strip()
+    page, page_size, offset = parse_list_params()
+    order_sql = {
+        'time_desc': 'a.appointment_date DESC, a.start_time DESC, a.id DESC',
+        'time_asc': 'a.appointment_date ASC, a.start_time ASC, a.id ASC',
+        'name_asc': 'c.name COLLATE NOCASE ASC, a.appointment_date DESC, a.start_time DESC, a.id DESC',
+    }.get(sort_by, 'a.appointment_date DESC, a.start_time DESC, a.id DESC')
 
     conn = get_db()
     c = conn.cursor()
-    c.execute(f'''
-        SELECT a.*, c.name as customer_name, c.phone as customer_phone, e.name as equipment_name,
-               p.name as project_name, s.name as staff_name
+    base_sql = '''
         FROM appointments a
         JOIN customers c ON a.customer_id=c.id
         LEFT JOIN equipment e ON a.equipment_id=e.id
         LEFT JOIN therapy_projects p ON a.project_id=p.id
         LEFT JOIN staff s ON a.staff_id=s.id
+        WHERE 1=1
+    '''
+    params = []
+    if status:
+        base_sql += ' AND LOWER(COALESCE(a.status, ""))=?'
+        params.append(status)
+    if date_from:
+        base_sql += ' AND date(a.appointment_date) >= date(?)'
+        params.append(date_from)
+    if date_to:
+        base_sql += ' AND date(a.appointment_date) <= date(?)'
+        params.append(date_to)
+    c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
+    total = c.fetchone()['n']
+    c.execute(f'''
+        SELECT a.*, c.name as customer_name, c.phone as customer_phone, e.name as equipment_name,
+               p.name as project_name, s.name as staff_name
+        {base_sql}
         ORDER BY {order_sql}
-    ''')
-    rows = c.fetchall()
+        LIMIT ? OFFSET ?
+    ''', params + [page_size, offset])
+    rows = row_list(c.fetchall())
     conn.close()
-    return success_response(row_list(rows))
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/appointments', methods=['POST'])
@@ -1571,7 +1740,7 @@ def api_appointment_create():
     if not project:
         conn.close()
         return error_response('项目不存在')
-    required_equipment_name = get_project_required_equipment_name(project['name'])
+    required_equipment_name = get_project_required_equipment_name(project['name'], c)
     if required_equipment_name and not d.get('equipment_id'):
         conn.close()
         return error_response('该项目需要指定设备')
@@ -1633,7 +1802,7 @@ def api_appointments_free_slots():
         conn.close()
         return error_response('项目不存在', 404, 'NOT_FOUND')
 
-    required_equipment_name = get_project_required_equipment_name(project['name'])
+    required_equipment_name = get_project_required_equipment_name(project['name'], c)
     available_equipment = []
     if required_equipment_name:
         c.execute("SELECT id, name FROM equipment WHERE status='available' AND name=? ORDER BY name", (required_equipment_name,))
@@ -1735,7 +1904,7 @@ def api_appointment_update(aid):
         conn.close()
         return error_response('项目不存在')
 
-    required_equipment_name = get_project_required_equipment_name(project['name'])
+    required_equipment_name = get_project_required_equipment_name(project['name'], c)
     if required_equipment_name and not d.get('equipment_id'):
         conn.close()
         return error_response('该项目需要指定设备')
@@ -1818,12 +1987,37 @@ def api_appointment_cancel(aid):
 @app.route('/api/home-appointments', methods=['GET'])
 def api_home_appointments_list():
     sort_by = (request.args.get('sort_by') or 'time_desc').strip()
-    order_sql = 'h.appointment_date DESC, h.start_time DESC, h.id DESC'
-    if sort_by == 'name_asc':
-        order_sql = 'COALESCE(h.customer_name, c.name) COLLATE NOCASE ASC, h.appointment_date DESC, h.start_time DESC, h.id DESC'
+    status = (request.args.get('status', '') or '').strip().lower()
+    date_from = (request.args.get('date_from', '') or '').strip()
+    date_to = (request.args.get('date_to', '') or '').strip()
+    page, page_size, offset = parse_list_params()
+    order_sql = {
+        'time_desc': 'h.appointment_date DESC, h.start_time DESC, h.id DESC',
+        'time_asc': 'h.appointment_date ASC, h.start_time ASC, h.id ASC',
+        'name_asc': 'COALESCE(h.customer_name, c.name) COLLATE NOCASE ASC, h.appointment_date DESC, h.start_time DESC, h.id DESC',
+    }.get(sort_by, 'h.appointment_date DESC, h.start_time DESC, h.id DESC')
 
     conn = get_db()
     c = conn.cursor()
+    base_sql = '''
+        FROM home_appointments h
+        LEFT JOIN customers c ON h.customer_id=c.id
+        LEFT JOIN therapy_projects p ON h.project_id=p.id
+        LEFT JOIN staff s ON h.staff_id=s.id
+        WHERE 1=1
+    '''
+    params = []
+    if status:
+        base_sql += ' AND LOWER(COALESCE(h.status, ""))=?'
+        params.append(status)
+    if date_from:
+        base_sql += ' AND date(h.appointment_date) >= date(?)'
+        params.append(date_from)
+    if date_to:
+        base_sql += ' AND date(h.appointment_date) <= date(?)'
+        params.append(date_to)
+    c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
+    total = c.fetchone()['n']
     c.execute(f'''
         SELECT
             h.*,
@@ -1833,15 +2027,13 @@ def api_home_appointments_list():
             COALESCE(h.phone, c.phone) AS phone,
             COALESCE(h.home_address, h.location) AS home_address,
             COALESCE(h.home_time, h.start_time || '-' || h.end_time) AS home_time
-        FROM home_appointments h
-        LEFT JOIN customers c ON h.customer_id=c.id
-        LEFT JOIN therapy_projects p ON h.project_id=p.id
-        LEFT JOIN staff s ON h.staff_id=s.id
+        {base_sql}
         ORDER BY {order_sql}
-    ''')
-    rows = c.fetchall()
+        LIMIT ? OFFSET ?
+    ''', params + [page_size, offset])
+    rows = row_list(c.fetchall())
     conn.close()
-    return success_response(row_list(rows))
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/home-appointments', methods=['POST'])
@@ -1864,8 +2056,7 @@ def api_home_appointments_create():
     if not project:
         conn.close()
         return error_response('上门项目不存在', 404, 'NOT_FOUND')
-    allowed_home_projects = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
-    if project['name'] not in allowed_home_projects:
+    if not is_project_home_allowed(project['name'], c):
         conn.close()
         return error_response('该项目不支持上门预约')
 
@@ -1955,8 +2146,7 @@ def api_home_appointments_update(hid):
     if not project:
         conn.close()
         return error_response('上门项目不存在', 404, 'NOT_FOUND')
-    allowed_home_projects = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
-    if project['name'] not in allowed_home_projects:
+    if not is_project_home_allowed(project['name'], c):
         conn.close()
         return error_response('该项目不支持上门预约')
 
@@ -2003,20 +2193,47 @@ def api_home_appointments_update(hid):
 # ========== 设备使用 ==========
 @app.route('/api/equipment-usage', methods=['GET'])
 def api_equipment_usage_list():
+    status = (request.args.get('status', '') or '').strip().lower()
+    date_from = (request.args.get('date_from', '') or '').strip()
+    date_to = (request.args.get('date_to', '') or '').strip()
+    sort_by = (request.args.get('sort_by', '') or 'date_desc').strip()
+    page, page_size, offset = parse_list_params()
+    order_sql = {
+        'date_desc': 'eu.usage_date DESC, eu.id DESC',
+        'date_asc': 'eu.usage_date ASC, eu.id ASC',
+        'name_asc': 'c.name COLLATE NOCASE ASC, eu.usage_date DESC, eu.id DESC',
+    }.get(sort_by, 'eu.usage_date DESC, eu.id DESC')
     conn = get_db()
     c = conn.cursor()
-    c.execute('''
-        SELECT eu.*, c.name as customer_name, e.name as equipment_name, p.name as project_name, s.name as staff_name
+    base_sql = '''
         FROM equipment_usage eu
         JOIN customers c ON eu.customer_id=c.id
         LEFT JOIN equipment e ON eu.equipment_id=e.id
         LEFT JOIN therapy_projects p ON eu.project_id=p.id
         LEFT JOIN staff s ON eu.staff_id=s.id
-        ORDER BY eu.usage_date DESC
-    ''')
-    rows = c.fetchall()
+        WHERE 1=1
+    '''
+    params = []
+    if status:
+        base_sql += ' AND LOWER(COALESCE(eu.usage_status, ""))=?'
+        params.append(status)
+    if date_from:
+        base_sql += ' AND date(eu.usage_date) >= date(?)'
+        params.append(date_from)
+    if date_to:
+        base_sql += ' AND date(eu.usage_date) <= date(?)'
+        params.append(date_to)
+    c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
+    total = c.fetchone()['n']
+    c.execute(f'''
+        SELECT eu.*, c.name as customer_name, e.name as equipment_name, p.name as project_name, s.name as staff_name
+        {base_sql}
+        ORDER BY {order_sql}
+        LIMIT ? OFFSET ?
+    ''', params + [page_size, offset])
+    rows = row_list(c.fetchall())
     conn.close()
-    return success_response(row_list(rows))
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/equipment-usage', methods=['POST'])
@@ -2116,12 +2333,40 @@ def api_equipment_usage_service_stats():
 # ========== 满意度 ==========
 @app.route('/api/satisfaction-surveys', methods=['GET'])
 def api_surveys_list():
+    status = (request.args.get('status', '') or '').strip().lower()
+    date_from = (request.args.get('date_from', '') or '').strip()
+    date_to = (request.args.get('date_to', '') or '').strip()
+    sort_by = (request.args.get('sort_by', '') or 'date_desc').strip()
+    page, page_size, offset = parse_list_params()
+    order_sql = {
+        'date_desc': 's.survey_date DESC, s.id DESC',
+        'date_asc': 's.survey_date ASC, s.id ASC',
+        'name_asc': 'c.name COLLATE NOCASE ASC, s.survey_date DESC, s.id DESC',
+        'rating_desc': 's.overall_rating DESC, s.id DESC',
+    }.get(sort_by, 's.survey_date DESC, s.id DESC')
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT s.*, c.name as customer_name FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id ORDER BY s.survey_date DESC')
-    rows = c.fetchall()
+    base_sql = 'FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id WHERE 1=1'
+    params = []
+    if status:
+        if status == 'high':
+            base_sql += ' AND s.overall_rating >= 4'
+        elif status == 'mid':
+            base_sql += ' AND s.overall_rating = 3'
+        elif status == 'low':
+            base_sql += ' AND s.overall_rating <= 2'
+    if date_from:
+        base_sql += ' AND date(s.survey_date) >= date(?)'
+        params.append(date_from)
+    if date_to:
+        base_sql += ' AND date(s.survey_date) <= date(?)'
+        params.append(date_to)
+    c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
+    total = c.fetchone()['n']
+    c.execute(f'SELECT s.*, c.name as customer_name {base_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?', params + [page_size, offset])
+    rows = row_list(c.fetchall())
     conn.close()
-    return success_response(row_list(rows))
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/satisfaction-surveys', methods=['POST'])

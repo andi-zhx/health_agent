@@ -41,7 +41,12 @@
   function put(url, body) { return requestJson(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
 
   function toList(data) {
+    if (data && Array.isArray(data.items)) return data.items;
     return Array.isArray(data) ? data : [];
+  }
+
+  function getPagination(data) {
+    return (data && data.pagination) || {};
   }
 
   function showPage(name) {
@@ -150,7 +155,7 @@
   }
 
   function fillCustomerSelect(selId) {
-    get('/api/customers').then(function (list) {
+    get('/api/customers?page=1&page_size=500&sort_by=name_asc').then(function (list) {
       var sel = document.getElementById(selId);
       if (!sel) return;
       var old = sel.value;
@@ -211,6 +216,12 @@
   var appointmentEquipment = [];
   var healthCustomerList = [];
   var projectEquipmentMap = { '听力测试': '听力耳机', '高压氧仓': '高压氧仓', '艾灸': '艾灸', '按摩': '按摩机' };
+  var listState = {
+    customers: { page: 1, page_size: 20 },
+    health: { page: 1, page_size: 20 },
+    appointments: { page: 1, page_size: 20 },
+    homeAppointments: { page: 1, page_size: 20 }
+  };
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -244,7 +255,7 @@
   }
 
   function initHealthCustomerPicker() {
-    get('/api/customers').then(function (list) {
+    get('/api/customers?page=1&page_size=500&sort_by=name_asc').then(function (list) {
       healthCustomerList = toList(list);
       var searchInput = document.getElementById('health-customer-search');
       renderHealthCustomerSelect(searchInput ? searchInput.value : '');
@@ -278,11 +289,19 @@
 
   function loadCustomers() {
     var q = document.getElementById('customer-search').value;
-    get('/api/customers' + (q ? '?search=' + encodeURIComponent(q) : '')).then(function (list) {
+    var qs = [
+      'page=' + listState.customers.page,
+      'page_size=' + listState.customers.page_size,
+      'sort_by=created_desc'
+    ];
+    if (q) qs.push('search=' + encodeURIComponent(q));
+    get('/api/customers?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('customer-list');
       tbody.innerHTML = toList(list).map(function (c) {
         return '<tr><td>' + c.name + '</td><td>' + (c.id_card || '') + '</td><td>' + (c.phone || '') + '</td><td><button class="btn btn-small btn-primary" data-edit="' + c.id + '">编辑</button></td></tr>';
       }).join('');
+      var p = getPagination(list);
+      showMsg('customer-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
       tbody.querySelectorAll('[data-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () { openCustomerModal(btn.dataset.edit); });
       });
@@ -374,7 +393,13 @@
   function loadHealthPage() {
     initHealthCustomerPicker();
     var q = (document.getElementById('health-search').value || '').trim();
-    get('/api/health-assessments' + (q ? '?search=' + encodeURIComponent(q) : '')).then(function (list) {
+    var qs = [
+      'page=' + listState.health.page,
+      'page_size=' + listState.health.page_size,
+      'sort_by=date_desc'
+    ];
+    if (q) qs.push('search=' + encodeURIComponent(q));
+    get('/api/health-assessments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('health-list');
       tbody.innerHTML = toList(list).map(function (h) {
         return '<tr><td>' + (h.customer_name || '') + '</td><td>' + (h.assessment_date || '') + '</td><td>' + (h.height_cm || '-') + '</td><td>' + (h.weight_kg || '-') + '</td><td>' + (h.fatigue_last_month || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td>' + (h.weekly_exercise_freq || '-') + '</td><td>' + (h.past_medical_history || '-') + '</td><td><button class="btn btn-small btn-secondary" data-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-health-edit="' + h.id + '">编辑</button></td></tr>';
@@ -395,6 +420,8 @@
           });
         });
       });
+      var p = getPagination(list);
+      showMsg('health-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
       if (selectedHealthDetailId) {
         var exists = toList(list).some(function (item) { return String(item.id) === selectedHealthDetailId; });
         if (exists) {
@@ -504,7 +531,12 @@
     });
     fillStaffSelect('apt-staff');
     var sortBy = (document.getElementById('apt-sort') || {}).value || 'time_desc';
-    get('/api/appointments?sort_by=' + encodeURIComponent(sortBy)).then(function (list) {
+    var qs = [
+      'sort_by=' + encodeURIComponent(sortBy),
+      'page=' + listState.appointments.page,
+      'page_size=' + listState.appointments.page_size
+    ];
+    get('/api/appointments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('apt-list');
       tbody.innerHTML = toList(list).map(function (a) {
         var meta = getStatusMeta(a.status);
@@ -513,6 +545,8 @@
           : '';
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
+      var p = getPagination(list);
+      showMsg('apt-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
       tbody.querySelectorAll('[data-apt-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var item = toList(list).find(function (x) { return String(x.id) === String(btn.dataset.aptEdit); });
@@ -569,19 +603,15 @@
   function loadHomeAppointmentsPage() {
     setHomeAppointmentEditMode(null);
     fillCustomerSelect('home-customer');
-    fillProjectSelect('home-project', true, 'home').then(function () {
-      var projectSel = document.getElementById('home-project');
-      var allowNames = ['上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'];
-      var options = Array.prototype.slice.call(projectSel.options || []);
-      var hasPlaceholder = options.length && !options[0].value;
-      var kept = options.filter(function (opt) { return hasPlaceholder && !opt.value ? true : allowNames.indexOf(opt.text) >= 0; });
-      if (!kept.length || kept[0].value) kept.unshift(new Option('请选择项目', ''));
-      projectSel.innerHTML = '';
-      kept.forEach(function (opt) { projectSel.appendChild(opt); });
-    });
+    fillProjectSelect('home-project', true, 'home');
     fillStaffSelect('home-staff');
     var sortBy = (document.getElementById('home-sort') || {}).value || 'time_desc';
-    get('/api/home-appointments?sort_by=' + encodeURIComponent(sortBy)).then(function (list) {
+    var qs = [
+      'sort_by=' + encodeURIComponent(sortBy),
+      'page=' + listState.homeAppointments.page,
+      'page_size=' + listState.homeAppointments.page_size
+    ];
+    get('/api/home-appointments?' + qs.join('&')).then(function (list) {
       var rows = toList(list);
       var tbody = document.getElementById('home-list');
       tbody.innerHTML = rows.map(function (a) {
@@ -591,6 +621,8 @@
           : '';
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
+      var p = getPagination(list);
+      showMsg('home-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
       tbody.querySelectorAll('[data-home-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var item = rows.find(function (x) { return String(x.id) === String(btn.dataset.homeEdit); });
@@ -615,6 +647,13 @@
     get('/api/equipment-usage/service-stats').then(function (res) {
       if (res.error) { showMsg('usage-msg', res.error, true); return; }
       renderUsagePopularity(toList(res.items), res.total || 0);
+    });
+    get('/api/equipment-usage?page=1&page_size=20&sort_by=date_desc').then(function (res) {
+      var tbody = document.getElementById('usage-record-list');
+      if (!tbody) return;
+      tbody.innerHTML = toList(res).map(function (x) {
+        return '<tr><td>' + (x.customer_name || '-') + '</td><td>' + (x.equipment_name || '-') + '</td><td>' + (x.project_name || '-') + '</td><td>' + (x.usage_date || '-') + '</td><td>' + (x.usage_status || '-') + '</td></tr>';
+      }).join('');
     });
   }
 
@@ -644,6 +683,13 @@
   function loadSurveysPage() {
     fillCustomerSelect('survey-customer');
     fillProjectSelect('survey-project', true, 'home');
+    get('/api/satisfaction-surveys?page=1&page_size=20&sort_by=date_desc').then(function (res) {
+      var tbody = document.getElementById('survey-list');
+      if (!tbody) return;
+      tbody.innerHTML = toList(res).map(function (x) {
+        return '<tr><td>' + (x.customer_name || '-') + '</td><td>' + (x.service_project || '-') + '</td><td>' + (x.overall_rating || '-') + '</td><td>' + (x.survey_date || '-') + '</td></tr>';
+      }).join('');
+    });
   }
 
   function loadPortraitPage() {
