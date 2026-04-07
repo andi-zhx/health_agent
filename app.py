@@ -262,16 +262,121 @@ def is_today_or_future(date_str):
 
 
 def validate_customer_payload(d):
-    id_card = (d.get('id_card') or '').strip()
-    phone = (d.get('phone') or '').strip()
-    address = (d.get('address') or '').strip()
-    if len(id_card) != 18:
-        return '身份证号必须为18位'
-    if len(phone) != 11 or not phone.isdigit():
-        return '手机号必须为11位数字'
+    name = str(d.get('name') or '').strip()
+    id_card = str(d.get('id_card') or '').strip().upper()
+    phone = str(d.get('phone') or '').strip()
+    address = str(d.get('address') or '').strip()
+    gender = str(d.get('gender') or '').strip()
+    birth_date = str(d.get('birth_date') or '').strip()
+
+    if not name:
+        return '姓名为必填项'
+    if not re.fullmatch(r'^\d{17}[\dX]$', id_card):
+        return '身份证格式不正确'
+    if not re.fullmatch(r'^1\d{10}$', phone):
+        return '手机号格式不正确'
     if not address:
         return '地址为必填项'
+    if gender and gender not in {'男', '女'}:
+        return '性别仅支持：男/女'
+    if birth_date:
+        try:
+            datetime.strptime(birth_date, '%Y-%m-%d')
+        except ValueError:
+            return '出生日期格式必须为 YYYY-MM-DD'
     return None
+
+
+def is_valid_date(value):
+    try:
+        datetime.strptime(str(value or '').strip(), '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
+
+def is_valid_time(value):
+    try:
+        datetime.strptime(str(value or '').strip(), '%H:%M')
+        return True
+    except ValueError:
+        return False
+
+
+def validate_appointment_payload(d):
+    required_fields = ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time')
+    if not all(d.get(k) for k in required_fields):
+        return '缺少必填字段'
+    if not is_valid_date(d.get('appointment_date')):
+        return '预约日期格式必须为 YYYY-MM-DD'
+    if not is_valid_time(d.get('start_time')) or not is_valid_time(d.get('end_time')):
+        return '预约时间格式必须为 HH:MM'
+    if d.get('start_time') >= d.get('end_time'):
+        return '结束时间必须晚于开始时间'
+    status = str(d.get('status') or 'scheduled').strip().lower()
+    if status not in {'scheduled', 'completed', 'cancelled'}:
+        return '预约状态不合法'
+    return None
+
+
+def validate_home_appointment_payload(d):
+    required_fields = ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time', 'location')
+    if not all(d.get(k) for k in required_fields):
+        return '缺少必填字段'
+    if not is_valid_date(d.get('appointment_date')):
+        return '预约日期格式必须为 YYYY-MM-DD'
+    if not is_valid_time(d.get('start_time')) or not is_valid_time(d.get('end_time')):
+        return '预约时间格式必须为 HH:MM'
+    if not is_valid_home_time_range(d.get('start_time'), d.get('end_time')):
+        return '上门预约时间需在08:30-16:00且结束时间晚于开始时间'
+    contact_phone = str(d.get('contact_phone') or '').strip()
+    if contact_phone and not re.fullmatch(r'^1\d{10}$', contact_phone):
+        return '联系人手机号格式不正确'
+    status = str(d.get('status') or 'scheduled').strip().lower()
+    if status not in {'scheduled', 'completed', 'cancelled'}:
+        return '预约状态不合法'
+    return None
+
+
+def validate_survey_payload(d):
+    if not d.get('customer_id'):
+        return '客户为必填项'
+    rating_fields = ('service_rating', 'equipment_rating', 'environment_rating', 'staff_rating', 'overall_rating')
+    for field in rating_fields:
+        value = d.get(field)
+        if value in (None, ''):
+            return f'{field} 为必填项'
+        try:
+            score = int(value)
+        except (TypeError, ValueError):
+            return f'{field} 必须为整数'
+        if score < 1 or score > 5:
+            return f'{field} 必须在1-5之间'
+    return None
+
+
+def validate_equipment_usage_payload(d):
+    required_fields = ('customer_id', 'equipment_id', 'usage_date')
+    if not all(d.get(k) for k in required_fields):
+        return '缺少必填字段'
+    if not is_valid_date(d.get('usage_date')):
+        return '使用日期格式必须为 YYYY-MM-DD'
+    duration = d.get('duration_minutes')
+    if duration not in (None, ''):
+        try:
+            if int(duration) <= 0:
+                return '使用时长必须大于0'
+        except (TypeError, ValueError):
+            return '使用时长必须为整数'
+    return None
+
+
+def success_response(data=None, message='操作成功', status=200):
+    return jsonify({'success': True, 'message': message, 'data': data if data is not None else {}}), status
+
+
+def error_response(message, status=400, error_code='VALIDATION_ERROR'):
+    return jsonify({'success': False, 'message': message, 'error_code': error_code}), status
 
 
 
@@ -992,7 +1097,7 @@ def api_customers_list():
         c.execute('SELECT * FROM customers WHERE is_deleted=0 ORDER BY created_at DESC')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/customers/<int:cid>', methods=['GET'])
@@ -1003,7 +1108,7 @@ def api_customer_get(cid):
     row = c.fetchone()
     if not row:
         conn.close()
-        return jsonify({'error': '客户不存在'}), 404
+        return error_response('客户不存在', 404, 'NOT_FOUND')
     cust = dict(row)
     c.execute(
         'SELECT a.*, e.name as equipment_name FROM appointments a LEFT JOIN equipment e ON a.equipment_id=e.id WHERE a.customer_id=? ORDER BY a.appointment_date DESC, a.start_time DESC',
@@ -1020,7 +1125,7 @@ def api_customer_get(cid):
     c.execute('SELECT * FROM visit_checkins WHERE customer_id=? ORDER BY checkin_time DESC', (cid,))
     cust['visit_checkins'] = row_list(c.fetchall())
     conn.close()
-    return jsonify(cust)
+    return success_response(cust)
 
 
 @app.route('/api/customers', methods=['POST'])
@@ -1028,7 +1133,7 @@ def api_customer_create():
     d = request.json or {}
     customer_error = validate_customer_payload(d)
     if customer_error:
-        return jsonify({'error': customer_error}), 400
+        return error_response(customer_error)
     conn = get_db()
     c = conn.cursor()
     try:
@@ -1043,10 +1148,10 @@ def api_customer_create():
         conn.commit()
         id = c.lastrowid
         conn.close()
-        return jsonify({'id': id, 'message': '客户创建成功'}), 201
+        return success_response({'id': id}, '客户创建成功', 201)
     except sqlite3.IntegrityError:
         conn.close()
-        return jsonify({'error': '身份证号已存在'}), 400
+        return error_response('身份证号已存在')
 
 
 @app.route('/api/customers/<int:cid>', methods=['PUT'])
@@ -1054,13 +1159,13 @@ def api_customer_update(cid):
     d = request.json or {}
     customer_error = validate_customer_payload(d)
     if customer_error:
-        return jsonify({'error': customer_error}), 400
+        return error_response(customer_error)
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (cid,))
     if not c.fetchone():
         conn.close()
-        return jsonify({'error': '客户不存在'}), 404
+        return error_response('客户不存在', 404, 'NOT_FOUND')
     c.execute('''
         UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, birth_date=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
     ''', (
@@ -1071,7 +1176,7 @@ def api_customer_update(cid):
     conn.commit()
     conn.close()
     audit_log('修改客户', 'customers', cid, d.get('name') or '')
-    return jsonify({'message': '更新成功'})
+    return success_response({'id': cid}, '更新成功')
 
 
 @app.route('/api/customers/<int:cid>', methods=['DELETE'])
@@ -1081,12 +1186,12 @@ def api_customer_delete(cid):
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (cid,))
     if not c.fetchone():
         conn.close()
-        return jsonify({'error': '客户不存在'}), 404
+        return error_response('客户不存在', 404, 'NOT_FOUND')
 
     c.execute('UPDATE customers SET is_deleted=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', (cid,))
     conn.commit()
     conn.close()
-    return jsonify({'message': '已删除'})
+    return success_response({'id': cid}, '已删除')
 
 
 # ========== 健康档案 ==========
@@ -1448,57 +1553,58 @@ def api_appointments_list():
     ''')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/appointments', methods=['POST'])
 def api_appointment_create():
     d = request.json or {}
-    if not all(d.get(k) for k in ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time')):
-        return jsonify({'error': '缺少必填字段'}), 400
+    validation_error = validate_appointment_payload(d)
+    if validation_error:
+        return error_response(validation_error)
     if not is_today_or_future(d.get('appointment_date')):
-        return jsonify({'error': '预约时间仅可选择当天及以后日期'}), 400
+        return error_response('预约时间仅可选择当天及以后日期')
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
     if not project:
         conn.close()
-        return jsonify({'error': '项目不存在'}), 400
+        return error_response('项目不存在')
     required_equipment_name = get_project_required_equipment_name(project['name'])
     if required_equipment_name and not d.get('equipment_id'):
         conn.close()
-        return jsonify({'error': '该项目需要指定设备'}), 400
+        return error_response('该项目需要指定设备')
 
     if d.get('equipment_id'):
         c.execute('SELECT id, name, status FROM equipment WHERE id=?', (d.get('equipment_id'),))
         equipment = c.fetchone()
         if not equipment or equipment['status'] != 'available':
             conn.close()
-            return jsonify({'error': '设备不可用'}), 400
+            return error_response('设备不可用')
         if required_equipment_name and equipment['name'] != required_equipment_name:
             conn.close()
-            return jsonify({'error': '所选设备与项目不匹配'}), 400
+            return error_response('所选设备与项目不匹配')
 
     c.execute(f"SELECT COUNT(*) as n FROM appointments WHERE customer_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}",
               (d.get('customer_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
     if c.fetchone()['n'] > 0:
         conn.close()
-        return jsonify({'error': '同一客户同一时段不能重复预约'}), 400
+        return error_response('同一客户同一时段不能重复预约')
 
     if d.get('equipment_id'):
         c.execute(f"SELECT COUNT(*) as n FROM appointments WHERE equipment_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}",
                   (d.get('equipment_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
         if c.fetchone()['n'] > 0:
             conn.close()
-            return jsonify({'error': '该时段设备已被预约'}), 400
+            return error_response('该时段设备已被预约')
 
     if d.get('staff_id'):
         c.execute(f"SELECT COUNT(*) as n FROM appointments WHERE staff_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}",
                   (d.get('staff_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
         if c.fetchone()['n'] > 0:
             conn.close()
-            return jsonify({'error': '该服务人员该时段已被预约'}), 400
+            return error_response('该服务人员该时段已被预约')
 
     c.execute('''
         INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, notes, updated_at)
@@ -1507,7 +1613,7 @@ def api_appointment_create():
     conn.commit()
     rid = c.lastrowid
     conn.close()
-    return jsonify({'id': rid, 'message': '预约成功'}), 201
+    return success_response({'id': rid}, '预约成功', 201)
 
 
 @app.route('/api/appointments/free-slots', methods=['GET'])
@@ -1515,9 +1621,9 @@ def api_appointments_free_slots():
     date = request.args.get('date')
     project_id = request.args.get('project_id', type=int)
     if not date:
-        return jsonify({'error': '缺少 date'}), 400
+        return error_response('缺少 date')
     if not project_id:
-        return jsonify({'error': '缺少 project_id'}), 400
+        return error_response('缺少 project_id')
 
     conn = get_db()
     c = conn.cursor()
@@ -1525,7 +1631,7 @@ def api_appointments_free_slots():
     project = c.fetchone()
     if not project:
         conn.close()
-        return jsonify({'error': '项目不存在'}), 404
+        return error_response('项目不存在', 404, 'NOT_FOUND')
 
     required_equipment_name = get_project_required_equipment_name(project['name'])
     available_equipment = []
@@ -1567,7 +1673,7 @@ def api_appointments_free_slots():
         })
 
     conn.close()
-    return jsonify(result)
+    return success_response(result)
 
 
 @app.route('/api/appointments/available-options', methods=['GET'])
@@ -1577,14 +1683,14 @@ def api_appointments_available_options():
     end_time = request.args.get('end_time')
     project_id = request.args.get('project_id', type=int)
     if not all([date, start_time, end_time, project_id]):
-        return jsonify({'error': '缺少必要参数'}), 400
+        return error_response('缺少必要参数')
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (project_id,))
     project = c.fetchone()
     if not project:
         conn.close()
-        return jsonify({'error': '项目不存在'}), 404
+        return error_response('项目不存在', 404, 'NOT_FOUND')
     c.execute(f"SELECT equipment_id FROM appointments WHERE appointment_date=? AND status='scheduled' AND {overlap_condition()} AND equipment_id IS NOT NULL", (date, end_time, start_time))
     busy_eq = [r['equipment_id'] for r in c.fetchall()]
     if busy_eq:
@@ -1602,7 +1708,7 @@ def api_appointments_available_options():
         c.execute("SELECT * FROM staff WHERE status='available' ORDER BY name")
     avail_staff = row_list(c.fetchall())
     conn.close()
-    return jsonify({'project': dict(project), 'available_equipment': avail_equipment, 'available_staff': avail_staff})
+    return success_response({'project': dict(project), 'available_equipment': avail_equipment, 'available_staff': avail_staff})
 
 
 
@@ -1610,38 +1716,39 @@ def api_appointments_available_options():
 @app.route('/api/appointments/<int:aid>', methods=['PUT'])
 def api_appointment_update(aid):
     d = request.json or {}
-    if not all(d.get(k) for k in ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time')):
-        return jsonify({'error': '缺少必填字段'}), 400
+    validation_error = validate_appointment_payload(d)
+    if validation_error:
+        return error_response(validation_error)
     if not is_today_or_future(d.get('appointment_date')):
-        return jsonify({'error': '预约时间仅可选择当天及以后日期'}), 400
+        return error_response('预约时间仅可选择当天及以后日期')
 
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT id FROM appointments WHERE id=?', (aid,))
     if not c.fetchone():
         conn.close()
-        return jsonify({'error': '预约记录不存在'}), 404
+        return error_response('预约记录不存在', 404, 'NOT_FOUND')
 
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
     if not project:
         conn.close()
-        return jsonify({'error': '项目不存在'}), 400
+        return error_response('项目不存在')
 
     required_equipment_name = get_project_required_equipment_name(project['name'])
     if required_equipment_name and not d.get('equipment_id'):
         conn.close()
-        return jsonify({'error': '该项目需要指定设备'}), 400
+        return error_response('该项目需要指定设备')
 
     if d.get('equipment_id'):
         c.execute('SELECT id, name, status FROM equipment WHERE id=?', (d.get('equipment_id'),))
         equipment = c.fetchone()
         if not equipment or equipment['status'] != 'available':
             conn.close()
-            return jsonify({'error': '设备不可用'}), 400
+            return error_response('设备不可用')
         if required_equipment_name and equipment['name'] != required_equipment_name:
             conn.close()
-            return jsonify({'error': '所选设备与项目不匹配'}), 400
+            return error_response('所选设备与项目不匹配')
 
     c.execute(
         f"SELECT COUNT(*) as n FROM appointments WHERE id<>? AND customer_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}",
@@ -1649,7 +1756,7 @@ def api_appointment_update(aid):
     )
     if c.fetchone()['n'] > 0:
         conn.close()
-        return jsonify({'error': '同一客户同一时段不能重复预约'}), 400
+        return error_response('同一客户同一时段不能重复预约')
 
     if d.get('equipment_id'):
         c.execute(
@@ -1658,7 +1765,7 @@ def api_appointment_update(aid):
         )
         if c.fetchone()['n'] > 0:
             conn.close()
-            return jsonify({'error': '该时段设备已被预约'}), 400
+            return error_response('该时段设备已被预约')
 
     if d.get('staff_id'):
         c.execute(
@@ -1667,7 +1774,7 @@ def api_appointment_update(aid):
         )
         if c.fetchone()['n'] > 0:
             conn.close()
-            return jsonify({'error': '该服务人员该时段已被预约'}), 400
+            return error_response('该服务人员该时段已被预约')
 
     c.execute(
         '''
@@ -1683,7 +1790,7 @@ def api_appointment_update(aid):
     )
     conn.commit()
     conn.close()
-    return jsonify({'message': '预约修改成功'})
+    return success_response({'id': aid}, '预约修改成功')
 
 @app.route('/api/appointments/<int:aid>/cancel', methods=['POST'])
 def api_appointment_cancel(aid):
@@ -1693,10 +1800,10 @@ def api_appointment_cancel(aid):
     row = c.fetchone()
     if not row:
         conn.close()
-        return jsonify({'error': '预约记录不存在'}), 404
+        return error_response('预约记录不存在', 404, 'NOT_FOUND')
     if (row['status'] or '').strip().lower() == 'cancelled':
         conn.close()
-        return jsonify({'error': '已经提交过取消预约，请勿再次提交'}), 400
+        return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
         "UPDATE appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (aid,),
@@ -1704,7 +1811,7 @@ def api_appointment_cancel(aid):
     conn.commit()
     conn.close()
     audit_log('取消预约', 'appointments', aid, '门店预约取消')
-    return jsonify({'message': '已取消'})
+    return success_response({'id': aid}, '已取消')
 
 
 # ========== 上门预约 ==========
@@ -1734,16 +1841,15 @@ def api_home_appointments_list():
     ''')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/home-appointments', methods=['POST'])
 def api_home_appointments_create():
     d = request.json or {}
-    if not all(d.get(k) for k in ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time', 'location')):
-        return jsonify({'error': '缺少必填字段'}), 400
-    if not is_valid_home_time_range(d.get('start_time'), d.get('end_time')):
-        return jsonify({'error': '上门预约时间需在08:30-16:00且结束时间晚于开始时间'}), 400
+    validation_error = validate_home_appointment_payload(d)
+    if validation_error:
+        return error_response(validation_error)
     conn = get_db()
     c = conn.cursor()
 
@@ -1751,17 +1857,17 @@ def api_home_appointments_create():
     customer = c.fetchone()
     if not customer:
         conn.close()
-        return jsonify({'error': '客户不存在'}), 404
+        return error_response('客户不存在', 404, 'NOT_FOUND')
 
     c.execute('SELECT id, name FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
     if not project:
         conn.close()
-        return jsonify({'error': '上门项目不存在'}), 404
+        return error_response('上门项目不存在', 404, 'NOT_FOUND')
     allowed_home_projects = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
     if project['name'] not in allowed_home_projects:
         conn.close()
-        return jsonify({'error': '该项目不支持上门预约'}), 400
+        return error_response('该项目不支持上门预约')
 
     staff = None
     if d.get('staff_id'):
@@ -1769,17 +1875,17 @@ def api_home_appointments_create():
         staff = c.fetchone()
         if not staff:
             conn.close()
-            return jsonify({'error': '服务人员不存在'}), 404
+            return error_response('服务人员不存在', 404, 'NOT_FOUND')
 
     c.execute(f"SELECT COUNT(*) as n FROM home_appointments WHERE customer_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}", (d.get('customer_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
     if c.fetchone()['n'] > 0:
         conn.close()
-        return jsonify({'error': '同一客户同一时段不能重复上门预约'}), 400
+        return error_response('同一客户同一时段不能重复上门预约')
     if d.get('staff_id'):
         c.execute(f"SELECT COUNT(*) as n FROM home_appointments WHERE staff_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}", (d.get('staff_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
         if c.fetchone()['n'] > 0:
             conn.close()
-            return jsonify({'error': '该服务人员该时段已有上门预约'}), 400
+            return error_response('该服务人员该时段已有上门预约')
 
     home_address = d.get('home_address') or d.get('location')
     home_time = d.get('home_time') or f"{d.get('start_time')}-{d.get('end_time')}"
@@ -1799,7 +1905,7 @@ def api_home_appointments_create():
     conn.commit()
     rid = c.lastrowid
     conn.close()
-    return jsonify({'id': rid, 'message': '上门预约成功'}), 201
+    return success_response({'id': rid}, '上门预约成功', 201)
 
 
 @app.route('/api/home-appointments/<int:hid>/cancel', methods=['POST'])
@@ -1810,10 +1916,10 @@ def api_home_appointments_cancel(hid):
     row = c.fetchone()
     if not row:
         conn.close()
-        return jsonify({'error': '上门预约不存在'}), 404
+        return error_response('上门预约不存在', 404, 'NOT_FOUND')
     if (row['status'] or '').strip().lower() == 'cancelled':
         conn.close()
-        return jsonify({'error': '已经提交过取消预约，请勿再次提交'}), 400
+        return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
         "UPDATE home_appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (hid,),
@@ -1821,39 +1927,38 @@ def api_home_appointments_cancel(hid):
     conn.commit()
     conn.close()
     audit_log('取消预约', 'home_appointments', hid, '上门预约取消')
-    return jsonify({'message': '已取消'})
+    return success_response({'id': hid}, '已取消')
 
 
 @app.route('/api/home-appointments/<int:hid>', methods=['PUT'])
 def api_home_appointments_update(hid):
     d = request.json or {}
-    if not all(d.get(k) for k in ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time', 'location')):
-        return jsonify({'error': '缺少必填字段'}), 400
-    if not is_valid_home_time_range(d.get('start_time'), d.get('end_time')):
-        return jsonify({'error': '上门预约时间需在08:30-16:00且结束时间晚于开始时间'}), 400
+    validation_error = validate_home_appointment_payload(d)
+    if validation_error:
+        return error_response(validation_error)
     conn = get_db()
     c = conn.cursor()
 
     c.execute('SELECT id FROM home_appointments WHERE id=?', (hid,))
     if not c.fetchone():
         conn.close()
-        return jsonify({'error': '上门预约不存在'}), 404
+        return error_response('上门预约不存在', 404, 'NOT_FOUND')
 
     c.execute('SELECT id, name, phone FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     customer = c.fetchone()
     if not customer:
         conn.close()
-        return jsonify({'error': '客户不存在'}), 404
+        return error_response('客户不存在', 404, 'NOT_FOUND')
 
     c.execute('SELECT id, name FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
     if not project:
         conn.close()
-        return jsonify({'error': '上门项目不存在'}), 404
+        return error_response('上门项目不存在', 404, 'NOT_FOUND')
     allowed_home_projects = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
     if project['name'] not in allowed_home_projects:
         conn.close()
-        return jsonify({'error': '该项目不支持上门预约'}), 400
+        return error_response('该项目不支持上门预约')
 
     staff = None
     if d.get('staff_id'):
@@ -1861,17 +1966,17 @@ def api_home_appointments_update(hid):
         staff = c.fetchone()
         if not staff:
             conn.close()
-            return jsonify({'error': '服务人员不存在'}), 404
+            return error_response('服务人员不存在', 404, 'NOT_FOUND')
 
     c.execute(f"SELECT COUNT(*) as n FROM home_appointments WHERE id<>? AND customer_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}", (hid, d.get('customer_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
     if c.fetchone()['n'] > 0:
         conn.close()
-        return jsonify({'error': '同一客户同一时段不能重复上门预约'}), 400
+        return error_response('同一客户同一时段不能重复上门预约')
     if d.get('staff_id'):
         c.execute(f"SELECT COUNT(*) as n FROM home_appointments WHERE id<>? AND staff_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}", (hid, d.get('staff_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
         if c.fetchone()['n'] > 0:
             conn.close()
-            return jsonify({'error': '该服务人员该时段已有上门预约'}), 400
+            return error_response('该服务人员该时段已有上门预约')
 
     home_address = d.get('home_address') or d.get('location')
     home_time = d.get('home_time') or f"{d.get('start_time')}-{d.get('end_time')}"
@@ -1892,7 +1997,7 @@ def api_home_appointments_update(hid):
     ))
     conn.commit()
     conn.close()
-    return jsonify({'message': '更新成功'})
+    return success_response({'id': hid}, '更新成功')
 
 
 # ========== 设备使用 ==========
@@ -1911,12 +2016,15 @@ def api_equipment_usage_list():
     ''')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/equipment-usage', methods=['POST'])
 def api_equipment_usage_create():
     d = request.json or {}
+    validation_error = validate_equipment_usage_payload(d)
+    if validation_error:
+        return error_response(validation_error)
     conn = get_db()
     c = conn.cursor()
     c.execute('''
@@ -1926,7 +2034,7 @@ def api_equipment_usage_create():
     conn.commit()
     id = c.lastrowid
     conn.close()
-    return jsonify({'id': id, 'message': '记录已添加'}), 201
+    return success_response({'id': id}, '记录已添加', 201)
 
 
 @app.route('/api/equipment-usage/summary', methods=['GET'])
@@ -1946,7 +2054,7 @@ def api_equipment_usage_summary():
     ''')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/equipment-usage/by-project', methods=['GET'])
@@ -1964,7 +2072,7 @@ def api_equipment_usage_by_project():
     ''')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/equipment-usage/by-customer', methods=['GET'])
@@ -1983,7 +2091,7 @@ def api_equipment_usage_by_customer():
     ''')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/equipment-usage/service-stats', methods=['GET'])
@@ -2002,7 +2110,7 @@ def api_equipment_usage_service_stats():
     items = row_list(c.fetchall())
     conn.close()
     total = sum((x.get('appointment_count') or 0) for x in items)
-    return jsonify({'items': items, 'total': total})
+    return success_response({'items': items, 'total': total})
 
 
 # ========== 满意度 ==========
@@ -2013,12 +2121,15 @@ def api_surveys_list():
     c.execute('SELECT s.*, c.name as customer_name FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id ORDER BY s.survey_date DESC')
     rows = c.fetchall()
     conn.close()
-    return jsonify(row_list(rows))
+    return success_response(row_list(rows))
 
 
 @app.route('/api/satisfaction-surveys', methods=['POST'])
 def api_survey_create():
     d = request.json or {}
+    validation_error = validate_survey_payload(d)
+    if validation_error:
+        return error_response(validation_error)
     conn = get_db()
     c = conn.cursor()
     c.execute('''
@@ -2028,7 +2139,7 @@ def api_survey_create():
     conn.commit()
     id = c.lastrowid
     conn.close()
-    return jsonify({'id': id, 'message': '提交成功'}), 201
+    return success_response({'id': id}, '提交成功', 201)
 
 
 @app.route('/api/auth/login', methods=['POST'])

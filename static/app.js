@@ -22,10 +22,14 @@
   function requestJson(url, options) {
     return fetch(API + url, options || {}).then(function (response) {
       return parseJsonResponse(response).then(function (data) {
-        if (response.status === 401 && url !== '/api/auth/login') {
-          showLoginScreen((data && data.error) || '未登录或登录已失效，请重新登录');
+        var normalized = data;
+        if (data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'success')) {
+          normalized = data.success ? (data.data == null ? {} : data.data) : { error: data.message || '请求失败', error_code: data.error_code || 'UNKNOWN_ERROR' };
         }
-        return data;
+        if (response.status === 401 && url !== '/api/auth/login') {
+          showLoginScreen((normalized && normalized.error) || (data && data.message) || '未登录或登录已失效，请重新登录');
+        }
+        return normalized;
       });
     }).catch(function () {
       return { error: '网络请求失败，请稍后重试' };
