@@ -331,6 +331,13 @@
           </div>
           <div id="apt-availability" style="color:#2c3e50;margin-bottom:8px"></div>
           <div id="apt-msg"></div>
+          <div class="form-row">
+            <label>历史排序</label>
+            <select id="apt-sort">
+              <option value="time_desc">按时间倒序</option>
+              <option value="name_asc">按姓名排序</option>
+            </select>
+          </div>
           <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>人员</th><th>日期</th><th>时间</th><th>状态</th><th>操作</th></tr></thead><tbody id="apt-list"></tbody></table>
         </div>
       </div>
@@ -365,6 +372,13 @@
             <button class="btn btn-primary" id="btn-home-save">保存上门预约</button>
           </div>
           <div id="home-msg"></div>
+          <div class="form-row">
+            <label>历史排序</label>
+            <select id="home-sort">
+              <option value="time_desc">按时间倒序</option>
+              <option value="name_asc">按姓名排序</option>
+            </select>
+          </div>
           <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>状态</th><th>操作</th></tr></thead><tbody id="home-list"></tbody></table>
         </div>
       </div>
