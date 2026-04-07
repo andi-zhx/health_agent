@@ -753,12 +753,17 @@ def init_db():
 
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
               ('backup_directory', BACKUP_FOLDER))
+    c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
+              ('login_username', 'admin'))
+    c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
+              ('login_password', '123456'))
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS satisfaction_surveys (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer_id INTEGER NOT NULL,
             appointment_id INTEGER,
+            service_project TEXT,
             service_rating INTEGER,
             equipment_rating INTEGER,
             environment_rating INTEGER,
@@ -774,6 +779,7 @@ def init_db():
 
     ensure_columns(c, 'satisfaction_surveys', {
         'appointment_id': 'INTEGER',
+        'service_project': 'TEXT',
         'service_rating': 'INTEGER',
         'equipment_rating': 'INTEGER',
         'environment_rating': 'INTEGER',
@@ -1943,13 +1949,25 @@ def api_survey_create():
     conn = get_db()
     c = conn.cursor()
     c.execute('''
-        INSERT INTO satisfaction_surveys (customer_id, appointment_id, service_rating, equipment_rating, environment_rating, staff_rating, overall_rating, feedback, suggestions)
-        VALUES (?,?,?,?,?,?,?,?,?)
-    ''', (d.get('customer_id'), d.get('appointment_id'), d.get('service_rating'), d.get('equipment_rating'), d.get('environment_rating'), d.get('staff_rating'), d.get('overall_rating'), d.get('feedback'), d.get('suggestions')))
+        INSERT INTO satisfaction_surveys (customer_id, appointment_id, service_project, service_rating, equipment_rating, environment_rating, staff_rating, overall_rating, feedback, suggestions)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    ''', (d.get('customer_id'), d.get('appointment_id'), d.get('service_project'), d.get('service_rating'), d.get('equipment_rating'), d.get('environment_rating'), d.get('staff_rating'), d.get('overall_rating'), d.get('feedback'), d.get('suggestions')))
     conn.commit()
     id = c.lastrowid
     conn.close()
     return jsonify({'id': id, 'message': '提交成功'}), 201
+
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_auth_login():
+    data = request.json or {}
+    username = str(data.get('username') or '').strip()
+    password = str(data.get('password') or '').strip()
+    config_user = get_setting_value('login_username', 'admin')
+    config_pwd = get_setting_value('login_password', '123456')
+    if username == config_user and password == config_pwd:
+        return jsonify({'message': '登录成功'})
+    return jsonify({'error': '账号或密码错误'}), 401
 
 
 # ========== 综合查询 ==========
@@ -1995,8 +2013,8 @@ def api_search():
         result['equipment_usage'] = row_list(c.fetchall())
 
     if kind in ('all', 'surveys'):
-        c.execute('SELECT s.*, c.name as customer_name FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id WHERE c.name LIKE ? OR c.id_card LIKE ? OR c.phone LIKE ? OR s.feedback LIKE ? OR s.suggestions LIKE ? ORDER BY s.survey_date DESC LIMIT 100',
-                  (like, like, like, like, like))
+        c.execute('SELECT s.*, c.name as customer_name FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id WHERE c.name LIKE ? OR c.id_card LIKE ? OR c.phone LIKE ? OR s.service_project LIKE ? OR s.feedback LIKE ? OR s.suggestions LIKE ? ORDER BY s.survey_date DESC LIMIT 100',
+                  (like, like, like, like, like, like))
         result['surveys'] = row_list(c.fetchall())
 
     for key in ('customers', 'health_records', 'appointments', 'visit_checkins', 'equipment_usage', 'surveys'):
@@ -2104,7 +2122,7 @@ def api_dashboard_analytics():
             ROUND(AVG(equipment_rating), 2) as avg_equipment,
             ROUND(AVG(environment_rating), 2) as avg_environment,
             ROUND(AVG(staff_rating), 2) as avg_staff,
-            ROUND(AVG(overall_rating), 2) as avg_overall,
+            ROUND(AVG(COALESCE(overall_rating, (COALESCE(service_rating,0)+COALESCE(equipment_rating,0)+COALESCE(environment_rating,0)+COALESCE(staff_rating,0))/4.0)), 2) as avg_overall,
             COUNT(*) as survey_count
         FROM satisfaction_surveys
     ''')
