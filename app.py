@@ -136,39 +136,6 @@ def overlap_condition():
     return '(start_time < ?) AND (end_time > ?)'
 
 
-def duplicate_record_with_status(cursor, table_name, source_id, status):
-    cursor.execute(f"SELECT * FROM {table_name} WHERE id=?", (source_id,))
-    row = cursor.fetchone()
-    if not row:
-        return None, 'not_found'
-
-    row_data = dict(row)
-    source_status = (row_data.get('status') or '').strip().lower()
-    if source_status == 'cancelled':
-        return None, 'already_cancelled'
-
-    root_id = row_data.get('source_record_id') or row_data.get('id')
-    cursor.execute(
-        f"SELECT id FROM {table_name} WHERE source_record_id=? AND status='cancelled' LIMIT 1",
-        (root_id,),
-    )
-    if cursor.fetchone():
-        return None, 'already_cancelled'
-
-    data = dict(row_data)
-    data.pop('id', None)
-    data['status'] = status
-    data['source_record_id'] = root_id
-    data['updated_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    columns = list(data.keys())
-    placeholders = ','.join(['?'] * len(columns))
-    cursor.execute(
-        f"INSERT INTO {table_name} ({','.join(columns)}) VALUES ({placeholders})",
-        tuple(data[col] for col in columns),
-    )
-    return cursor.lastrowid, None
-
-
 def get_setting_value(key, default_value=''):
     conn = get_db()
     c = conn.cursor()
@@ -1655,12 +1622,14 @@ def api_appointment_update(aid):
 
     c.execute(
         '''
-        INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, notes, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        UPDATE appointments
+        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, notes=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
         ''',
         (
             d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), d.get('staff_id'),
             d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes'),
+            aid,
         ),
     )
     conn.commit()
@@ -1671,13 +1640,18 @@ def api_appointment_update(aid):
 def api_appointment_cancel(aid):
     conn = get_db()
     c = conn.cursor()
-    duplicated_id, err = duplicate_record_with_status(c, 'appointments', aid, 'cancelled')
-    if err == 'not_found':
+    c.execute('SELECT status FROM appointments WHERE id=?', (aid,))
+    row = c.fetchone()
+    if not row:
         conn.close()
         return jsonify({'error': '预约记录不存在'}), 404
-    if err == 'already_cancelled':
+    if (row['status'] or '').strip().lower() == 'cancelled':
         conn.close()
         return jsonify({'error': '已经提交过取消预约，请勿再次提交'}), 400
+    c.execute(
+        "UPDATE appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (aid,),
+    )
     conn.commit()
     conn.close()
     return jsonify({'message': '已取消'})
@@ -1782,13 +1756,18 @@ def api_home_appointments_create():
 def api_home_appointments_cancel(hid):
     conn = get_db()
     c = conn.cursor()
-    duplicated_id, err = duplicate_record_with_status(c, 'home_appointments', hid, 'cancelled')
-    if err == 'not_found':
+    c.execute('SELECT status FROM home_appointments WHERE id=?', (hid,))
+    row = c.fetchone()
+    if not row:
         conn.close()
         return jsonify({'error': '上门预约不存在'}), 404
-    if err == 'already_cancelled':
+    if (row['status'] or '').strip().lower() == 'cancelled':
         conn.close()
         return jsonify({'error': '已经提交过取消预约，请勿再次提交'}), 400
+    c.execute(
+        "UPDATE home_appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (hid,),
+    )
     conn.commit()
     conn.close()
     return jsonify({'message': '已取消'})
@@ -1847,18 +1826,18 @@ def api_home_appointments_update(hid):
     home_time = d.get('home_time') or f"{d.get('start_time')}-{d.get('end_time')}"
 
     c.execute('''
-        INSERT INTO home_appointments (
-            customer_id, project_id, staff_id,
-            customer_name, phone, home_time, home_address, service_project, staff_name,
-            appointment_date, start_time, end_time, location,
-            contact_person, contact_phone, notes, status, updated_at
-        )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        UPDATE home_appointments
+        SET customer_id=?, project_id=?, staff_id=?,
+            customer_name=?, phone=?, home_time=?, home_address=?, service_project=?, staff_name=?,
+            appointment_date=?, start_time=?, end_time=?, location=?,
+            contact_person=?, contact_phone=?, notes=?, status=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
         d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'),
-        d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled')
+        d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled'),
+        hid,
     ))
     conn.commit()
     conn.close()
