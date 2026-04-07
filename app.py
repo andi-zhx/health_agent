@@ -9,7 +9,6 @@ import sqlite3
 import os
 import pandas as pd
 import json
-import shutil
 import logging
 import re
 from collections import Counter
@@ -113,9 +112,14 @@ def create_db_backup(backup_type='manual', notes=''):
     ts = datetime.now().strftime('%Y%m%d_%H%M%S')
     fn = f'medical_system_{ts}.db'
     fp = os.path.join(backup_dir, fn)
+    src = None
+    dst = None
     try:
         if os.path.exists(DB_PATH):
-            shutil.copy2(DB_PATH, fp)
+            src = sqlite3.connect(DB_PATH)
+            src.execute('PRAGMA wal_checkpoint(FULL);')
+            dst = sqlite3.connect(fp)
+            src.backup(dst)
             status = 'success'
             msg = '备份成功'
         else:
@@ -131,6 +135,11 @@ def create_db_backup(backup_type='manual', notes=''):
     except Exception as e:
         logging.exception('backup failed')
         return {'filename': fn, 'status': 'failed', 'message': str(e)}
+    finally:
+        if dst is not None:
+            dst.close()
+        if src is not None:
+            src.close()
 
 
 def overlap_condition():
@@ -2603,4 +2612,4 @@ def api_download(filename):
 if __name__ == '__main__':
     init_db()
     print('请在浏览器打开: http://localhost:5000')
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='127.0.0.1', port=5000, debug=False)
