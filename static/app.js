@@ -244,6 +244,14 @@
     el.innerHTML = text ? '<div class="msg ' + (isErr ? 'err' : 'ok') + '">' + text + '</div>' : '';
   }
 
+  function isPastDate(dateStr) {
+    if (!dateStr) return false;
+    var todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    var inputDate = new Date(dateStr + 'T00:00:00');
+    return inputDate < todayDate;
+  }
+
   function openCustomerModal(id) {
     document.getElementById('modal-customer-id').value = id || '';
     document.getElementById('modal-customer-title').textContent = id ? '编辑客户' : '新增客户';
@@ -601,12 +609,24 @@
     var id = document.getElementById('modal-customer-id').value;
     var body = {
       name: document.getElementById('mc-name').value,
-      id_card: document.getElementById('mc-id_card').value,
-      phone: document.getElementById('mc-phone').value,
-      address: document.getElementById('mc-address').value,
+      id_card: document.getElementById('mc-id_card').value.trim(),
+      phone: document.getElementById('mc-phone').value.trim(),
+      address: document.getElementById('mc-address').value.trim(),
       gender: document.getElementById('mc-gender').value,
       birth_date: document.getElementById('mc-birth_date').value || null
     };
+    if (!body.address) {
+      showMsg('customer-msg', '地址为必填项', true);
+      return;
+    }
+    if (body.id_card.length !== 18) {
+      showMsg('customer-msg', '身份证号必须为18位', true);
+      return;
+    }
+    if (!/^\d{11}$/.test(body.phone)) {
+      showMsg('customer-msg', '手机号必须为11位数字', true);
+      return;
+    }
 
     if (!id) {
       post('/api/customers', body).then(function (res) {
@@ -780,6 +800,10 @@
     };
     if (!body.customer_id || !body.project_id || !body.appointment_date || !body.start_time || !body.end_time || !body.equipment_id) {
       showMsg('apt-msg', '请填写必填项', true);
+      return;
+    }
+    if (isPastDate(body.appointment_date)) {
+      showMsg('apt-msg', '预约时间仅可选择当天及以后日期', true);
       return;
     }
     var rows = [
@@ -971,6 +995,7 @@
   var today = new Date().toISOString().slice(0, 10);
   document.getElementById('health-date').value = today;
   document.getElementById('apt-date').value = today;
+  document.getElementById('apt-date').setAttribute('min', today);
   document.getElementById('home-date').value = today;
   refreshQueryExportScope();
 
