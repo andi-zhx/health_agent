@@ -416,16 +416,28 @@
   }
 
   function setHomeAppointmentEditMode(record) {
-    var cancelBtn = document.getElementById('btn-home-cancel-edit');
+    var bar = document.getElementById('home-edit-actions');
     if (record && record.id) {
       homeAppointmentEditId = record.id;
       document.getElementById('btn-home-save').textContent = '保存修改';
-      if (cancelBtn) cancelBtn.classList.remove('hide');
+      if (bar) bar.classList.remove('hide');
     } else {
       homeAppointmentEditId = null;
       document.getElementById('btn-home-save').textContent = '保存上门预约';
-      if (cancelBtn) cancelBtn.classList.add('hide');
+      if (bar) bar.classList.add('hide');
     }
+  }
+
+  function getStatusMeta(status) {
+    if (status === 'cancelled') {
+      return { text: '取消预约', cls: 'status-pill-cancelled', editable: false };
+    }
+    return { text: '预约成功！', cls: 'status-pill-success', editable: true };
+  }
+
+  function renderStatusPill(status) {
+    var meta = getStatusMeta(status);
+    return '<span class="status-pill ' + meta.cls + '">' + meta.text + '</span>';
   }
 
   function loadAppointmentsPage() {
@@ -440,7 +452,9 @@
     get('/api/appointments').then(function (list) {
       var tbody = document.getElementById('apt-list');
       tbody.innerHTML = toList(list).map(function (a) {
-        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.status || '') + '</td><td><button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button></td></tr>';
+        var meta = getStatusMeta(a.status);
+        var action = meta.editable ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button>' : '';
+        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-apt-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -513,7 +527,9 @@
       var rows = toList(list);
       var tbody = document.getElementById('home-list');
       tbody.innerHTML = rows.map(function (a) {
-        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + (a.status || '') + '</td><td><button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button></td></tr>';
+        var meta = getStatusMeta(a.status);
+        var action = meta.editable ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button>' : '';
+        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-home-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -965,6 +981,31 @@
       document.getElementById(id).value = '';
     });
     showMsg('home-msg', '已退出编辑');
+  });
+
+  document.getElementById('btn-home-mark-cancel').addEventListener('click', function () {
+    if (!homeAppointmentEditId) return;
+    var body = {
+      customer_id: document.getElementById('home-customer').value,
+      project_id: document.getElementById('home-project').value,
+      staff_id: document.getElementById('home-staff').value,
+      appointment_date: document.getElementById('home-date').value,
+      start_time: document.getElementById('home-start').value,
+      end_time: document.getElementById('home-end').value,
+      location: document.getElementById('home-location').value,
+      contact_person: document.getElementById('home-contact-person').value,
+      contact_phone: document.getElementById('home-contact-phone').value,
+      notes: document.getElementById('home-notes').value,
+      status: 'cancelled'
+    };
+    openConfirmModal('确认修改预约状态', [['状态', '取消预约']], function () {
+      put('/api/home-appointments/' + homeAppointmentEditId, body).then(function (res) {
+        if (res.error) { showMsg('home-msg', res.error, true); return; }
+        closeConfirmModal();
+        showMsg('home-msg', '修改成功');
+        loadHomeAppointmentsPage();
+      });
+    });
   });
 
 
