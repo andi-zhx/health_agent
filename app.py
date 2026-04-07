@@ -4,7 +4,7 @@
 数据存于 medical_system.db，无 Node/npm 依赖
 """
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, session
 import sqlite3
 import os
 import pandas as pd
@@ -26,6 +26,7 @@ except Exception:
 # 项目根目录（app.py 所在目录）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
+app.secret_key = os.environ.get('FLASK_SECRET_KEY') or 'health-agent-secret-key-change-me'
 
 DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
@@ -211,6 +212,22 @@ def decode_multi_value(value):
         return parsed if isinstance(parsed, list) else []
     except Exception:
         return []
+
+
+PUBLIC_API_PATHS = {
+    '/api/auth/login',
+}
+
+
+@app.before_request
+def require_login():
+    if not request.path.startswith('/api/'):
+        return None
+    if request.path in PUBLIC_API_PATHS:
+        return None
+    if not session.get('logged_in'):
+        return jsonify({'error': '未登录或登录已失效'}), 401
+    return None
 
 
 
@@ -1991,8 +2008,16 @@ def api_auth_login():
     config_user = get_setting_value('login_username', 'admin')
     config_pwd = get_setting_value('login_password', '123456')
     if username == config_user and password == config_pwd:
+        session['logged_in'] = True
+        session['username'] = username
         return jsonify({'message': '登录成功'})
     return jsonify({'error': '账号或密码错误'}), 401
+
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_auth_logout():
+    session.clear()
+    return jsonify({'message': '已退出登录'})
 
 
 # ========== 综合查询 ==========
