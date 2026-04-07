@@ -638,6 +638,7 @@
 
   function loadSurveysPage() {
     fillCustomerSelect('survey-customer');
+    fillProjectSelect('survey-project', true, 'home');
   }
 
   function loadPortraitPage() {
@@ -1109,13 +1110,15 @@
   document.getElementById('btn-survey-save').addEventListener('click', function () {
     var cid = document.getElementById('survey-customer').value;
     if (!cid) { showMsg('survey-msg', '请选择客户', true); return; }
+    var surveyProject = document.getElementById('survey-project');
+    if (!surveyProject || !surveyProject.value) { showMsg('survey-msg', '请选择反馈项目', true); return; }
     var body = {
       customer_id: parseInt(cid, 10),
       service_rating: document.getElementById('survey-service').value || 5,
       equipment_rating: document.getElementById('survey-equipment').value || 5,
       environment_rating: document.getElementById('survey-env').value || 5,
       staff_rating: document.getElementById('survey-staff').value || 5,
-      overall_rating: document.getElementById('survey-overall').value || 5,
+      service_project: (document.getElementById('survey-project').selectedOptions[0] || {}).text || '',
       feedback: document.getElementById('survey-feedback').value,
       suggestions: document.getElementById('survey-feedback').value
     };
@@ -1206,7 +1209,7 @@
         health_records: ['customer_name', 'record_date', 'height_cm', 'weight_kg', 'blood_pressure', 'symptoms', 'diagnosis'],
         appointments: ['customer_name', 'equipment_name', 'appointment_date', 'start_time', 'end_time', 'status'],
         equipment_usage: ['customer_name', 'equipment_name', 'usage_date', 'duration_minutes', 'operator'],
-        surveys: ['customer_name', 'overall_rating', 'feedback', 'survey_date']
+        surveys: ['customer_name', 'service_project', 'service_rating', 'equipment_rating', 'environment_rating', 'staff_rating', 'feedback', 'survey_date']
       };
       Object.keys(labels).forEach(function (key) {
         var arr = data[key];
@@ -1224,6 +1227,25 @@
       });
       document.getElementById('search-result').innerHTML = html || '<p style="color:#666">无结果</p>';
     });
+  });
+
+
+
+  function loginSystem() {
+    var username = (document.getElementById('login-username').value || '').trim();
+    var password = (document.getElementById('login-password').value || '').trim();
+    if (!username || !password) { showMsg('login-msg', '请输入账号和密码', true); return; }
+    post('/api/auth/login', { username: username, password: password }).then(function (res) {
+      if (res.error) { showMsg('login-msg', res.error, true); return; }
+      document.getElementById('login-screen').classList.add('hide');
+      document.getElementById('app-shell').classList.remove('hide');
+      showPage('home');
+    });
+  }
+
+  document.getElementById('btn-login').addEventListener('click', loginSystem);
+  document.getElementById('login-password').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') loginSystem();
   });
 
   var today = new Date().toISOString().slice(0, 10);
@@ -1277,5 +1299,4 @@
     showMsg('health-msg', '', false);
   }
 
-  showPage('home');
 })();

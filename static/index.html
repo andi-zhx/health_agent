@@ -87,10 +87,29 @@
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
     .status-pill-success { background: #27ae60; }
     .status-pill-cancelled { background: #e74c3c; }
+
+    .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(25,68,102,0.45), rgba(24,125,116,0.35)), url("images/login-bg.svg") center/cover no-repeat; padding: 20px; }
+    .login-card { width: 100%; max-width: 420px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+    .login-card h2 { margin: 0 0 8px; color: #1d4d4f; }
+    .login-card p { margin: 0 0 16px; color: #4f6b6d; }
+    .login-card .form-row { margin-bottom: 14px; }
+    .login-card input { width: 100%; }
+    .login-tip { font-size: 12px; color: #6d7e80; }
   </style>
 </head>
 <body>
-  <div class="app">
+  <div id="login-screen" class="login-screen">
+    <div class="login-card">
+      <h2>欢迎使用健康管理系统</h2>
+      <p>请输入账号密码，登录后进入系统。</p>
+      <div class="form-row"><label>账号</label><input type="text" id="login-username" placeholder="请输入账号"></div>
+      <div class="form-row"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码"></div>
+      <div class="form-row"><button class="btn btn-primary" id="btn-login" style="width:100%">登录</button></div>
+      <div id="login-msg"></div>
+      <div class="login-tip">默认账号：admin，默认密码：123456（可在后端系统设置中调整）。</div>
+    </div>
+  </div>
+  <div id="app-shell" class="app hide">
     <nav class="sidebar">
       <h1>健康管理系统</h1>
       <a href="#" data-page="home" class="active">首页</a>
@@ -397,6 +416,10 @@
           <div class="form-row">
             <label>客户</label>
             <select id="survey-customer"></select>
+            <label>反馈项目</label>
+            <select id="survey-project" style="min-width:220px"></select>
+          </div>
+          <div class="form-row">
             <label>服务</label>
             <input type="number" id="survey-service" min="1" max="5" value="5" style="width:50px">
             <label>设备</label>
@@ -405,8 +428,6 @@
             <input type="number" id="survey-env" min="1" max="5" value="5" style="width:50px">
             <label>人员</label>
             <input type="number" id="survey-staff" min="1" max="5" value="5" style="width:50px">
-            <label>综合</label>
-            <input type="number" id="survey-overall" min="1" max="5" value="5" style="width:50px">
           </div>
           <div class="form-row">
             <label>反馈/建议</label>
