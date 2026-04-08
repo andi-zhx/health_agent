@@ -5,6 +5,7 @@
 """
 
 from flask import Flask, request, jsonify, send_from_directory, session
+from werkzeug.exceptions import HTTPException
 import sqlite3
 import os
 import pandas as pd
@@ -40,6 +41,22 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
 )
+
+
+@app.errorhandler(Exception)
+def handle_api_exception(err):
+    if not request.path.startswith('/api/'):
+        if isinstance(err, HTTPException):
+            return err
+        logging.exception('非API异常: %s', err)
+        return '服务端发生异常', 500
+    status_code = 500
+    message = '服务端发生异常，请稍后重试'
+    if isinstance(err, HTTPException):
+        status_code = err.code or 500
+        message = err.description or message
+    logging.exception('API异常: %s %s', request.path, err)
+    return jsonify({'success': False, 'message': message, 'error_code': 'SERVER_ERROR'}), status_code
 
 
 def get_db():
