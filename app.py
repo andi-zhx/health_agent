@@ -393,7 +393,7 @@ def validate_home_appointment_payload(d):
 def validate_survey_payload(d):
     if not d.get('customer_id'):
         return '客户为必填项'
-    rating_fields = ('service_rating', 'equipment_rating', 'environment_rating', 'staff_rating', 'overall_rating')
+    rating_fields = ('service_rating', 'equipment_rating', 'environment_rating', 'staff_rating')
     for field in rating_fields:
         value = d.get(field)
         if value in (None, ''):
@@ -404,6 +404,14 @@ def validate_survey_payload(d):
             return f'{field} 必须为整数'
         if score < 1 or score > 5:
             return f'{field} 必须在1-5之间'
+    overall = d.get('overall_rating')
+    if overall not in (None, ''):
+        try:
+            overall_score = int(overall)
+        except (TypeError, ValueError):
+            return 'overall_rating 必须为整数'
+        if overall_score < 1 or overall_score > 5:
+            return 'overall_rating 必须在1-5之间'
     return None
 
 
@@ -2421,12 +2429,21 @@ def api_survey_create():
     validation_error = validate_survey_payload(d)
     if validation_error:
         return error_response(validation_error)
+    service_rating = int(d.get('service_rating'))
+    equipment_rating = int(d.get('equipment_rating'))
+    environment_rating = int(d.get('environment_rating'))
+    staff_rating = int(d.get('staff_rating'))
+    overall_rating = d.get('overall_rating')
+    if overall_rating in (None, ''):
+        overall_rating = int(round((service_rating + equipment_rating + environment_rating + staff_rating) / 4.0))
+    else:
+        overall_rating = int(overall_rating)
     conn = get_db()
     c = conn.cursor()
     c.execute('''
         INSERT INTO satisfaction_surveys (customer_id, appointment_id, service_project, service_rating, equipment_rating, environment_rating, staff_rating, overall_rating, feedback, suggestions)
         VALUES (?,?,?,?,?,?,?,?,?,?)
-    ''', (d.get('customer_id'), d.get('appointment_id'), d.get('service_project'), d.get('service_rating'), d.get('equipment_rating'), d.get('environment_rating'), d.get('staff_rating'), d.get('overall_rating'), d.get('feedback'), d.get('suggestions')))
+    ''', (d.get('customer_id'), d.get('appointment_id'), d.get('service_project'), service_rating, equipment_rating, environment_rating, staff_rating, overall_rating, d.get('feedback'), d.get('suggestions')))
     conn.commit()
     id = c.lastrowid
     conn.close()

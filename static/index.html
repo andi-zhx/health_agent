@@ -87,6 +87,9 @@
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
     .status-pill-success { background: #27ae60; }
     .status-pill-cancelled { background: #e74c3c; }
+    .survey-rating-row { gap: 8px; }
+    .survey-rating-row label { min-width: 40px; }
+    .survey-rating-tip { color: #666; font-size: 12px; margin: -4px 0 10px; }
 
     .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(25,68,102,0.45), rgba(24,125,116,0.35)), url("images/login-bg-house.svg") center/cover no-repeat; padding: 20px; }
     .login-card { width: 100%; max-width: 420px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
@@ -436,7 +439,7 @@
             <label>反馈项目</label>
             <select id="survey-project" style="min-width:220px"></select>
           </div>
-          <div class="form-row">
+          <div class="form-row survey-rating-row">
             <label>服务</label>
             <input type="number" id="survey-service" min="1" max="5" value="5" style="width:50px">
             <label>设备</label>
@@ -446,6 +449,7 @@
             <label>人员</label>
             <input type="number" id="survey-staff" min="1" max="5" value="5" style="width:50px">
           </div>
+          <p class="survey-rating-tip">评分说明：1-5分，1为最低，5为最高。</p>
           <div class="form-row">
             <label>反馈/建议</label>
             <textarea id="survey-feedback" placeholder="可选" style="flex:1;max-width:400px"></textarea>
