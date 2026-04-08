@@ -166,6 +166,35 @@ def create_db_backup(backup_type='manual', notes=''):
             src.close()
 
 
+def restore_db_from_backup(backup_file):
+    backup_path = os.path.abspath(os.path.expanduser(backup_file or ''))
+    if not backup_path:
+        return {'status': 'failed', 'message': '请选择要恢复的备份文件'}
+    if not os.path.exists(backup_path):
+        return {'status': 'failed', 'message': '备份文件不存在'}
+    if not backup_path.lower().endswith('.db'):
+        return {'status': 'failed', 'message': '仅支持 .db 备份文件'}
+
+    src = None
+    dst = None
+    try:
+        src = sqlite3.connect(backup_path)
+        dst = sqlite3.connect(DB_PATH)
+        src.execute('PRAGMA wal_checkpoint(FULL);')
+        src.backup(dst)
+        dst.execute('PRAGMA wal_checkpoint(FULL);')
+        dst.commit()
+        return {'status': 'success', 'message': '数据库恢复成功'}
+    except Exception as e:
+        logging.exception('restore failed')
+        return {'status': 'failed', 'message': f'数据库恢复失败: {e}'}
+    finally:
+        if dst is not None:
+            dst.close()
+        if src is not None:
+            src.close()
+
+
 def overlap_condition():
     return '(start_time < ?) AND (end_time > ?)'
 
@@ -2984,6 +3013,24 @@ def api_system_backups():
     rows = c.fetchall()
     conn.close()
     return jsonify(row_list(rows))
+
+
+@app.route('/api/system/restore', methods=['POST'])
+def api_system_restore():
+    body = request.get_json(silent=True) or {}
+    backup_file = (body.get('backup_file') or '').strip()
+    if not backup_file:
+        return jsonify({'error': '请选择要恢复的备份文件'}), 400
+
+    result = restore_db_from_backup(backup_file)
+    if result.get('status') == 'success':
+        audit_log('恢复数据库', 'system', backup_file, 'restore success')
+        return jsonify({
+            'status': 'success',
+            'message': '恢复成功，请重启系统以确保所有模块使用最新数据',
+            'need_restart': True,
+        })
+    return jsonify(result), 500
 
 
 @app.route('/api/download/<filename>', methods=['GET'])

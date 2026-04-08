@@ -73,6 +73,22 @@
       if (!res || res.error) return;
       document.getElementById('backup-path').value = res.backup_directory || '';
     });
+    loadBackupList();
+  }
+
+  function loadBackupList() {
+    var sel = document.getElementById('restore-backup-file');
+    if (!sel) return;
+    get('/api/system/backups').then(function (rows) {
+      var list = toList(rows).filter(function (row) {
+        return row && row.status === 'success' && row.backup_file;
+      });
+      sel.innerHTML = '<option value="">请选择备份文件</option>' + list.map(function (row) {
+        var name = row.backup_file || row.backup_time || '';
+        var time = row.backup_time ? ('（' + row.backup_time + '）') : '';
+        return '<option value="' + name + '">' + name + time + '</option>';
+      }).join('');
+    });
   }
 
   function loadStats() {
@@ -1245,6 +1261,29 @@
         showMsg('query-export-msg', '备份成功：' + (res.filename || ''));
       }
       if (backupPath) document.getElementById('backup-path').value = backupPath;
+      loadBackupList();
+    });
+  });
+
+  document.getElementById('btn-refresh-backups').addEventListener('click', function () {
+    loadBackupList();
+    showMsg('query-export-msg', '备份列表已刷新');
+  });
+
+  document.getElementById('btn-restore-backup').addEventListener('click', function () {
+    var backupFile = (document.getElementById('restore-backup-file').value || '').trim();
+    if (!backupFile) {
+      showMsg('query-export-msg', '请先选择要恢复的备份文件', true);
+      return;
+    }
+    var ok = window.confirm('恢复数据库会覆盖当前数据，是否继续？');
+    if (!ok) return;
+    post('/api/system/restore', { backup_file: backupFile }).then(function (res) {
+      if (res.error || res.status === 'failed') {
+        showMsg('query-export-msg', res.message || res.error || '恢复失败', true);
+        return;
+      }
+      showMsg('query-export-msg', (res.message || '恢复成功') + '。请重启系统。');
     });
   });
 
