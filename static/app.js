@@ -6,7 +6,15 @@
       try {
         return JSON.parse(text);
       } catch (e) {
-        return { error: '服务返回异常，请刷新后重试' };
+        var fallback = '服务返回异常，请刷新后重试';
+        if (typeof text === 'string') {
+          if (text.indexOf('<!doctype html') >= 0 || text.indexOf('<html') >= 0) {
+            return { error: '服务端发生异常，请稍后重试' };
+          }
+          var shortText = text.trim();
+          if (shortText) fallback = shortText.slice(0, 120);
+        }
+        return { error: fallback };
       }
     });
   }
@@ -28,6 +36,9 @@
         }
         if (response.status === 401 && url !== '/api/auth/login') {
           showLoginScreen((normalized && normalized.error) || (data && data.message) || '未登录或登录已失效，请重新登录');
+        }
+        if (!response.ok && normalized && !normalized.error) {
+          normalized.error = '请求失败(' + response.status + ')';
         }
         return normalized;
       });
@@ -506,6 +517,33 @@
       return;
     }
     showMsg('apt-msg', '');
+  }
+
+  function initHomeTimeOptions() {
+    var startSel = document.getElementById('home-start');
+    var endSel = document.getElementById('home-end');
+    if (!startSel || !endSel) return;
+    var slots = [];
+    var hour = 8;
+    var minute = 30;
+    while (hour < 16 || (hour === 16 && minute === 0)) {
+      var hh = String(hour).padStart(2, '0');
+      var mm = String(minute).padStart(2, '0');
+      slots.push(hh + ':' + mm);
+      minute += 15;
+      if (minute >= 60) {
+        minute -= 60;
+        hour += 1;
+      }
+    }
+    var startOptions = slots.filter(function (t) { return t < '16:00'; });
+    var endOptions = slots.filter(function (t) { return t > '08:30'; });
+    startSel.innerHTML = '<option value="">请选择开始时间</option>' + startOptions.map(function (t) {
+      return '<option value="' + t + '">' + t + '</option>';
+    }).join('');
+    endSel.innerHTML = '<option value="">请选择结束时间</option>' + endOptions.map(function (t) {
+      return '<option value="' + t + '">' + t + '</option>';
+    }).join('');
   }
 
   function setHomeAppointmentEditMode(record) {
@@ -1334,6 +1372,13 @@
   }
 
   document.getElementById('btn-login').addEventListener('click', loginSystem);
+  document.getElementById('btn-toggle-login-password').addEventListener('click', function () {
+    var pwdInput = document.getElementById('login-password');
+    var currentType = pwdInput.getAttribute('type') || 'password';
+    var nextType = currentType === 'password' ? 'text' : 'password';
+    pwdInput.setAttribute('type', nextType);
+    this.textContent = nextType === 'password' ? '显示' : '隐藏';
+  });
   document.getElementById('login-password').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') loginSystem();
   });
@@ -1343,6 +1388,7 @@
   document.getElementById('apt-date').value = today;
   document.getElementById('apt-date').setAttribute('min', today);
   document.getElementById('home-date').value = today;
+  initHomeTimeOptions();
   refreshQueryExportScope();
 
   function fillHealthForm(data) {

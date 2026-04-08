@@ -94,6 +94,9 @@
     .login-card p { margin: 0 0 16px; color: #4f6b6d; }
     .login-card .form-row { margin-bottom: 14px; }
     .login-card input { width: 100%; }
+    .password-input-wrap { position: relative; }
+    .password-input-wrap input { padding-right: 72px; }
+    .toggle-password-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: #eef4ff; color: #2c5fd5; border-radius: 8px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     .login-tip { font-size: 12px; color: #6d7e80; }
   </style>
 </head>
@@ -103,7 +106,13 @@
       <h2>欢迎使用健康管理系统</h2>
       <p>请输入账号密码，登录后进入系统。</p>
       <div class="form-row"><label>账号</label><input type="text" id="login-username" placeholder="请输入账号"></div>
-      <div class="form-row"><label>密码</label><input type="password" id="login-password" placeholder="请输入密码"></div>
+      <div class="form-row">
+        <label>密码</label>
+        <div class="password-input-wrap">
+          <input type="password" id="login-password" placeholder="请输入密码">
+          <button type="button" id="btn-toggle-login-password" class="toggle-password-btn">显示</button>
+        </div>
+      </div>
       <div class="form-row"><button class="btn btn-primary" id="btn-login" style="width:100%">登录</button></div>
       <div id="login-msg"></div>
       <div class="login-tip">默认账号：admin，默认密码：123456（可在后端系统设置中调整）。</div>
@@ -370,10 +379,16 @@
             <label>日期</label><input type="date" id="home-date">
           </div>
           <div class="form-row" style="flex-wrap:nowrap">
-            <label>开始时间</label><input type="time" id="home-start" min="08:30" max="16:00" step="900">
+            <label>开始时间</label>
+            <select id="home-start">
+              <option value="">请选择开始时间</option>
+            </select>
           </div>
           <div class="form-row" style="flex-wrap:nowrap">
-            <label>结束时间</label><input type="time" id="home-end" min="08:30" max="16:00" step="900">
+            <label>结束时间</label>
+            <select id="home-end">
+              <option value="">请选择结束时间</option>
+            </select>
           </div>
           <div class="form-row">
             <label>地点</label><input type="text" id="home-location" style="flex:1">
