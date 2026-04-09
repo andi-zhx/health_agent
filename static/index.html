@@ -96,6 +96,7 @@
     .login-card h2 { margin: 0 0 8px; color: #1d4d4f; }
     .login-card p { margin: 0 0 16px; color: #4f6b6d; }
     .login-card .form-row { margin-bottom: 14px; }
+    .home-page-title { margin: 0; font-size: 32px; font-weight: 700; color: #1f2d3d; }
     .login-card input { width: 100%; }
     .password-input-wrap { position: relative; }
     .password-input-wrap input { padding-right: 72px; }
@@ -108,9 +109,10 @@
     <div class="login-card">
       <h2>欢迎使用健康管理系统</h2>
       <p>请输入账号密码，登录后进入系统。</p>
-      <div class="form-row"><label>账号</label><input type="text" id="login-username" placeholder="请输入账号"></div>
+      <div class="form-row"><label>账号</label></div>
+      <div class="form-row"><input type="text" id="login-username" placeholder="请输入账号"></div>
+      <div class="form-row"><label>密码</label></div>
       <div class="form-row">
-        <label>密码</label>
         <div class="password-input-wrap">
           <input type="password" id="login-password" placeholder="请输入密码">
           <button type="button" id="btn-toggle-login-password" class="toggle-password-btn">显示</button>
@@ -137,7 +139,7 @@
     <main class="main">
       <div id="page-home" class="page">
         <div class="card">
-          <h2 id="current-date"></h2>
+          <h2 id="current-date" class="home-page-title"></h2>
         </div>
         <div class="card">
           <h2>核心概览</h2>

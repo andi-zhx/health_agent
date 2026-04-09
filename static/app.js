@@ -140,8 +140,7 @@
   function renderCurrentDate() {
     var box = document.getElementById('current-date');
     if (!box) return;
-    var now = new Date();
-    box.textContent = now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日';
+    box.textContent = '军休所-静安所';
   }
 
   function buildEquipmentRangeQuery() {
