@@ -102,6 +102,9 @@
     .password-input-wrap input { padding-right: 72px; }
     .toggle-password-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); border: none; background: #eef4ff; color: #2c5fd5; border-radius: 8px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
     .login-tip { font-size: 12px; color: #6d7e80; }
+    .required-mark { color: #e74c3c; margin-left: 2px; font-weight: 700; }
+    .identity-grid { display: flex; flex-direction: column; gap: 8px; }
+    .identity-line { display: flex; align-items: center; gap: 10px; }
   </style>
 </head>
 <body>
@@ -127,7 +130,7 @@
     <nav class="sidebar">
       <h1>健康管理系统</h1>
       <a href="#" data-page="home" class="active">首页</a>
-      <a href="#" data-page="customers">客户档案</a>
+      <a href="#" data-page="customers">客户列表</a>
       <a href="#" data-page="health">健康档案</a>
       <a href="#" data-page="portrait">健康画像</a>
       <a href="#" data-page="appointments">预约服务</a>
@@ -169,16 +172,16 @@
       </div>
       <div id="page-customers" class="page hide">
         <div class="card">
-          <h2>客户档案</h2>
+          <h2>客户列表</h2>
           <div class="search-bar">
-            <input type="text" id="customer-search" placeholder="按姓名查询">
-            <button class="btn btn-primary" id="btn-customer-search">按姓名查询</button>
+            <input type="text" id="customer-search" placeholder="请输入姓名或手机号">
+            <button class="btn btn-primary" id="btn-customer-search">查询</button>
             <button class="btn btn-secondary" id="btn-customer-reset">显示全部</button>
             <button class="btn btn-primary" id="btn-customer-add">新增客户</button>
           </div>
           <div id="customer-msg"></div>
           <table>
-            <thead><tr><th>姓名</th><th>身份证</th><th>电话</th><th>操作</th></tr></thead>
+            <thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th><th>操作</th></tr></thead>
             <tbody id="customer-list"></tbody>
           </table>
         </div>
@@ -496,7 +499,7 @@
             <label>下载内容</label>
             <select id="qe-dataset" style="width:220px">
               <option value="all">全量信息</option>
-              <option value="customers">客户档案</option>
+              <option value="customers">客户列表</option>
               <option value="health">健康档案</option>
               <option value="appointments">预约记录</option>
                             <option value="usage">仪器使用</option>
@@ -527,13 +530,27 @@
     <div class="modal">
       <h3 id="modal-customer-title">新增客户</h3>
       <input type="hidden" id="modal-customer-id">
-      <div class="form-row"><label>姓名</label><input type="text" id="mc-name" required></div>
-      <div class="form-row"><label>身份证</label><input type="text" id="mc-id_card" maxlength="18" required></div>
-      <div class="form-row"><label>电话</label><input type="text" id="mc-phone" maxlength="11" required></div>
-            <div class="form-row"><label>地址</label><input type="text" id="mc-address" required></div>
-      <div class="form-row"><label>性别</label><select id="mc-gender"><option value="">-</option><option value="男">男</option><option value="女">女</option></select></div>
-      <div class="form-row"><label>出生日期</label><input type="date" id="mc-birth_date"></div>
-                                          <div class="modal-actions">
+      <div class="form-row"><label>姓名<span class="required-mark">*</span></label><input type="text" id="mc-name" required></div>
+      <div class="form-row"><label>性别<span class="required-mark">*</span></label><select id="mc-gender" required><option value="">请选择</option><option value="男">男</option><option value="女">女</option></select></div>
+      <div class="form-row"><label>年龄<span class="required-mark">*</span></label><input type="text" id="mc-age" inputmode="numeric" required></div>
+      <div class="form-row"><label>出生日期<span class="required-mark">*</span></label><input type="date" id="mc-birth_date" required></div>
+      <div class="form-row">
+        <label>身份<span class="required-mark">*</span></label>
+        <div class="identity-grid">
+          <div class="identity-line">
+            <label><input type="radio" name="mc-identity" id="mc-identity-self" value="本人">本人</label>
+            <label>军级</label><input type="text" id="mc-military_rank" placeholder="非必填">
+          </div>
+          <div class="identity-line">
+            <label><input type="radio" name="mc-identity" id="mc-identity-family" value="家属">家属</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row"><label>身份证</label><input type="text" id="mc-id_card" maxlength="18"></div>
+      <div class="form-row"><label>电话<span class="required-mark">*</span></label><input type="text" id="mc-phone" maxlength="11" required></div>
+      <div class="form-row"><label>地址</label><input type="text" id="mc-address"></div>
+      <div class="form-row"><label>建档人<span class="required-mark">*</span></label><input type="text" id="mc-record_creator" required></div>
+      <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-modal-cancel">取消</button>
         <button class="btn btn-primary" id="btn-modal-save">保存</button>
       </div>

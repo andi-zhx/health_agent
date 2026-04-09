@@ -324,7 +324,8 @@
     get('/api/customers?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('customer-list');
       tbody.innerHTML = toList(list).map(function (c) {
-        return '<tr><td>' + c.name + '</td><td>' + (c.id_card || '') + '</td><td>' + (c.phone || '') + '</td><td><button class="btn btn-small btn-primary" data-edit="' + c.id + '">编辑</button></td></tr>';
+        var createdAt = c.created_at ? String(c.created_at).replace('T', ' ').slice(0, 19) : '-';
+        return '<tr><td>' + (c.name || '') + '</td><td>' + (c.age == null ? '-' : c.age) + '</td><td>' + (c.identity_type || '-') + '</td><td>' + (c.phone || '') + '</td><td>' + createdAt + '</td><td><button class="btn btn-small btn-primary" data-edit="' + c.id + '">编辑</button></td></tr>';
       }).join('');
       var p = getPagination(list);
       showMsg('customer-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
@@ -354,17 +355,25 @@
     if (id) {
       get('/api/customers/' + id).then(function (c) {
         document.getElementById('mc-name').value = c.name || '';
+        document.getElementById('mc-age').value = c.age == null ? '' : c.age;
+        document.getElementById('mc-gender').value = c.gender || '';
+        document.getElementById('mc-birth_date').value = (c.birth_date || '').slice(0, 10);
+        var identity = String(c.identity_type || '').trim();
+        document.getElementById('mc-identity-self').checked = identity === '本人';
+        document.getElementById('mc-identity-family').checked = identity === '家属';
+        document.getElementById('mc-military_rank').value = c.military_rank || '';
         document.getElementById('mc-id_card').value = c.id_card || '';
         document.getElementById('mc-phone').value = c.phone || '';
         document.getElementById('mc-address').value = c.address || '';
-        document.getElementById('mc-gender').value = c.gender || '';
-        document.getElementById('mc-birth_date').value = (c.birth_date || '').slice(0, 10);
+        document.getElementById('mc-record_creator').value = c.record_creator || '';
       });
     } else {
-      ['mc-name', 'mc-id_card', 'mc-phone', 'mc-address', 'mc-gender', 'mc-birth_date'].forEach(function (k) {
+      ['mc-name', 'mc-age', 'mc-gender', 'mc-birth_date', 'mc-id_card', 'mc-phone', 'mc-address', 'mc-military_rank', 'mc-record_creator'].forEach(function (k) {
         var e = document.getElementById(k);
         if (e) e.value = e.tagName === 'SELECT' ? '' : '';
       });
+      document.getElementById('mc-identity-self').checked = false;
+      document.getElementById('mc-identity-family').checked = false;
     }
     document.getElementById('modal-customer').classList.remove('hide');
   }
@@ -943,24 +952,51 @@
   document.getElementById('btn-modal-cancel').addEventListener('click', function () { document.getElementById('modal-customer').classList.add('hide'); });
   document.getElementById('btn-modal-save').addEventListener('click', function () {
     var id = document.getElementById('modal-customer-id').value;
+    var identityType = '';
+    if (document.getElementById('mc-identity-self').checked) identityType = '本人';
+    if (document.getElementById('mc-identity-family').checked) identityType = '家属';
     var body = {
-      name: document.getElementById('mc-name').value,
+      name: document.getElementById('mc-name').value.trim(),
+      gender: document.getElementById('mc-gender').value,
+      age: document.getElementById('mc-age').value.trim(),
+      birth_date: document.getElementById('mc-birth_date').value || null,
+      identity_type: identityType,
+      military_rank: document.getElementById('mc-military_rank').value.trim(),
       id_card: document.getElementById('mc-id_card').value.trim(),
       phone: document.getElementById('mc-phone').value.trim(),
       address: document.getElementById('mc-address').value.trim(),
-      gender: document.getElementById('mc-gender').value,
-      birth_date: document.getElementById('mc-birth_date').value || null
+      record_creator: document.getElementById('mc-record_creator').value.trim()
     };
-    if (!body.address) {
-      showMsg('customer-msg', '地址为必填项', true);
+    if (!body.name) {
+      showMsg('customer-msg', '姓名为必填项', true);
       return;
     }
-    if (body.id_card.length !== 18) {
-      showMsg('customer-msg', '身份证号必须为18位', true);
+    if (!body.gender) {
+      showMsg('customer-msg', '性别为必填项', true);
+      return;
+    }
+    if (!/^\d+$/.test(body.age) || parseInt(body.age, 10) <= 0) {
+      showMsg('customer-msg', '年龄为必填项，且必须为正整数', true);
+      return;
+    }
+    if (!body.birth_date) {
+      showMsg('customer-msg', '出生日期为必填项', true);
+      return;
+    }
+    if (!body.identity_type) {
+      showMsg('customer-msg', '身份为必选项，请选择“本人”或“家属”', true);
+      return;
+    }
+    if (body.id_card && body.id_card.length !== 18) {
+      showMsg('customer-msg', '身份证号为18位时才可保存', true);
       return;
     }
     if (!/^\d{11}$/.test(body.phone)) {
       showMsg('customer-msg', '手机号必须为11位数字', true);
+      return;
+    }
+    if (!body.record_creator) {
+      showMsg('customer-msg', '建档人为必填项', true);
       return;
     }
 
@@ -977,11 +1013,15 @@
     customerEditSnapshot = body;
     openConfirmModal('确认修改客户信息', [
       ['姓名', body.name],
+      ['性别', body.gender],
+      ['年龄', body.age],
+      ['出生日期', body.birth_date],
+      ['身份', body.identity_type],
+      ['军级', body.military_rank],
       ['身份证', body.id_card],
       ['电话', body.phone],
       ['地址', body.address],
-      ['性别', body.gender],
-      ['出生日期', body.birth_date]
+      ['建档人', body.record_creator]
     ], function () {
       put('/api/customers/' + id, customerEditSnapshot).then(function (res) {
         if (res.error) { showMsg('customer-msg', res.error, true); return; }
