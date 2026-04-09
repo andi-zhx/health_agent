@@ -437,7 +437,7 @@
       ['身高(cm)', data.height_cm], ['体重(kg)', data.weight_kg], ['地址', data.address], ['既往病史', data.past_medical_history],
       ['家族慢性病史', data.family_history], ['过敏史', data.allergy_history], ['过敏详情', data.allergy_details], ['吸烟情况', data.smoking_status],
       ['烟龄', data.smoking_years], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
-      ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年症状', data.recent_symptoms],
+      ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年症状', data.recent_symptoms], ['详细情况', data.recent_symptom_detail],
       ['最影响生活的问题', data.life_impact_issues], ['近半年血压', data.blood_pressure_test],
       ['近半年血脂', data.blood_lipid_test], ['近半年血糖', data.blood_sugar_test],
       ['运动方式', (data.exercise_methods || []).join('、')], ['健康需求', (data.health_needs || []).join('、')], ['特殊情况', data.notes]
@@ -1094,6 +1094,7 @@
       sleep_quality: healthRadioValue('ha-sleep-quality'),
       sleep_hours: healthRadioValue('ha-sleep-hours'),
       recent_symptoms: healthCheckboxValues('ha-recent-symptom').concat(healthValue('ha-recent-symptom-other') ? ['其他:' + healthValue('ha-recent-symptom-other')] : []).join('、'),
+      recent_symptom_detail: healthValue('ha-recent-symptom-detail'),
       life_impact_issues: normalizedLifeImpactIssues.join('、'),
       blood_pressure_test: healthRadioValue('ha-blood-pressure-test'),
       blood_lipid_test: healthRadioValue('ha-blood-lipid-test'),
@@ -1134,6 +1135,7 @@
       ['睡眠状况', body.sleep_quality],
       ['睡眠时长', body.sleep_hours],
       ['近半年症状', body.recent_symptoms],
+      ['详细情况', body.recent_symptom_detail],
       ['最影响生活的问题', body.life_impact_issues],
       ['近半年血压', body.blood_pressure_test],
       ['近半年血脂', body.blood_lipid_test],
@@ -1501,6 +1503,7 @@
     document.getElementById('ha-smoking-years').value = data.smoking_years || '';
     document.getElementById('ha-drinking-years').value = data.drinking_years || '';
     document.getElementById('ha-recent-symptom-other').value = '';
+    document.getElementById('ha-recent-symptom-detail').value = data.recent_symptom_detail || '';
     document.getElementById('ha-life-impact-issue-other').value = '';
     document.getElementById('ha-health-needs-other').value = (data.health_needs || []).filter(function(x){return x.indexOf('其他:')===0;}).map(function(x){return x.replace('其他:','');})[0] || '';
 
