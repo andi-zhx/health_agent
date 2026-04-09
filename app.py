@@ -320,22 +320,40 @@ def validate_customer_payload(d):
     address = str(d.get('address') or '').strip()
     gender = str(d.get('gender') or '').strip()
     birth_date = str(d.get('birth_date') or '').strip()
+    age = str(d.get('age') or '').strip()
+    identity_type = d.get('identity_type')
+    record_creator = str(d.get('record_creator') or '').strip()
 
     if not name:
         return '姓名为必填项'
-    if not re.fullmatch(r'^\d{17}[\dX]$', id_card):
+    if id_card and not re.fullmatch(r'^\d{17}[\dX]$', id_card):
         return '身份证格式不正确'
     if not re.fullmatch(r'^1\d{10}$', phone):
         return '手机号格式不正确'
-    if not address:
-        return '地址为必填项'
-    if gender and gender not in {'男', '女'}:
+    if not gender:
+        return '性别为必填项'
+    if gender not in {'男', '女'}:
         return '性别仅支持：男/女'
+    if not age or not age.isdigit() or int(age) <= 0:
+        return '年龄必须为正整数'
     if birth_date:
         try:
             datetime.strptime(birth_date, '%Y-%m-%d')
         except ValueError:
             return '出生日期格式必须为 YYYY-MM-DD'
+    else:
+        return '出生日期为必填项'
+    if isinstance(identity_type, list):
+        identities = [str(x).strip() for x in identity_type if str(x).strip()]
+    else:
+        identities = [x for x in str(identity_type or '').split('、') if x]
+    if not identities:
+        return '身份至少选择一项'
+    allowed_identities = {'本人', '家属'}
+    if any(x not in allowed_identities for x in identities):
+        return '身份仅支持：本人/家属'
+    if not record_creator:
+        return '建档人为必填项'
     return None
 
 
@@ -711,12 +729,16 @@ def init_db():
         CREATE TABLE IF NOT EXISTS customers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            id_card TEXT UNIQUE NOT NULL,
+            id_card TEXT UNIQUE,
             phone TEXT NOT NULL,
             email TEXT,
             address TEXT,
             gender TEXT,
+            age INTEGER,
             birth_date TEXT,
+            identity_type TEXT,
+            military_rank TEXT,
+            record_creator TEXT,
             medical_history TEXT,
             allergies TEXT,
             diet_habits TEXT,
@@ -732,6 +754,10 @@ def init_db():
     c.execute('PRAGMA table_info(customers)')
     customer_columns = {row[1] for row in c.fetchall()}
     extra_customer_columns = {
+        'age': 'INTEGER',
+        'identity_type': 'TEXT',
+        'military_rank': 'TEXT',
+        'record_creator': 'TEXT',
         'diet_habits': 'TEXT',
         'chronic_diseases': 'TEXT',
         'health_status': 'TEXT',
@@ -1313,16 +1339,22 @@ def api_customer_create():
     customer_error = validate_customer_payload(d)
     if customer_error:
         return error_response(customer_error)
+    identity_type = d.get('identity_type')
+    if isinstance(identity_type, list):
+        identity_type = '、'.join([str(x).strip() for x in identity_type if str(x).strip()])
+    else:
+        identity_type = str(identity_type or '').strip()
     conn = get_db()
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO customers (name, id_card, phone, email, address, gender, birth_date, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO customers (name, id_card, phone, email, address, gender, age, birth_date, identity_type, military_rank, record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             d.get('name'), d.get('id_card'), d.get('phone'), d.get('email'), d.get('address'),
-            d.get('gender'), d.get('birth_date'), d.get('medical_history'), d.get('allergies'),
-            d.get('diet_habits'), d.get('chronic_diseases'), d.get('health_status'), d.get('therapy_contraindications')
+            d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
+            d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
+            d.get('health_status'), d.get('therapy_contraindications')
         ))
         conn.commit()
         id = c.lastrowid
@@ -1339,6 +1371,11 @@ def api_customer_update(cid):
     customer_error = validate_customer_payload(d)
     if customer_error:
         return error_response(customer_error)
+    identity_type = d.get('identity_type')
+    if isinstance(identity_type, list):
+        identity_type = '、'.join([str(x).strip() for x in identity_type if str(x).strip()])
+    else:
+        identity_type = str(identity_type or '').strip()
     conn = get_db()
     c = conn.cursor()
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (cid,))
@@ -1346,11 +1383,12 @@ def api_customer_update(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
     c.execute('''
-        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, birth_date=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
     ''', (
         d.get('name'), d.get('id_card'), d.get('phone'), d.get('email'), d.get('address'),
-        d.get('gender'), d.get('birth_date'), d.get('medical_history'), d.get('allergies'),
-        d.get('diet_habits'), d.get('chronic_diseases'), d.get('health_status'), d.get('therapy_contraindications'), cid
+        d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
+        d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
+        d.get('health_status'), d.get('therapy_contraindications'), cid
     ))
     conn.commit()
     conn.close()
