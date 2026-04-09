@@ -798,13 +798,10 @@
       renderHorizontalBars('portrait-age-bars', toList(d1.age_distribution), '#27ae60');
       renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
       renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-      renderTagCloud('portrait-tag-cloud', toList(d1.tag_cloud));
-
       renderCircleChart('portrait-risk-donut', toList(d2.risk_distribution), true);
       renderLegend('portrait-risk-legend', toList(d2.risk_distribution));
-      renderHorizontalBars('portrait-disease-top10', toList(d2.past_history_top10), '#8e44ad');
+      renderHorizontalBars('portrait-disease-top10', toList(d2.disease_top10), '#8e44ad');
       renderHorizontalBars('portrait-family-top10', toList(d2.family_history_top10), '#c0392b');
-      renderHighRiskTable('portrait-high-risk-list', toList(d2.high_risk_customers));
 
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
@@ -814,7 +811,6 @@
       ]);
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
-      renderHorizontalBars('portrait-heatmap', toList(d3.behavior_heatmap), '#f39c12');
     });
   }
 

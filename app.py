@@ -2757,7 +2757,6 @@ def api_dashboard_health_portrait():
     low_exercise_bad_habit_people = 0
     bmi_abnormal = 0
 
-    high_risk_customers = []
 
     for row in records:
         age = safe_int(row.get('age'))
@@ -2849,27 +2848,7 @@ def api_dashboard_health_portrait():
         if age and 50 <= age <= 60 and row.get('blood_pressure_test') == '监测：偏高':
             behavior_tag_counter['中年高血压风险人群'] += 1
 
-        warnings = []
-        if has_family_history and has_past_history:
-            warnings.append('既往史+家族史双高')
-        if row.get('blood_pressure_test') == '监测：偏高':
-            warnings.append('近半年血压偏高')
-        if bmi_level in ('超重', '肥胖'):
-            warnings.append('BMI异常')
-        if smoking:
-            warnings.append('吸烟')
-        if low_exercise:
-            warnings.append('运动不足')
-        if risk_level == '高风险' or warnings:
-            high_risk_customers.append({
-                'customer_id': row.get('customer_id'),
-                'customer_name': row.get('customer_name') or f"客户{row.get('customer_id')}",
-                'risk_level': risk_level,
-                'warnings': '、'.join(warnings) if warnings else '-',
-            })
-
     total = len(records)
-    high_risk_customers.sort(key=lambda x: (x['risk_level'] != '高风险', -len(x['warnings'])))
     senior_count = age_distribution['66-70岁'] + age_distribution['71-75岁'] + age_distribution['76-80岁'] + age_distribution['>80岁']
 
     return jsonify({
@@ -2883,11 +2862,10 @@ def api_dashboard_health_portrait():
             'gender_distribution': [{'name': k, 'count': v} for k, v in genders.items()],
             'age_distribution': [{'name': k, 'count': age_distribution[k]} for k in age_segments],
             'bmi_distribution': [{'name': k, 'count': v} for k, v in bmi_levels.items()],
-            'tag_cloud': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
         },
         'dimension2': {
             'risk_distribution': [{'name': k, 'count': v} for k, v in risks.items()],
-            'past_history_top10': [{'name': k, 'count': v} for k, v in past_disease_counter.most_common(10)],
+            'disease_top10': [{'name': k, 'count': v} for k, v in past_disease_counter.most_common(10)],
             'family_history_top10': [{'name': k, 'count': v} for k, v in family_disease_counter.most_common(10)],
             'allergy_top10': [{'name': k, 'count': v} for k, v in allergy_counter.most_common(10)],
             'pain_top10': [{'name': k, 'count': v} for k, v in pain_counter.most_common(10)],
@@ -2896,7 +2874,6 @@ def api_dashboard_health_portrait():
             'chronic_pain_ratio': round((chronic_pain_people * 100.0 / total), 1) if total else 0,
             'dual_history_high_risk_people': dual_history_high_risk_people,
             'history_plus_bp_abnormal_people': history_plus_bp_abnormal_people,
-            'high_risk_customers': high_risk_customers[:50],
         },
         'dimension3': {
             'smoking_ratio': round((smoking_people * 100.0 / total), 1) if total else 0,
@@ -2909,12 +2886,6 @@ def api_dashboard_health_portrait():
             'health_needs_top10': [{'name': k, 'count': v} for k, v in demand_counter.most_common(10)],
             'fatigue_distribution': [{'name': k, 'count': v} for k, v in fatigue_counter.items()],
             'behavior_tags': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
-            'behavior_heatmap': [
-                {'name': '睡眠异常', 'count': sleep_abnormal_people},
-                {'name': '低运动频次', 'count': sum(1 for r in records if r.get('weekly_exercise_freq') == '<3次')},
-                {'name': '吸烟', 'count': smoking_people},
-                {'name': '饮酒', 'count': drinking_people},
-            ],
         },
     })
 
