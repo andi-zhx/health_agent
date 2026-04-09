@@ -524,6 +524,7 @@ HEALTH_ASSESSMENT_ALLOWED_VALUES = {
     'sleep_hours': {'<6小时', '6-8小时', '9-10小时', '>10小时'},
     'blood_pressure_test': {'未监测', '监测：正常', '监测：偏低', '监测：偏高'},
     'blood_lipid_test': {'未监测', '监测：正常', '监测：偏高'},
+    'blood_sugar_test': {'未监测', '监测：正常', '监测：偏低', '监测：偏高'},
     'chronic_pain': {'无', '有'},
     'weekly_exercise_freq': {'<3次', '3-4次', '5-7次', '>7次'},
 }
@@ -596,6 +597,9 @@ def extract_health_portrait(record):
         record.get('allergy_details'),
         record.get('blood_pressure_test'),
         record.get('blood_lipid_test'),
+        record.get('blood_sugar_test'),
+        record.get('recent_symptoms'),
+        record.get('life_impact_issues'),
     ]
     source_text = ' '.join([str(v or '').lower() for v in text_fields])
     normalized_text = re.sub(r'\s+', '', source_text)
@@ -881,8 +885,11 @@ def init_db():
             fatigue_last_month TEXT,
             sleep_quality TEXT,
             sleep_hours TEXT,
+            recent_symptoms TEXT,
+            life_impact_issues TEXT,
             blood_pressure_test TEXT,
             blood_lipid_test TEXT,
+            blood_sugar_test TEXT,
             chronic_pain TEXT,
             pain_details TEXT,
             exercise_methods TEXT,
@@ -893,6 +900,11 @@ def init_db():
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
     ''')
+    ensure_columns(c, 'health_assessments', {
+        'recent_symptoms': 'TEXT',
+        'life_impact_issues': 'TEXT',
+        'blood_sugar_test': 'TEXT',
+    })
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS therapy_projects (
@@ -1699,16 +1711,16 @@ def api_health_assessment_create():
     c.execute('''
         INSERT INTO health_assessments (customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
          allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years, fatigue_last_month,
-         sleep_quality, sleep_hours, blood_pressure_test, blood_lipid_test, chronic_pain, pain_details, exercise_methods, weekly_exercise_freq,
-         health_needs, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         sleep_quality, sleep_hours, recent_symptoms, life_impact_issues, blood_pressure_test, blood_lipid_test, blood_sugar_test, chronic_pain, pain_details,
+         exercise_methods, weekly_exercise_freq, health_needs, notes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''', (
         d.get('customer_id'), d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
         d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
         d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-        d.get('fatigue_last_month'), d.get('sleep_quality'), d.get('sleep_hours'), d.get('blood_pressure_test'), d.get('blood_lipid_test'),
-        d.get('chronic_pain'), d.get('pain_details'), parse_multi_value(d.get('exercise_methods')), d.get('weekly_exercise_freq'),
-        parse_multi_value(d.get('health_needs')), d.get('notes')
+        d.get('fatigue_last_month'), d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('life_impact_issues'),
+        d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
+        parse_multi_value(d.get('exercise_methods')), d.get('weekly_exercise_freq'), parse_multi_value(d.get('health_needs')), d.get('notes')
     ))
     conn.commit()
     rid = c.lastrowid
@@ -1743,16 +1755,16 @@ def api_health_assessment_update(hid):
         UPDATE health_assessments
         SET customer_id=?, assessment_date=?, assessor=?, age=?, height_cm=?, weight_kg=?, address=?, past_medical_history=?, family_history=?,
             allergy_history=?, allergy_details=?, smoking_status=?, smoking_years=?, cigarettes_per_day=?, drinking_status=?, drinking_years=?,
-            fatigue_last_month=?, sleep_quality=?, sleep_hours=?, blood_pressure_test=?, blood_lipid_test=?, chronic_pain=?, pain_details=?,
-            exercise_methods=?, weekly_exercise_freq=?, health_needs=?, notes=?
+            fatigue_last_month=?, sleep_quality=?, sleep_hours=?, recent_symptoms=?, life_impact_issues=?, blood_pressure_test=?, blood_lipid_test=?,
+            blood_sugar_test=?, chronic_pain=?, pain_details=?, exercise_methods=?, weekly_exercise_freq=?, health_needs=?, notes=?
         WHERE id=?
     ''', (
         d.get('customer_id'), d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
         d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
         d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-        d.get('fatigue_last_month'), d.get('sleep_quality'), d.get('sleep_hours'), d.get('blood_pressure_test'), d.get('blood_lipid_test'),
-        d.get('chronic_pain'), d.get('pain_details'), parse_multi_value(d.get('exercise_methods')), d.get('weekly_exercise_freq'),
-        parse_multi_value(d.get('health_needs')), d.get('notes'), hid
+        d.get('fatigue_last_month'), d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('life_impact_issues'),
+        d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
+        parse_multi_value(d.get('exercise_methods')), d.get('weekly_exercise_freq'), parse_multi_value(d.get('health_needs')), d.get('notes'), hid
     ))
     conn.commit()
     conn.close()
