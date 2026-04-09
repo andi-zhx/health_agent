@@ -324,7 +324,8 @@
     get('/api/customers?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('customer-list');
       tbody.innerHTML = toList(list).map(function (c) {
-        return '<tr><td>' + c.name + '</td><td>' + (c.id_card || '') + '</td><td>' + (c.phone || '') + '</td><td><button class="btn btn-small btn-primary" data-edit="' + c.id + '">编辑</button></td></tr>';
+        var createdAt = c.created_at ? String(c.created_at).replace('T', ' ').slice(0, 19) : '-';
+        return '<tr><td>' + (c.name || '') + '</td><td>' + (c.age == null ? '-' : c.age) + '</td><td>' + (c.identity_type || '-') + '</td><td>' + (c.phone || '') + '</td><td>' + createdAt + '</td><td><button class="btn btn-small btn-primary" data-edit="' + c.id + '">编辑</button></td></tr>';
       }).join('');
       var p = getPagination(list);
       showMsg('customer-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
@@ -357,9 +358,9 @@
         document.getElementById('mc-age').value = c.age == null ? '' : c.age;
         document.getElementById('mc-gender').value = c.gender || '';
         document.getElementById('mc-birth_date').value = (c.birth_date || '').slice(0, 10);
-        var identityList = String(c.identity_type || '').split('、');
-        document.getElementById('mc-identity-self').checked = identityList.indexOf('本人') !== -1;
-        document.getElementById('mc-identity-family').checked = identityList.indexOf('家属') !== -1;
+        var identity = String(c.identity_type || '').trim();
+        document.getElementById('mc-identity-self').checked = identity === '本人';
+        document.getElementById('mc-identity-family').checked = identity === '家属';
         document.getElementById('mc-military_rank').value = c.military_rank || '';
         document.getElementById('mc-id_card').value = c.id_card || '';
         document.getElementById('mc-phone').value = c.phone || '';
@@ -951,9 +952,9 @@
   document.getElementById('btn-modal-cancel').addEventListener('click', function () { document.getElementById('modal-customer').classList.add('hide'); });
   document.getElementById('btn-modal-save').addEventListener('click', function () {
     var id = document.getElementById('modal-customer-id').value;
-    var identityType = [];
-    if (document.getElementById('mc-identity-self').checked) identityType.push('本人');
-    if (document.getElementById('mc-identity-family').checked) identityType.push('家属');
+    var identityType = '';
+    if (document.getElementById('mc-identity-self').checked) identityType = '本人';
+    if (document.getElementById('mc-identity-family').checked) identityType = '家属';
     var body = {
       name: document.getElementById('mc-name').value.trim(),
       gender: document.getElementById('mc-gender').value,
@@ -982,8 +983,8 @@
       showMsg('customer-msg', '出生日期为必填项', true);
       return;
     }
-    if (!body.identity_type.length) {
-      showMsg('customer-msg', '身份至少勾选“本人”或“家属”其中一项', true);
+    if (!body.identity_type) {
+      showMsg('customer-msg', '身份为必选项，请选择“本人”或“家属”', true);
       return;
     }
     if (body.id_card && body.id_card.length !== 18) {
@@ -1015,7 +1016,7 @@
       ['性别', body.gender],
       ['年龄', body.age],
       ['出生日期', body.birth_date],
-      ['身份', body.identity_type.join('、')],
+      ['身份', body.identity_type],
       ['军级', body.military_rank],
       ['身份证', body.id_card],
       ['电话', body.phone],
