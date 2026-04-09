@@ -230,15 +230,36 @@
                   </div>
                   <span>其他</span><input type="text" id="ha-family-disease-other" style="min-width:180px">
                 </div>
-                <div class="health-item full"><span class="item-title">肩颈部、关节（如有请填写）</span><input type="text" id="ha-pain-details" style="flex:1;min-width:220px"></div>
                 <div class="health-item full"><span class="item-title">过敏史</span><label><input type="radio" name="ha-allergy-history" value="无">无</label><label><input type="radio" name="ha-allergy-history" value="有">有</label><span>过敏史：</span><input type="text" id="ha-allergy-details" style="flex:1;min-width:180px"></div>
                 <div class="health-item full"><span class="item-title">是否有以下情况（多选）</span><label><input type="checkbox" name="ha-special-condition" value="无">无</label><label><input type="checkbox" name="ha-special-condition" value="心脏支架">心脏支架</label><label><input type="checkbox" name="ha-special-condition" value="起搏器">起搏器</label></div>
+              </div>
+              <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
+                <div class="health-group-title" style="margin-bottom:8px;">近期症状</div>
+                <div class="health-item full"><span class="item-title">近半年症状（多选）</span>
+                  <div id="ha-recent-symptoms" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
+                    <label><input type="checkbox" name="ha-recent-symptom" value="无">无</label>
+                    <label><input type="checkbox" name="ha-recent-symptom" value="头晕头痛">头晕头痛</label><label><input type="checkbox" name="ha-recent-symptom" value="胸闷胸痛">胸闷胸痛</label>
+                    <label><input type="checkbox" name="ha-recent-symptom" value="气短">气短</label><label><input type="checkbox" name="ha-recent-symptom" value="心慌">心慌</label><label><input type="checkbox" name="ha-recent-symptom" value="乏力">乏力</label>
+                    <label><input type="checkbox" name="ha-recent-symptom" value="睡眠差">睡眠差</label><label><input type="checkbox" name="ha-recent-symptom" value="视力下降">视力下降</label><label><input type="checkbox" name="ha-recent-symptom" value="记忆力下降">记忆力下降</label>
+                    <label><input type="checkbox" name="ha-recent-symptom" value="肩颈痛">肩颈痛</label><label><input type="checkbox" name="ha-recent-symptom" value="腰痛">腰痛</label><label><input type="checkbox" name="ha-recent-symptom" value="膝关节痛">膝关节痛</label><label><input type="checkbox" name="ha-recent-symptom" value="手脚麻木">手脚麻木</label>
+                    <label><input type="checkbox" name="ha-recent-symptom" value="行走不稳">行走不稳</label><label><input type="checkbox" name="ha-recent-symptom" value="听力下降">听力下降</label>
+                  </div>
+                  <span>其他</span><input type="text" id="ha-recent-symptom-other" style="min-width:180px">
+                </div>
+                <div class="health-item full"><span class="item-title">最影响生活的问题（多选，最多选3个）</span>
+                  <div id="ha-life-impact-issues" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
+                    <label><input type="checkbox" name="ha-life-impact-issue" value="血压问题">血压问题</label><label><input type="checkbox" name="ha-life-impact-issue" value="血糖问题">血糖问题</label><label><input type="checkbox" name="ha-life-impact-issue" value="关节疼痛">关节疼痛</label>
+                    <label><input type="checkbox" name="ha-life-impact-issue" value="睡眠问题">睡眠问题</label><label><input type="checkbox" name="ha-life-impact-issue" value="呼吸问题">呼吸问题</label><label><input type="checkbox" name="ha-life-impact-issue" value="情绪问题">情绪问题</label>
+                    <label><input type="checkbox" name="ha-life-impact-issue" value="行动不便">行动不便</label><label><input type="checkbox" name="ha-life-impact-issue" value="视听下降">视听下降</label><label><input type="checkbox" name="ha-life-impact-issue" value="其他">其他</label>
+                  </div>
+                </div>
                 <div class="health-item full"><span class="item-title">吸烟情况</span><label><input type="radio" name="ha-smoking-status" value="无">无</label><label><input type="radio" name="ha-smoking-status" value="有">有</label><span>烟龄</span><input type="text" inputmode="numeric" id="ha-smoking-years" style="width:90px"><span>年</span></div>
                 <div class="health-item full"><span class="item-title">饮酒</span><label><input type="radio" name="ha-drinking-status" value="无">无</label><label><input type="radio" name="ha-drinking-status" value="有">有</label><span>饮酒</span><input type="text" inputmode="numeric" id="ha-drinking-years" style="width:90px"><span>年</span></div>
                 <div class="health-item full"><span class="item-title">目前的睡眠状况</span><label><input type="radio" name="ha-sleep-quality" value="很差">很差</label><label><input type="radio" name="ha-sleep-quality" value="差">差</label><label><input type="radio" name="ha-sleep-quality" value="一般">一般</label><label><input type="radio" name="ha-sleep-quality" value="良好">良好</label></div>
                 <div class="health-item full"><span class="item-title">睡眠时间</span><label><input type="radio" name="ha-sleep-hours" value="<6小时">&lt;6小时</label><label><input type="radio" name="ha-sleep-hours" value="6-8小时">6-8小时</label><label><input type="radio" name="ha-sleep-hours" value="9-10小时">9-10小时</label><label><input type="radio" name="ha-sleep-hours" value=">10小时">&gt;10小时</label></div>
                 <div class="health-item full"><span class="item-title">近半年血压检测情况</span><label><input type="radio" name="ha-blood-pressure-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-pressure-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-pressure-test" value="监测：偏低">监测：偏低</label><label><input type="radio" name="ha-blood-pressure-test" value="监测：偏高">监测：偏高</label></div>
                 <div class="health-item full"><span class="item-title">近半年血脂检测情况</span><label><input type="radio" name="ha-blood-lipid-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-lipid-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-lipid-test" value="监测：偏高">监测：偏高</label></div>
+                <div class="health-item full"><span class="item-title">近半年血糖检测情况</span><label><input type="radio" name="ha-blood-sugar-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：偏低">监测：偏低</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：偏高">监测：偏高</label></div>
               </div>
             </div>
           </div>
