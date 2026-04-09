@@ -259,25 +259,48 @@
   }
 
   function selectedCustomerName() {
-    var sel = document.getElementById('health-customer');
-    if (!sel || sel.selectedIndex < 0) return '';
-    return sel.options[sel.selectedIndex].text || '';
+    var cid = String(document.getElementById('health-customer').value || '');
+    var customer = healthCustomerList.find(function (c) { return String(c.id) === cid; });
+    return customer ? ((customer.name || '') + (customer.phone ? (' ' + customer.phone) : '')) : '';
   }
 
   function renderHealthCustomerSelect(keyword) {
-    var sel = document.getElementById('health-customer');
-    if (!sel) return;
-    var old = sel.value;
+    var optionBox = document.getElementById('health-customer-options');
+    if (!optionBox) return;
     var q = String(keyword || '').trim();
     var matched = healthCustomerList.filter(function (c) {
-      return !q || String(c.name || '').indexOf(q) !== -1;
+      var name = String(c.name || '');
+      var phone = String(c.phone || '');
+      return !q || name.indexOf(q) !== -1 || phone.indexOf(q) !== -1;
     });
-    sel.innerHTML = '<option value="">请选择客户</option>' + matched.map(function (c) {
-      return '<option value="' + c.id + '">' + c.name + ' ' + (c.phone || '') + '</option>';
+    optionBox.innerHTML = matched.map(function (c) {
+      var label = (c.name || '') + (c.phone ? ('（' + c.phone + '）') : '');
+      return '<option value="' + escapeHtml(label) + '"></option>';
     }).join('');
-    if (old && matched.some(function (c) { return String(c.id) === String(old); })) {
-      sel.value = old;
+  }
+
+  function applySelectedCustomerByInput() {
+    var input = document.getElementById('health-customer-search');
+    var hidden = document.getElementById('health-customer');
+    if (!input || !hidden) return;
+    var raw = String(input.value || '').trim();
+    if (!raw) {
+      hidden.value = '';
+      document.getElementById('ha-age').value = '';
+      document.getElementById('ha-address').value = '';
+      return;
     }
+    var normalized = raw.replace(/[（）]/g, function (x) { return x === '（' ? '(' : ')'; });
+    hidden.value = '';
+    var exact = healthCustomerList.find(function (c) {
+      var label = (c.name || '') + (c.phone ? ('(' + c.phone + ')') : '');
+      return label === normalized || (c.name || '') === raw || (c.phone || '') === raw;
+    });
+    if (!exact) return;
+    hidden.value = exact.id;
+    input.value = (exact.name || '') + (exact.phone ? ('（' + exact.phone + '）') : '');
+    document.getElementById('ha-age').value = exact.age || '';
+    document.getElementById('ha-address').value = exact.address || '';
   }
 
   function initHealthCustomerPicker() {
@@ -285,6 +308,7 @@
       healthCustomerList = toList(list);
       var searchInput = document.getElementById('health-customer-search');
       renderHealthCustomerSelect(searchInput ? searchInput.value : '');
+      applySelectedCustomerByInput();
     });
   }
 
@@ -409,14 +433,13 @@
     }
     selectedHealthDetailId = String(data.id);
     var rows = [
-      ['客户', data.customer_name], ['日期', data.assessment_date], ['填表人', data.assessor], ['年龄', data.age],
-      ['身高(cm)', data.height_cm], ['体重(kg)', data.weight_kg], ['地址', data.address], ['既往史', data.past_medical_history],
-      ['家族史', data.family_history], ['过敏史', data.allergy_history], ['过敏详情', data.allergy_details], ['吸烟情况', data.smoking_status],
-      ['烟龄', data.smoking_years], ['支/日', data.cigarettes_per_day], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
-      ['近一月疲劳', data.fatigue_last_month], ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年血压', data.blood_pressure_test],
-      ['近半年血脂', data.blood_lipid_test], ['慢性疼痛', data.chronic_pain], ['疼痛描述', data.pain_details],
-      ['运动方式', (data.exercise_methods || []).join('、')], ['每周锻炼频次', data.weekly_exercise_freq],
-      ['健康需求', (data.health_needs || []).join('、')], ['备注', data.notes]
+      ['客户', data.customer_name], ['年龄', data.age],
+      ['身高(cm)', data.height_cm], ['体重(kg)', data.weight_kg], ['地址', data.address], ['既往病史', data.past_medical_history],
+      ['家族慢性病史', data.family_history], ['过敏史', data.allergy_history], ['过敏详情', data.allergy_details], ['吸烟情况', data.smoking_status],
+      ['烟龄', data.smoking_years], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
+      ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年血压', data.blood_pressure_test],
+      ['近半年血脂', data.blood_lipid_test], ['肩颈部/关节情况', data.pain_details],
+      ['运动方式', (data.exercise_methods || []).join('、')], ['健康需求', (data.health_needs || []).join('、')], ['特殊情况', data.notes]
     ];
     box.innerHTML = '<h3 style="margin-top:0">档案详细信息</h3>' + rows.map(function (row) {
       return '<div><strong>' + escapeHtml(row[0]) + '：</strong>' + escapeHtml(row[1] || '-') + '</div>';
@@ -933,7 +956,9 @@
   });
   document.getElementById('health-customer-search').addEventListener('input', function (e) {
     renderHealthCustomerSelect(e.target.value);
+    applySelectedCustomerByInput();
   });
+  document.getElementById('health-customer-search').addEventListener('change', applySelectedCustomerByInput);
   document.getElementById('btn-health-cancel-edit').addEventListener('click', function () {
     if (editingHealthSnapshot && editingHealthSnapshot.id) {
       fillHealthForm(editingHealthSnapshot);
@@ -1040,31 +1065,31 @@
     var body = {
       customer_id: parseInt(cid, 10),
       assessment_date: healthValue('health-date'),
-      assessor: healthValue('ha-assessor'),
+      assessor: null,
       age: healthValue('ha-age'),
       height_cm: healthValue('ha-height-cm', 'health-height'),
       weight_kg: healthValue('ha-weight-kg', 'health-weight'),
       address: healthValue('ha-address'),
-      past_medical_history: healthValue('ha-past-medical-history', 'health-symptoms'),
-      family_history: healthValue('ha-family-history', 'health-diagnosis'),
+      past_medical_history: healthCheckboxValues('ha-diagnosed-disease').concat(healthValue('ha-diagnosed-disease-other') ? ['其他:' + healthValue('ha-diagnosed-disease-other')] : []).join('、'),
+      family_history: healthCheckboxValues('ha-family-disease').concat(healthValue('ha-family-disease-other') ? ['其他:' + healthValue('ha-family-disease-other')] : []).join('、'),
       allergy_history: healthRadioValue('ha-allergy-history'),
       allergy_details: healthValue('ha-allergy-details'),
       smoking_status: healthRadioValue('ha-smoking-status'),
       smoking_years: healthValue('ha-smoking-years'),
-      cigarettes_per_day: healthValue('ha-cigarettes-per-day'),
+      cigarettes_per_day: null,
       drinking_status: healthRadioValue('ha-drinking-status'),
       drinking_years: healthValue('ha-drinking-years'),
-      fatigue_last_month: healthRadioValue('ha-fatigue-last-month'),
+      fatigue_last_month: null,
       sleep_quality: healthRadioValue('ha-sleep-quality'),
       sleep_hours: healthRadioValue('ha-sleep-hours'),
       blood_pressure_test: healthRadioValue('ha-blood-pressure-test'),
       blood_lipid_test: healthRadioValue('ha-blood-lipid-test'),
-      chronic_pain: healthRadioValue('ha-chronic-pain'),
+      chronic_pain: healthValue('ha-pain-details') ? '有' : '无',
       pain_details: healthValue('ha-pain-details'),
       exercise_methods: healthCheckboxValues('health-exercise-method'),
-      weekly_exercise_freq: healthRadioValue('ha-weekly-exercise-freq'),
+      weekly_exercise_freq: null,
       health_needs: healthCheckboxValues('health-need').concat(healthValue('ha-health-needs-other') ? ['其他:' + healthValue('ha-health-needs-other')] : []),
-      notes: healthValue('ha-notes', 'health-notes')
+      notes: healthCheckboxValues('ha-special-condition').join('、')
     };
 
     if (!hid) {
@@ -1080,32 +1105,26 @@
 
     var confirmRows = [
       ['客户', selectedCustomerName()],
-      ['日期', body.assessment_date],
-      ['填表人', body.assessor],
       ['年龄', body.age],
       ['身高(cm)', body.height_cm],
       ['体重(kg)', body.weight_kg],
       ['地址', body.address],
-      ['既往史', body.past_medical_history],
-      ['家族史', body.family_history],
+      ['既往病史', body.past_medical_history],
+      ['家族慢性病史', body.family_history],
       ['过敏史', body.allergy_history],
       ['过敏详情', body.allergy_details],
       ['吸烟情况', body.smoking_status],
       ['烟龄', body.smoking_years],
-      ['支/日', body.cigarettes_per_day],
       ['饮酒情况', body.drinking_status],
       ['饮酒年限', body.drinking_years],
-      ['近一月疲劳', body.fatigue_last_month],
       ['睡眠状况', body.sleep_quality],
       ['睡眠时长', body.sleep_hours],
       ['近半年血压', body.blood_pressure_test],
       ['近半年血脂', body.blood_lipid_test],
-      ['慢性疼痛', body.chronic_pain],
-      ['疼痛描述', body.pain_details],
+      ['肩颈部/关节情况', body.pain_details],
       ['运动方式', (body.exercise_methods || []).join('、')],
-      ['锻炼频次', body.weekly_exercise_freq],
       ['健康需求', (body.health_needs || []).join('、')],
-      ['备注', body.notes]
+      ['特殊情况', body.notes]
     ];
 
     openConfirmModal('请确认修改后的健康档案信息', confirmRows, function () {
@@ -1432,38 +1451,45 @@
 
   function fillHealthForm(data) {
     document.querySelectorAll('input[name^="ha-"]').forEach(function (el) { if (el.type === 'radio') el.checked = false; });
-    document.querySelectorAll('input[name="health-exercise-method"], input[name="health-need"]').forEach(function (el) { el.checked = false; });
+    document.querySelectorAll('input[name="health-exercise-method"], input[name="health-need"], input[name="ha-diagnosed-disease"], input[name="ha-family-disease"], input[name="ha-special-condition"]').forEach(function (el) { el.checked = false; });
     document.getElementById('health-id').value = data.id || '';
-    if (data.customer_name && !document.getElementById('health-customer-search').value) {
+    if (data.customer_id) {
+      var selected = healthCustomerList.find(function (c) { return String(c.id) === String(data.customer_id); });
+      if (selected) {
+        document.getElementById('health-customer-search').value = (selected.name || '') + (selected.phone ? ('（' + selected.phone + '）') : '');
+      }
+    } else if (data.customer_name && !document.getElementById('health-customer-search').value) {
       document.getElementById('health-customer-search').value = data.customer_name;
-      renderHealthCustomerSelect(data.customer_name);
+    } else if (!data.id) {
+      document.getElementById('health-customer-search').value = '';
     }
+    renderHealthCustomerSelect(document.getElementById('health-customer-search').value);
     document.getElementById('health-customer').value = data.customer_id || '';
     document.getElementById('health-date').value = (data.assessment_date || today || '').slice(0, 10);
-    document.getElementById('ha-assessor').value = data.assessor || '';
     document.getElementById('ha-age').value = data.age || '';
     document.getElementById('ha-height-cm').value = data.height_cm || '';
     document.getElementById('ha-weight-kg').value = data.weight_kg || '';
     document.getElementById('ha-address').value = data.address || '';
-    document.getElementById('ha-past-medical-history').value = data.past_medical_history || '';
-    document.getElementById('ha-family-history').value = data.family_history || '';
     document.getElementById('ha-allergy-details').value = data.allergy_details || '';
     document.getElementById('ha-smoking-years').value = data.smoking_years || '';
-    document.getElementById('ha-cigarettes-per-day').value = data.cigarettes_per_day || '';
     document.getElementById('ha-drinking-years').value = data.drinking_years || '';
     document.getElementById('ha-pain-details').value = data.pain_details || '';
     document.getElementById('ha-health-needs-other').value = (data.health_needs || []).filter(function(x){return x.indexOf('其他:')===0;}).map(function(x){return x.replace('其他:','');})[0] || '';
-    document.getElementById('ha-notes').value = data.notes || '';
 
-    var radios = ['ha-allergy-history', 'ha-smoking-status', 'ha-drinking-status', 'ha-fatigue-last-month', 'ha-sleep-quality', 'ha-sleep-hours', 'ha-blood-pressure-test', 'ha-blood-lipid-test', 'ha-chronic-pain', 'ha-weekly-exercise-freq'];
+    var radios = ['ha-allergy-history', 'ha-smoking-status', 'ha-drinking-status', 'ha-sleep-quality', 'ha-sleep-hours', 'ha-blood-pressure-test', 'ha-blood-lipid-test'];
     radios.forEach(function(name) {
       var val = data[name.replace('ha-', '').replace(/-/g, '_')];
-      if (name === 'ha-weekly-exercise-freq') val = data.weekly_exercise_freq;
       var el = document.querySelector('input[name="' + name + '"][value="' + val + '"]');
       if (el) el.checked = true;
     });
 
-    var checkGroups = { 'health-exercise-method': data.exercise_methods, 'health-need': data.health_needs };
+    var pastItems = String(data.past_medical_history || '').split('、').filter(Boolean);
+    var familyItems = String(data.family_history || '').split('、').filter(Boolean);
+    var diagnosedOther = pastItems.filter(function(x){ return x.indexOf('其他:')===0; }).map(function(x){ return x.replace('其他:',''); })[0] || '';
+    var familyOther = familyItems.filter(function(x){ return x.indexOf('其他:')===0; }).map(function(x){ return x.replace('其他:',''); })[0] || '';
+    document.getElementById('ha-diagnosed-disease-other').value = diagnosedOther;
+    document.getElementById('ha-family-disease-other').value = familyOther;
+    var checkGroups = { 'health-exercise-method': data.exercise_methods, 'health-need': data.health_needs, 'ha-diagnosed-disease': pastItems.filter(function(x){return x.indexOf('其他:')!==0;}), 'ha-family-disease': familyItems.filter(function(x){return x.indexOf('其他:')!==0;}), 'ha-special-condition': String(data.notes || '').split('、').filter(Boolean) };
     Object.keys(checkGroups).forEach(function(name) {
       var vals = checkGroups[name] || [];
       document.querySelectorAll('input[name="' + name + '"]').forEach(function(el) {
