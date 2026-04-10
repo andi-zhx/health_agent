@@ -73,8 +73,6 @@
     if (name === 'portrait') loadPortraitPage();
     if (name === 'appointments') loadAppointmentsPage();
     if (name === 'home-appointments') loadHomeAppointmentsPage();
-    if (name === 'usage') loadUsagePage();
-    if (name === 'surveys') loadSurveysPage();
     if (name === 'query-export') loadQueryExportPage();
   }
 
@@ -115,11 +113,9 @@
     get('/api/dashboard/analytics' + buildEquipmentRangeQuery()).then(function (data) {
       renderAppointmentTrend(data.appointment_trend || []);
       renderEquipmentUsageTop(data.equipment_usage_top || []);
-      renderSatisfactionSummary(data.satisfaction || {}, data.customer_activity || {});
     }).catch(function () {
       document.getElementById('appointment-trend').innerHTML = '<p style="color:#666">暂无数据</p>';
       document.getElementById('equipment-usage-top').innerHTML = '<tr><td colspan="3">暂无数据</td></tr>';
-      document.getElementById('satisfaction-summary').innerHTML = '<tr><td>暂无数据</td><td>-</td></tr>';
     });
   }
 
@@ -162,22 +158,6 @@
     tbody.innerHTML = list.map(function (x) {
       return '<tr><td>' + (x.equipment_name || '-') + '</td><td>' + (x.usage_count || 0) + '</td><td>' + (x.total_duration_minutes || 0) + '</td></tr>';
     }).join('');
-  }
-
-  function renderSatisfactionSummary(satisfaction, activity) {
-    var tbody = document.getElementById('satisfaction-summary');
-    if (!tbody) return;
-    function n(v) { return v == null ? '-' : v; }
-    var rows = [
-      ['调查样本数', n(satisfaction.survey_count)],
-      ['综合满意度(均分)', n(satisfaction.avg_overall)],
-      ['服务评分(均分)', n(satisfaction.avg_service)],
-      ['设备评分(均分)', n(satisfaction.avg_equipment)],
-      ['环境评分(均分)', n(satisfaction.avg_environment)],
-      ['人员评分(均分)', n(satisfaction.avg_staff)],
-      ['活跃客户占比', (activity.total_customers ? Math.round((activity.active_customers || 0) * 100 / activity.total_customers) : 0) + '%']
-    ];
-    tbody.innerHTML = rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td></tr>'; }).join('');
   }
 
   function fillCustomerSelect(selId) {
@@ -1041,55 +1021,6 @@
     });
   }
 
-  function loadUsagePage() {
-    get('/api/equipment-usage/service-stats').then(function (res) {
-      if (res.error) { showMsg('usage-msg', res.error, true); return; }
-      renderUsagePopularity(toList(res.items), res.total || 0);
-    });
-    get('/api/equipment-usage?page=1&page_size=20&sort_by=date_desc').then(function (res) {
-      var tbody = document.getElementById('usage-record-list');
-      if (!tbody) return;
-      tbody.innerHTML = toList(res).map(function (x) {
-        return '<tr><td>' + (x.customer_name || '-') + '</td><td>' + (x.equipment_name || '-') + '</td><td>' + (x.project_name || '-') + '</td><td>' + (x.usage_date || '-') + '</td><td>' + (x.usage_status || '-') + '</td></tr>';
-      }).join('');
-    });
-  }
-
-  function renderUsagePopularity(items, total) {
-    var tbody = document.getElementById('usage-list');
-    var chart = document.getElementById('usage-popularity-chart');
-    if (!tbody || !chart) return;
-    if (!items.length) {
-      chart.innerHTML = '<p style="color:#666">暂无预约服务数据</p>';
-      tbody.innerHTML = '<tr><td colspan="4">暂无数据</td></tr>';
-      return;
-    }
-    var max = Math.max.apply(null, items.map(function (x) { return x.appointment_count || 0; }).concat([1]));
-    chart.innerHTML = items.map(function (x, idx) {
-      var count = x.appointment_count || 0;
-      var pct = Math.round((count / max) * 100);
-      return '<div class="trend-bar"><div class="date">TOP' + (idx + 1) + ' ' + (x.project_name || '未命名项目') + '</div><div class="bar"><span style="width:' + pct + '%"></span></div><div class="value">' + count + '</div></div>';
-    }).join('');
-    tbody.innerHTML = items.map(function (x, idx) {
-      var count = x.appointment_count || 0;
-      var ratio = total ? ((count * 100 / total).toFixed(1) + '%') : '0%';
-      return '<tr><td>' + (idx + 1) + '</td><td>' + (x.project_name || '-') + '</td><td>' + count + '</td><td>' + ratio + '</td></tr>';
-    }).join('');
-    showMsg('usage-msg', '已自动统计预约服务共 ' + total + ' 条记录，当前最受欢迎项目：' + (items[0].project_name || '-'));
-  }
-
-  function loadSurveysPage() {
-    fillCustomerSelect('survey-customer');
-    fillProjectSelect('survey-project', true, 'home');
-    get('/api/satisfaction-surveys?page=1&page_size=20&sort_by=date_desc').then(function (res) {
-      var tbody = document.getElementById('survey-list');
-      if (!tbody) return;
-      tbody.innerHTML = toList(res).map(function (x) {
-        return '<tr><td>' + (x.customer_name || '-') + '</td><td>' + (x.service_project || '-') + '</td><td>' + (x.overall_rating || '-') + '</td><td>' + (x.survey_date || '-') + '</td></tr>';
-      }).join('');
-    });
-  }
-
   function loadPortraitPage() {
     get('/api/dashboard/health-portrait').then(function (res) {
       if (res.error) {
@@ -1653,27 +1584,6 @@
   });
 
 
-  document.getElementById('btn-survey-save').addEventListener('click', function () {
-    var cid = document.getElementById('survey-customer').value;
-    if (!cid) { showMsg('survey-msg', '请选择客户', true); return; }
-    var surveyProject = document.getElementById('survey-project');
-    if (!surveyProject || !surveyProject.value) { showMsg('survey-msg', '请选择反馈项目', true); return; }
-    var body = {
-      customer_id: parseInt(cid, 10),
-      service_rating: document.getElementById('survey-service').value || 5,
-      equipment_rating: document.getElementById('survey-equipment').value || 5,
-      environment_rating: document.getElementById('survey-env').value || 5,
-      staff_rating: document.getElementById('survey-staff').value || 5,
-      service_project: (document.getElementById('survey-project').selectedOptions[0] || {}).text || '',
-      feedback: document.getElementById('survey-feedback').value,
-      suggestions: document.getElementById('survey-feedback').value
-    };
-    post('/api/satisfaction-surveys', body).then(function (res) {
-      if (res.error) { showMsg('survey-msg', res.error, true); return; }
-      showMsg('survey-msg', res.message);
-    });
-  });
-
   function refreshQueryExportScope() {
     var scope = document.getElementById('qe-scope').value;
     var customerSel = document.getElementById('qe-customer');
@@ -1772,13 +1682,12 @@
     var url = '/api/search?type=' + type + (q ? '&q=' + encodeURIComponent(q) : '');
     get(url).then(function (data) {
       var html = '';
-      var labels = { customers: '客户信息', health_records: '健康档案', appointments: '预约记录', equipment_usage: '仪器使用', surveys: '满意度' };
+      var labels = { customers: '客户信息', health_records: '健康档案', appointments: '预约记录', visit_checkins: '来访登记' };
       var cols = {
         customers: ['name', 'id_card', 'phone', 'address'],
         health_records: ['customer_name', 'record_date', 'height_cm', 'weight_kg', 'blood_pressure', 'symptoms', 'diagnosis'],
         appointments: ['customer_name', 'equipment_name', 'appointment_date', 'start_time', 'end_time', 'status'],
-        equipment_usage: ['customer_name', 'equipment_name', 'usage_date', 'duration_minutes', 'operator'],
-        surveys: ['customer_name', 'service_project', 'service_rating', 'equipment_rating', 'environment_rating', 'staff_rating', 'feedback', 'survey_date']
+        visit_checkins: ['customer_name', 'checkin_time', 'purpose', 'notes']
       };
       Object.keys(labels).forEach(function (key) {
         var arr = data[key];
