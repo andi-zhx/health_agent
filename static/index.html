@@ -124,6 +124,14 @@
     .equipment-item input { display: none; }
     .equipment-item .name { font-weight: 600; color: #1f2937; }
     .equipment-item .detail { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .home-staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+    .home-staff-card { border: 1px solid #d1d5db; border-radius: 6px; background: #fff; padding: 10px; cursor: pointer; transition: all .15s ease; }
+    .home-staff-card .name { font-weight: 700; color: #1f2937; margin-bottom: 6px; }
+    .home-staff-card .meta { font-size: 12px; color: #4b5563; }
+    .home-staff-card.full { background: #f3f4f6; border-color: #d1d5db; cursor: not-allowed; }
+    .home-staff-card.full .name, .home-staff-card.full .meta { color: #9ca3af; }
+    .home-staff-card.selected { background: #3b82f6; border-color: #2563eb; }
+    .home-staff-card.selected .name, .home-staff-card.selected .meta { color: #fff; }
   </style>
 </head>
 <body>
@@ -436,36 +444,41 @@
         <div class="card">
           <h2>上门预约</h2>
           <div class="form-row">
-            <label>客户</label><select id="home-customer"></select>
-            <label>项目</label><select id="home-project"></select>
-            <label>人员</label><select id="home-staff"></select>
-            <label>日期</label><input type="date" id="home-date">
-          </div>
-          <div class="form-row" style="flex-wrap:nowrap">
-            <label>开始时间</label>
-            <select id="home-start">
-              <option value="">请选择开始时间</option>
-            </select>
-          </div>
-          <div class="form-row" style="flex-wrap:nowrap">
-            <label>结束时间</label>
-            <select id="home-end">
-              <option value="">请选择结束时间</option>
-            </select>
+            <label>客户</label>
+            <input type="text" id="home-customer-search" list="home-customer-options" placeholder="输入姓名或手机号搜索并选择客户" style="width:280px">
+            <datalist id="home-customer-options"></datalist>
+            <input type="hidden" id="home-customer">
           </div>
           <div class="form-row">
-            <label>地点</label><input type="text" id="home-location" style="flex:1">
+            <label>项目</label><select id="home-project" style="min-width:260px"></select>
+          </div>
+          <div class="form-row">
+            <label>日期</label><input type="date" id="home-date">
+          </div>
+          <div class="form-row">
+            <label>地点</label><input type="text" id="home-location" style="flex:1;max-width:520px">
+          </div>
+          <div class="form-row">
+            <label>备注</label><input type="text" id="home-notes" style="flex:1;max-width:520px">
+          </div>
+          <div class="appointment-section-title">第二部分：时间段选择</div>
+          <div id="home-slot-tip" class="appointment-tip">请选择项目和日期后查看可预约时间段（08:30-16:00，每30分钟）</div>
+          <div id="home-slots" class="slot-grid"></div>
+          <div class="appointment-section-title">第三部分：可预约服务人员</div>
+          <div id="home-staff-tip" class="appointment-tip">请先选择时间段</div>
+          <div id="home-staff-panel" class="home-staff-grid"></div>
+          <input type="hidden" id="home-staff">
+          <input type="hidden" id="home-start">
+          <input type="hidden" id="home-end">
+          <div class="form-row">
             <label>联系人</label><input type="text" id="home-contact-person">
             <label>电话</label><input type="text" id="home-contact-phone">
           </div>
-          <div class="form-row">
-            <label>备注</label><input type="text" id="home-notes" style="flex:1">
-          </div>
-          <div class="form-row hide" id="home-edit-actions">
+          <div class="form-row form-row-right hide" id="home-edit-actions">
             <button class="btn btn-danger" id="btn-home-mark-cancel">改为取消预约</button>
             <button class="btn btn-secondary" id="btn-home-cancel-edit">退出编辑</button>
           </div>
-          <div class="form-row">
+          <div class="form-row form-row-right">
             <button class="btn btn-primary" id="btn-home-save">保存上门预约</button>
           </div>
           <div id="home-msg"></div>
