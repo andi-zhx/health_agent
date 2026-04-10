@@ -183,13 +183,18 @@
   function fillCustomerSelect(selId) {
     get('/api/customers?page=1&page_size=500&sort_by=name_asc').then(function (list) {
       var sel = document.getElementById(selId);
-      if (!sel) return;
-      var old = sel.value;
-      sel.innerHTML = '<option value="">请选择客户</option>' + toList(list).map(function (c) { return '<option value="' + c.id + '">' + c.name + ' ' + (c.phone || '') + '</option>'; }).join('');
-      if (old) sel.value = old;
+      if (sel) {
+        var old = sel.value;
+        sel.innerHTML = '<option value="">请选择客户</option>' + toList(list).map(function (c) { return '<option value="' + c.id + '">' + c.name + ' ' + (c.phone || '') + '</option>'; }).join('');
+        if (old) sel.value = old;
+      }
       if (selId === 'apt-customer') {
         appointmentCustomerList = toList(list);
         renderAppointmentCustomerOptions('');
+      }
+      if (selId === 'home-customer') {
+        homeCustomerList = toList(list);
+        renderHomeCustomerOptions((document.getElementById('home-customer-search') || {}).value || '');
       }
     });
   }
@@ -210,6 +215,7 @@
       if (selId === 'apt-project') appointmentProjects = projects;
       sel.innerHTML = '<option value="">请选择项目</option>' + projects.map(function (p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('');
       if (old) sel.value = old;
+      if (selId === 'home-project' && sel.value) loadHomeSlotPanel(false);
     });
   }
 
@@ -234,7 +240,11 @@
   var selectedAppointmentEquipmentId = '';
   var selectedAppointmentSlots = [];
   var appointmentCustomerList = [];
+  var homeCustomerList = [];
   var homeAppointmentEditId = null;
+  var homeSlotPanel = [];
+  var homeStaffPanel = null;
+  var selectedHomeSlot = null;
   var appointmentProjects = [];
   var healthCustomerList = [];
   var listState = {
@@ -683,31 +693,161 @@
     });
   }
 
-  function initHomeTimeOptions() {
-    var startSel = document.getElementById('home-start');
-    var endSel = document.getElementById('home-end');
-    if (!startSel || !endSel) return;
-    var slots = [];
-    var hour = 8;
-    var minute = 30;
-    while (hour < 16 || (hour === 16 && minute === 0)) {
-      var hh = String(hour).padStart(2, '0');
-      var mm = String(minute).padStart(2, '0');
-      slots.push(hh + ':' + mm);
-      minute += 15;
-      if (minute >= 60) {
-        minute -= 60;
-        hour += 1;
-      }
+  function renderHomeCustomerOptions(keyword) {
+    var optionBox = document.getElementById('home-customer-options');
+    if (!optionBox) return;
+    var q = String(keyword || '').trim();
+    var matched = homeCustomerList.filter(function (c) {
+      var name = String(c.name || '');
+      var phone = String(c.phone || '');
+      return !q || name.indexOf(q) !== -1 || phone.indexOf(q) !== -1;
+    });
+    optionBox.innerHTML = matched.map(function (c) {
+      var label = (c.name || '') + (c.phone ? ('（' + c.phone + '）') : '');
+      return '<option value="' + escapeHtml(label) + '"></option>';
+    }).join('');
+  }
+
+  function applyHomeCustomerByInput() {
+    var input = document.getElementById('home-customer-search');
+    var hidden = document.getElementById('home-customer');
+    if (!input || !hidden) return;
+    var raw = String(input.value || '').trim();
+    hidden.value = '';
+    if (!raw) return;
+    var normalized = raw.replace(/[（）]/g, function (x) { return x === '（' ? '(' : ')'; });
+    var exact = homeCustomerList.find(function (c) {
+      var label = (c.name || '') + (c.phone ? ('(' + c.phone + ')') : '');
+      return label === normalized || (c.name || '') === raw || (c.phone || '') === raw;
+    });
+    if (!exact) return;
+    hidden.value = exact.id;
+    input.value = (exact.name || '') + (exact.phone ? ('（' + exact.phone + '）') : '');
+  }
+
+  function renderHomeSlotPanel() {
+    var box = document.getElementById('home-slots');
+    var tip = document.getElementById('home-slot-tip');
+    if (!box || !tip) return;
+    var slots = homeSlotPanel || [];
+    if (!slots.length) {
+      box.innerHTML = '';
+      tip.textContent = '请选择项目和日期后查看可预约时间段（08:30-16:00，每30分钟）';
+      return;
     }
-    var startOptions = slots.filter(function (t) { return t < '16:00'; });
-    var endOptions = slots.filter(function (t) { return t > '08:30'; });
-    startSel.innerHTML = '<option value="">请选择开始时间</option>' + startOptions.map(function (t) {
-      return '<option value="' + t + '">' + t + '</option>';
+    tip.textContent = '已加载 ' + slots.length + ' 个时间段';
+    box.innerHTML = slots.map(function (slot, idx) {
+      var available = (slot.available_count || 0) > 0;
+      var selected = selectedHomeSlot && selectedHomeSlot.start_time === slot.start_time && selectedHomeSlot.end_time === slot.end_time;
+      var cls = ['slot-card', available ? '' : 'full', selected ? 'selected' : ''].join(' ').trim();
+      var meta = available ? ('可预约｜空闲人员 ' + (slot.available_count || 0) + ' 人') : '已约满';
+      return '<div class="' + cls + '" data-home-slot-index="' + idx + '"><div class="time">' + slot.start_time + ' - ' + slot.end_time + '</div><div class="meta">' + meta + '</div></div>';
     }).join('');
-    endSel.innerHTML = '<option value="">请选择结束时间</option>' + endOptions.map(function (t) {
-      return '<option value="' + t + '">' + t + '</option>';
+    box.querySelectorAll('[data-home-slot-index]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var idx = Number(this.getAttribute('data-home-slot-index'));
+        var picked = slots[idx];
+        if (!picked || (picked.available_count || 0) <= 0) return;
+        selectedHomeSlot = { start_time: picked.start_time, end_time: picked.end_time };
+        document.getElementById('home-start').value = picked.start_time;
+        document.getElementById('home-end').value = picked.end_time;
+        document.getElementById('home-staff').value = '';
+        loadHomeStaffPanel();
+        renderHomeSlotPanel();
+      });
+    });
+  }
+
+  function renderHomeStaffPanel() {
+    var box = document.getElementById('home-staff-panel');
+    var tip = document.getElementById('home-staff-tip');
+    if (!box || !tip) return;
+    var staff = (homeStaffPanel && homeStaffPanel.staff) || [];
+    if (!selectedHomeSlot) {
+      box.innerHTML = '';
+      tip.textContent = '请先选择时间段';
+      return;
+    }
+    if (!staff.length) {
+      box.innerHTML = '';
+      tip.textContent = '暂无可配置服务人员';
+      return;
+    }
+    tip.textContent = '空闲服务人员 ' + (homeStaffPanel.available_count || 0) + ' 人';
+    var selectedStaffId = String(document.getElementById('home-staff').value || '');
+    box.innerHTML = staff.map(function (row) {
+      var available = row.status === 'available';
+      var selected = available && selectedStaffId && selectedStaffId === String(row.staff_id);
+      var cls = ['home-staff-card', available ? '' : 'full', selected ? 'selected' : ''].join(' ').trim();
+      return '<div class="' + cls + '" data-home-staff-id="' + row.staff_id + '" data-home-staff-status="' + row.status + '">' +
+        '<div class="name">' + (row.staff_name || '-') + '</div><div class="meta">' + (row.role || '服务人员') + '｜' + (row.display || '') + '</div></div>';
     }).join('');
+    box.querySelectorAll('[data-home-staff-id]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        if (this.getAttribute('data-home-staff-status') !== 'available') return;
+        document.getElementById('home-staff').value = this.getAttribute('data-home-staff-id');
+        renderHomeStaffPanel();
+      });
+    });
+  }
+
+  function loadHomeSlotPanel(keepSelected) {
+    applyHomeCustomerByInput();
+    var date = (document.getElementById('home-date') || {}).value || '';
+    var projectId = (document.getElementById('home-project') || {}).value || '';
+    if (!date || !projectId) {
+      homeSlotPanel = [];
+      if (!keepSelected) selectedHomeSlot = null;
+      renderHomeSlotPanel();
+      renderHomeStaffPanel();
+      return;
+    }
+    get('/api/home-appointments/slot-panel?date=' + encodeURIComponent(date) + '&project_id=' + encodeURIComponent(projectId)).then(function (res) {
+      homeSlotPanel = (res && res.slots) || [];
+      if (keepSelected && selectedHomeSlot) {
+        var matched = homeSlotPanel.find(function (slot) {
+          return slot.start_time === selectedHomeSlot.start_time && slot.end_time === selectedHomeSlot.end_time && (slot.available_count || 0) > 0;
+        });
+        if (!matched) {
+          selectedHomeSlot = null;
+          document.getElementById('home-start').value = '';
+          document.getElementById('home-end').value = '';
+        }
+      } else {
+        selectedHomeSlot = null;
+        document.getElementById('home-start').value = '';
+        document.getElementById('home-end').value = '';
+      }
+      renderHomeSlotPanel();
+      loadHomeStaffPanel();
+    });
+  }
+
+  function loadHomeStaffPanel() {
+    var date = (document.getElementById('home-date') || {}).value || '';
+    var projectId = (document.getElementById('home-project') || {}).value || '';
+    var start = (document.getElementById('home-start') || {}).value || '';
+    var end = (document.getElementById('home-end') || {}).value || '';
+    if (!date || !projectId || !start || !end) {
+      homeStaffPanel = null;
+      renderHomeStaffPanel();
+      return;
+    }
+    var query = '/api/home-appointments/staff-panel?date=' + encodeURIComponent(date) +
+      '&project_id=' + encodeURIComponent(projectId) +
+      '&start_time=' + encodeURIComponent(start) +
+      '&end_time=' + encodeURIComponent(end);
+    get(query).then(function (res) {
+      homeStaffPanel = res || { staff: [], available_count: 0 };
+      var currentId = String(document.getElementById('home-staff').value || '');
+      if (currentId) {
+        var matched = (homeStaffPanel.staff || []).find(function (x) {
+          return String(x.staff_id) === currentId && x.status === 'available';
+        });
+        if (!matched) document.getElementById('home-staff').value = '';
+      }
+      renderHomeStaffPanel();
+    });
   }
 
   function setHomeAppointmentEditMode(record) {
@@ -795,7 +935,14 @@
     setHomeAppointmentEditMode(null);
     fillCustomerSelect('home-customer');
     fillProjectSelect('home-project', true, 'home');
-    fillStaffSelect('home-staff');
+    homeSlotPanel = [];
+    homeStaffPanel = null;
+    selectedHomeSlot = null;
+    document.getElementById('home-start').value = '';
+    document.getElementById('home-end').value = '';
+    document.getElementById('home-staff').value = '';
+    renderHomeSlotPanel();
+    renderHomeStaffPanel();
     var sortBy = (document.getElementById('home-sort') || {}).value || 'time_desc';
     var qs = [
       'sort_by=' + encodeURIComponent(sortBy),
@@ -820,15 +967,19 @@
           if (!item) return;
           setHomeAppointmentEditMode(item);
           document.getElementById('home-customer').value = item.customer_id || '';
+          var selectedCustomer = homeCustomerList.find(function (c) { return String(c.id) === String(item.customer_id); });
+          document.getElementById('home-customer-search').value = selectedCustomer ? ((selectedCustomer.name || '') + (selectedCustomer.phone ? ('（' + selectedCustomer.phone + '）') : '')) : '';
           document.getElementById('home-project').value = item.project_id || '';
-          document.getElementById('home-staff').value = item.staff_id || '';
           document.getElementById('home-date').value = item.appointment_date || '';
+          selectedHomeSlot = { start_time: item.start_time || '', end_time: item.end_time || '' };
           document.getElementById('home-start').value = item.start_time || '';
           document.getElementById('home-end').value = item.end_time || '';
+          document.getElementById('home-staff').value = item.staff_id || '';
           document.getElementById('home-location').value = item.location || '';
           document.getElementById('home-contact-person').value = item.contact_person || '';
           document.getElementById('home-contact-phone').value = item.contact_phone || '';
           document.getElementById('home-notes').value = item.notes || '';
+          loadHomeSlotPanel(true);
         });
       });
     });
@@ -1363,6 +1514,7 @@
 
 
   document.getElementById('btn-home-save').addEventListener('click', function () {
+    applyHomeCustomerByInput();
     var body = {
       customer_id: document.getElementById('home-customer').value,
       project_id: document.getElementById('home-project').value,
@@ -1376,16 +1528,20 @@
       notes: document.getElementById('home-notes').value,
       status: 'scheduled'
     };
-    if (!body.customer_id || !body.project_id || !body.appointment_date || !body.start_time || !body.end_time || !body.location) {
+    if (!body.customer_id || !body.project_id || !body.staff_id || !body.appointment_date || !body.start_time || !body.end_time || !body.location) {
       showMsg('home-msg', '请填写必填项', true); return;
     }
-    if (body.start_time < '08:30' || body.end_time > '16:00' || body.start_time >= body.end_time) {
-      showMsg('home-msg', '上门预约时间需在08:30-16:00且结束时间晚于开始时间', true); return;
+    var startMinute = Number(body.start_time.split(':')[1] || 0);
+    var endMinute = Number(body.end_time.split(':')[1] || 0);
+    if (body.start_time < '08:30' || body.end_time > '16:00' || body.start_time >= body.end_time || (startMinute !== 0 && startMinute !== 30) || (endMinute !== 0 && endMinute !== 30)) {
+      showMsg('home-msg', '上门预约时间段需在08:30-16:00且按30分钟选择', true); return;
     }
+    var selectedCustomerText = document.getElementById('home-customer-search').value || '';
+    var selectedStaff = (homeStaffPanel && homeStaffPanel.staff || []).find(function (s) { return String(s.staff_id) === String(body.staff_id); });
     var rows = [
-      ['客户', document.getElementById('home-customer').selectedOptions[0] ? document.getElementById('home-customer').selectedOptions[0].text : ''],
+      ['客户', selectedCustomerText],
       ['项目', document.getElementById('home-project').selectedOptions[0] ? document.getElementById('home-project').selectedOptions[0].text : ''],
-      ['人员', document.getElementById('home-staff').selectedOptions[0] ? document.getElementById('home-staff').selectedOptions[0].text : ''],
+      ['人员', selectedStaff ? selectedStaff.staff_name : ''],
       ['预约时间', body.appointment_date + ' ' + body.start_time + '-' + body.end_time],
       ['地点', body.location]
     ];
@@ -1402,9 +1558,14 @@
 
   document.getElementById('btn-home-cancel-edit').addEventListener('click', function () {
     setHomeAppointmentEditMode(null);
-    ['home-start', 'home-end', 'home-location', 'home-contact-person', 'home-contact-phone', 'home-notes'].forEach(function (id) {
+    ['home-start', 'home-end', 'home-location', 'home-contact-person', 'home-contact-phone', 'home-notes', 'home-staff', 'home-customer'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
+    document.getElementById('home-customer-search').value = '';
+    selectedHomeSlot = null;
+    homeStaffPanel = null;
+    renderHomeSlotPanel();
+    renderHomeStaffPanel();
     showMsg('home-msg', '已退出编辑');
   });
   document.getElementById('home-sort').addEventListener('change', loadHomeAppointmentsPage);
@@ -1598,8 +1759,16 @@
   document.getElementById('apt-date').value = today;
   document.getElementById('apt-date').setAttribute('min', today);
   document.getElementById('home-date').value = today;
-  initHomeTimeOptions();
+  document.getElementById('home-date').setAttribute('min', today);
   refreshQueryExportScope();
+
+  document.getElementById('home-customer-search').addEventListener('input', function () {
+    renderHomeCustomerOptions(this.value);
+    applyHomeCustomerByInput();
+  });
+  document.getElementById('home-customer-search').addEventListener('change', applyHomeCustomerByInput);
+  document.getElementById('home-project').addEventListener('change', function () { loadHomeSlotPanel(false); });
+  document.getElementById('home-date').addEventListener('change', function () { loadHomeSlotPanel(false); });
 
   function fillHealthForm(data) {
     document.querySelectorAll('input[name^="ha-"]').forEach(function (el) { if (el.type === 'radio') el.checked = false; });

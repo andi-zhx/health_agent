@@ -294,7 +294,7 @@ APPOINTMENT_PROJECT_DEVICE_CONFIG = {
 DEFAULT_ALLOWED_HOME_PROJECTS = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
 
 
-def generate_time_slots(start='08:30', end='16:00', interval_minutes=15):
+def generate_time_slots(start='08:30', end='16:00', interval_minutes=30):
     slots = []
     t = datetime.strptime(start, '%H:%M')
     end_t = datetime.strptime(end, '%H:%M')
@@ -308,6 +308,17 @@ def is_valid_home_time_range(start_time, end_time):
     if not start_time or not end_time:
         return False
     return '08:30' <= start_time < end_time <= '16:00'
+
+
+def is_half_hour_slot(start_time, end_time):
+    if not is_valid_time(start_time) or not is_valid_time(end_time):
+        return False
+    st = datetime.strptime(start_time, '%H:%M')
+    et = datetime.strptime(end_time, '%H:%M')
+    if et <= st:
+        return False
+    diff = int((et - st).total_seconds() / 60)
+    return diff == 30 and st.minute in (0, 30) and et.minute in (0, 30)
 
 
 def is_today_or_future(date_str):
@@ -405,6 +416,8 @@ def validate_home_appointment_payload(d):
         return '预约时间格式必须为 HH:MM'
     if not is_valid_home_time_range(d.get('start_time'), d.get('end_time')):
         return '上门预约时间需在08:30-16:00且结束时间晚于开始时间'
+    if not is_half_hour_slot(d.get('start_time'), d.get('end_time')):
+        return '上门预约时间段需按30分钟选择'
     contact_phone = str(d.get('contact_phone') or '').strip()
     if contact_phone and not re.fullmatch(r'^1\d{10}$', contact_phone):
         return '联系人手机号格式不正确'
@@ -1143,6 +1156,19 @@ def init_db():
         )
     ''')
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS project_staff_mapping (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_name TEXT NOT NULL,
+            staff_id INTEGER NOT NULL,
+            status TEXT DEFAULT 'enabled',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(project_name, staff_id),
+            FOREIGN KEY (staff_id) REFERENCES staff(id)
+        )
+    ''')
+
     # 统一启用新结构：单项目可绑定多设备。
     # 为避免旧唯一索引逻辑混杂，这里直接重建映射表结构。
     c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='project_equipment_mapping'")
@@ -1399,6 +1425,27 @@ def init_db():
             ('王护理', '护士', '13800000003', 'available', '可上门服务'),
         ]:
             c.execute('INSERT INTO staff (name, role, phone, status, notes) VALUES (?,?,?,?,?)', row)
+
+    project_staff_seed_map = {
+        '上门康复护理': ['王护理', '李康复'],
+        '中医养生咨询': ['张理疗', '王护理'],
+        '康复训练指导': ['李康复', '张理疗'],
+        '血糖测试': ['王护理'],
+        '按摩': ['张理疗', '李康复'],
+    }
+    for project_name, staff_names in project_staff_seed_map.items():
+        for staff_name in staff_names:
+            c.execute("SELECT id FROM staff WHERE name=?", (staff_name,))
+            staff_row = c.fetchone()
+            if not staff_row:
+                continue
+            c.execute(
+                '''
+                INSERT OR IGNORE INTO project_staff_mapping (project_name, staff_id, status)
+                VALUES (?,?,?)
+                ''',
+                (project_name, staff_row['id'], 'enabled'),
+            )
 
     conn.commit()
     conn.close()
@@ -2264,6 +2311,149 @@ def api_home_appointments_list():
     return success_response(paginate_result(rows, total, page, page_size))
 
 
+@app.route('/api/home-appointments/slot-panel', methods=['GET'])
+def api_home_appointments_slot_panel():
+    date = (request.args.get('date') or '').strip()
+    project_id = (request.args.get('project_id') or '').strip()
+    if not date or not project_id:
+        return error_response('缺少参数：date/project_id')
+    if not is_valid_date(date):
+        return error_response('预约日期格式必须为 YYYY-MM-DD')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM therapy_projects WHERE id=?', (project_id,))
+    project = c.fetchone()
+    if not project:
+        conn.close()
+        return error_response('上门项目不存在', 404, 'NOT_FOUND')
+
+    c.execute(
+        '''
+        SELECT COUNT(*) AS n
+        FROM project_staff_mapping m
+        JOIN staff s ON s.id = m.staff_id
+        WHERE m.project_name=?
+          AND COALESCE(m.status, 'enabled')='enabled'
+          AND COALESCE(s.status, 'available')='available'
+        ''',
+        (project['name'],),
+    )
+    mapped_total = c.fetchone()['n'] or 0
+    if mapped_total <= 0:
+        c.execute("SELECT COUNT(*) AS n FROM staff WHERE status='available'")
+        mapped_total = c.fetchone()['n'] or 0
+
+    slots = []
+    for st, et in generate_time_slots('08:30', '16:00', 30):
+        c.execute(
+            '''
+            SELECT COUNT(DISTINCT h.staff_id) AS n
+            FROM home_appointments h
+            WHERE h.appointment_date=?
+              AND h.status='scheduled'
+              AND h.staff_id IS NOT NULL
+              AND (h.start_time < ?) AND (h.end_time > ?)
+            ''',
+            (date, et, st),
+        )
+        busy_count = c.fetchone()['n'] or 0
+        available_count = max(0, mapped_total - busy_count)
+        slots.append({
+            'start_time': st,
+            'end_time': et,
+            'available_count': available_count,
+            'status': 'available' if available_count > 0 else 'full',
+        })
+    conn.close()
+    return success_response({
+        'project_id': int(project_id),
+        'project_name': project['name'],
+        'appointment_date': date,
+        'slots': slots,
+    })
+
+
+@app.route('/api/home-appointments/staff-panel', methods=['GET'])
+def api_home_appointments_staff_panel():
+    date = (request.args.get('date') or '').strip()
+    project_id = (request.args.get('project_id') or '').strip()
+    start_time = (request.args.get('start_time') or '').strip()
+    end_time = (request.args.get('end_time') or '').strip()
+
+    if not date or not project_id or not start_time or not end_time:
+        return error_response('缺少参数：date/project_id/start_time/end_time')
+    if not is_valid_date(date):
+        return error_response('预约日期格式必须为 YYYY-MM-DD')
+    if not is_valid_home_time_range(start_time, end_time):
+        return error_response('上门预约时间需在08:30-16:00且结束时间晚于开始时间')
+    if not is_half_hour_slot(start_time, end_time):
+        return error_response('上门预约时间段需按30分钟选择')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, name FROM therapy_projects WHERE id=?', (project_id,))
+    project = c.fetchone()
+    if not project:
+        conn.close()
+        return error_response('上门项目不存在', 404, 'NOT_FOUND')
+
+    c.execute(
+        '''
+        SELECT s.id, s.name, s.role, s.status
+        FROM project_staff_mapping m
+        JOIN staff s ON s.id = m.staff_id
+        WHERE m.project_name=?
+          AND COALESCE(m.status, 'enabled')='enabled'
+        ORDER BY s.name ASC
+        ''',
+        (project['name'],),
+    )
+    mapped = row_list(c.fetchall())
+    if not mapped:
+        c.execute("SELECT id, name, role, status FROM staff WHERE status='available' ORDER BY name ASC")
+        mapped = row_list(c.fetchall())
+
+    items = []
+    available_count = 0
+    for staff in mapped:
+        is_active = (staff.get('status') or 'available') == 'available'
+        has_conflict = False
+        if is_active:
+            c.execute(
+                f'''
+                SELECT COUNT(*) AS n
+                FROM home_appointments
+                WHERE staff_id=?
+                  AND appointment_date=?
+                  AND status='scheduled'
+                  AND {overlap_condition()}
+                ''',
+                (staff['id'], date, end_time, start_time),
+            )
+            has_conflict = (c.fetchone()['n'] or 0) > 0
+        state = 'available' if (is_active and not has_conflict) else 'full'
+        if state == 'available':
+            available_count += 1
+        items.append({
+            'staff_id': staff['id'],
+            'staff_name': staff.get('name') or '',
+            'role': staff.get('role') or '',
+            'status': state,
+            'display': '可预约' if state == 'available' else '已约满',
+        })
+    conn.close()
+    return success_response({
+        'project_id': int(project_id),
+        'project_name': project['name'],
+        'appointment_date': date,
+        'start_time': start_time,
+        'end_time': end_time,
+        'available_count': available_count,
+        'staff': items,
+    })
+
+
 @app.route('/api/home-appointments', methods=['POST'])
 def api_home_appointments_create():
     d = request.json or {}
@@ -2295,6 +2485,24 @@ def api_home_appointments_create():
         if not staff:
             conn.close()
             return error_response('服务人员不存在', 404, 'NOT_FOUND')
+        c.execute(
+            '''
+            SELECT COUNT(*) AS n
+            FROM project_staff_mapping
+            WHERE project_name=? AND staff_id=? AND COALESCE(status, 'enabled')='enabled'
+            ''',
+            (project['name'], d.get('staff_id')),
+        )
+        mapped = c.fetchone()['n'] or 0
+        if mapped <= 0:
+            c.execute(
+                "SELECT COUNT(*) AS n FROM project_staff_mapping WHERE project_name=? AND COALESCE(status, 'enabled')='enabled'",
+                (project['name'],),
+            )
+            has_mapping = c.fetchone()['n'] or 0
+            if has_mapping > 0:
+                conn.close()
+                return error_response('所选服务人员不在该项目服务名单中')
 
     c.execute(f"SELECT COUNT(*) as n FROM home_appointments WHERE customer_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}", (d.get('customer_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
     if c.fetchone()['n'] > 0:
@@ -2385,6 +2593,24 @@ def api_home_appointments_update(hid):
         if not staff:
             conn.close()
             return error_response('服务人员不存在', 404, 'NOT_FOUND')
+        c.execute(
+            '''
+            SELECT COUNT(*) AS n
+            FROM project_staff_mapping
+            WHERE project_name=? AND staff_id=? AND COALESCE(status, 'enabled')='enabled'
+            ''',
+            (project['name'], d.get('staff_id')),
+        )
+        mapped = c.fetchone()['n'] or 0
+        if mapped <= 0:
+            c.execute(
+                "SELECT COUNT(*) AS n FROM project_staff_mapping WHERE project_name=? AND COALESCE(status, 'enabled')='enabled'",
+                (project['name'],),
+            )
+            has_mapping = c.fetchone()['n'] or 0
+            if has_mapping > 0:
+                conn.close()
+                return error_response('所选服务人员不在该项目服务名单中')
 
     c.execute(f"SELECT COUNT(*) as n FROM home_appointments WHERE id<>? AND customer_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}", (hid, d.get('customer_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
     if c.fetchone()['n'] > 0:
