@@ -187,6 +187,10 @@
       var old = sel.value;
       sel.innerHTML = '<option value="">请选择客户</option>' + toList(list).map(function (c) { return '<option value="' + c.id + '">' + c.name + ' ' + (c.phone || '') + '</option>'; }).join('');
       if (old) sel.value = old;
+      if (selId === 'apt-customer') {
+        appointmentCustomerList = toList(list);
+        renderAppointmentCustomerOptions('');
+      }
     });
   }
 
@@ -200,6 +204,9 @@
       if (!sel) return;
       var old = sel.value;
       var projects = toList(list);
+      if (selId === 'apt-project') {
+        projects = projects.filter(function (p) { return APPOINTMENT_PROJECT_NAMES.indexOf(p.name) !== -1; });
+      }
       if (selId === 'apt-project') appointmentProjects = projects;
       sel.innerHTML = '<option value="">请选择项目</option>' + projects.map(function (p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('');
       if (old) sel.value = old;
@@ -225,6 +232,8 @@
   var appointmentSlotPanel = null;
   var selectedAppointmentSlot = null;
   var selectedAppointmentEquipmentId = '';
+  var selectedAppointmentSlots = [];
+  var appointmentCustomerList = [];
   var homeAppointmentEditId = null;
   var appointmentProjects = [];
   var healthCustomerList = [];
@@ -234,6 +243,7 @@
     appointments: { page: 1, page_size: 20 },
     homeAppointments: { page: 1, page_size: 20 }
   };
+  var APPOINTMENT_PROJECT_NAMES = ['听力测试', '艾灸', '高压氧仓', '磁疗', '红外理疗'];
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
@@ -498,35 +508,92 @@
   function resetAppointmentSlotSelection() {
     selectedAppointmentSlot = null;
     selectedAppointmentEquipmentId = '';
-    renderEquipmentOptions([]);
+    selectedAppointmentSlots = [];
+    renderEquipmentOptions();
   }
 
-  function renderEquipmentOptions(equipmentList) {
+  function renderAppointmentCustomerOptions(keyword) {
+    var optionBox = document.getElementById('apt-customer-options');
+    if (!optionBox) return;
+    var q = String(keyword || '').trim();
+    var matched = appointmentCustomerList.filter(function (c) {
+      var name = String(c.name || '');
+      var phone = String(c.phone || '');
+      return !q || name.indexOf(q) !== -1 || phone.indexOf(q) !== -1;
+    });
+    optionBox.innerHTML = matched.map(function (c) {
+      var label = (c.name || '') + (c.phone ? ('（' + c.phone + '）') : '');
+      return '<option value="' + escapeHtml(label) + '"></option>';
+    }).join('');
+  }
+
+  function applyAppointmentCustomerByInput() {
+    var input = document.getElementById('apt-customer-search');
+    var hidden = document.getElementById('apt-customer');
+    if (!input || !hidden) return;
+    var raw = String(input.value || '').trim();
+    if (!raw) {
+      hidden.value = '';
+      return;
+    }
+    var normalized = raw.replace(/[（）]/g, function (x) { return x === '（' ? '(' : ')'; });
+    hidden.value = '';
+    var exact = appointmentCustomerList.find(function (c) {
+      var label = (c.name || '') + (c.phone ? ('(' + c.phone + ')') : '');
+      return label === normalized || (c.name || '') === raw || (c.phone || '') === raw;
+    });
+    if (!exact) return;
+    hidden.value = exact.id;
+    input.value = (exact.name || '') + (exact.phone ? ('（' + exact.phone + '）') : '');
+  }
+
+  function renderEquipmentOptions() {
     var slotHint = document.getElementById('apt-selected-slot');
     var box = document.getElementById('apt-equipment-options');
     if (!box || !slotHint) return;
-    if (!selectedAppointmentSlot) {
+    if (!selectedAppointmentSlots.length) {
       slotHint.textContent = '请先选择可预约时间段';
       box.innerHTML = '';
       return;
     }
-    slotHint.textContent = '您已选择：' + selectedAppointmentSlot.start_time + ' - ' + selectedAppointmentSlot.end_time;
+    slotHint.textContent = '已选时间段：' + selectedAppointmentSlots.map(function (slot) {
+      return slot.start_time + '-' + slot.end_time + '（设备' + (slot.equipment_label || '-') + '）';
+    }).join('；');
+    if (!selectedAppointmentSlot) {
+      box.innerHTML = '<div class="appointment-tip">请点击已选中的时间段后选择设备</div>';
+      return;
+    }
+    var equipmentList = selectedAppointmentSlot.available_equipment || [];
     if (!equipmentList.length) {
       box.innerHTML = '<div class="appointment-tip">该时间段暂无可选设备</div>';
       return;
     }
     box.innerHTML = equipmentList.map(function (item) {
       var active = String(selectedAppointmentEquipmentId) === String(item.id);
-      var model = item.model ? ('｜' + item.model) : '';
+      var model = String(item.model || '').trim() || String(item.name || '').slice(-2);
       return '<label class="equipment-item ' + (active ? 'active' : '') + '">' +
         '<input type="radio" name="apt-equipment-radio" value="' + item.id + '" ' + (active ? 'checked' : '') + '>' +
-        '<div><div class="name">' + escapeHtml(item.name || '-') + '</div><div class="detail">' + escapeHtml(item.location || '未设置位置') + model + '</div></div>' +
+        '<div><div class="name">' + escapeHtml(item.name || '-') + '</div><div class="detail">设备' + escapeHtml(model) + '</div></div>' +
         '</label>';
     }).join('');
-    box.querySelectorAll('input[name="apt-equipment-radio"]').forEach(function (radio) {
-      radio.addEventListener('change', function () {
-        selectedAppointmentEquipmentId = this.value;
-        renderEquipmentOptions(equipmentList);
+    box.querySelectorAll('.equipment-item').forEach(function (row, idx) {
+      row.addEventListener('click', function () {
+        var picked = equipmentList[idx];
+        if (!picked) return;
+        if (String(selectedAppointmentEquipmentId) === String(picked.id)) {
+          selectedAppointmentEquipmentId = '';
+        } else {
+          selectedAppointmentEquipmentId = String(picked.id);
+        }
+        var slotIndex = selectedAppointmentSlots.findIndex(function (x) {
+          return x.start_time === selectedAppointmentSlot.start_time && x.end_time === selectedAppointmentSlot.end_time;
+        });
+        if (slotIndex >= 0) {
+          selectedAppointmentSlots[slotIndex].equipment_id = selectedAppointmentEquipmentId;
+          selectedAppointmentSlots[slotIndex].equipment_name = selectedAppointmentEquipmentId ? (picked.name || '') : '';
+          selectedAppointmentSlots[slotIndex].equipment_label = selectedAppointmentEquipmentId ? (picked.model || String(picked.name || '').slice(-2)) : '';
+        }
+        renderEquipmentOptions();
       });
     });
   }
@@ -542,10 +609,10 @@
       resetAppointmentSlotSelection();
       return;
     }
-    tip.textContent = '请选择一个可预约时间段，再在下方选择设备';
+    tip.textContent = '可连续选择多个时间段（每次选中后在下方点设备，可再次点击取消该时间段）';
     slotsBox.innerHTML = slots.map(function (slot, idx) {
       var isAvailable = slot.status === 'available';
-      var isSelected = selectedAppointmentSlot && selectedAppointmentSlot.start_time === slot.start_time && selectedAppointmentSlot.end_time === slot.end_time;
+      var isSelected = selectedAppointmentSlots.some(function (x) { return x.start_time === slot.start_time && x.end_time === slot.end_time; });
       var cls = ['slot-card', isAvailable ? '' : 'full', isSelected ? 'selected' : ''].join(' ').trim();
       var meta = isAvailable ? ('可预约｜剩余设备 ' + (slot.available_equipment_count || 0) + ' 台') : '已约满';
       return '<div class="' + cls + '" data-slot-index="' + idx + '">' +
@@ -558,10 +625,25 @@
         var idx = Number(this.getAttribute('data-slot-index'));
         var picked = slots[idx];
         if (!picked || picked.status !== 'available') return;
-        selectedAppointmentSlot = picked;
-        selectedAppointmentEquipmentId = '';
+        var existed = selectedAppointmentSlots.findIndex(function (x) { return x.start_time === picked.start_time && x.end_time === picked.end_time; });
+        if (existed >= 0) {
+          selectedAppointmentSlots.splice(existed, 1);
+          selectedAppointmentSlot = null;
+          selectedAppointmentEquipmentId = '';
+        } else {
+          selectedAppointmentSlot = picked;
+          selectedAppointmentEquipmentId = '';
+          selectedAppointmentSlots.push({
+            start_time: picked.start_time,
+            end_time: picked.end_time,
+            available_equipment: picked.available_equipment || [],
+            equipment_id: '',
+            equipment_name: '',
+            equipment_label: '',
+          });
+        }
         renderAppointmentSlotPanel();
-        renderEquipmentOptions(picked.available_equipment || []);
+        renderEquipmentOptions();
       });
     });
   }
@@ -594,9 +676,7 @@
         resetAppointmentSlotSelection();
       }
       renderAppointmentSlotPanel();
-      if (selectedAppointmentSlot) {
-        renderEquipmentOptions(selectedAppointmentSlot.available_equipment || []);
-      }
+      if (selectedAppointmentSlot) renderEquipmentOptions();
     });
   }
 
@@ -662,6 +742,8 @@
     resetAppointmentSlotSelection();
     renderAppointmentSlotPanel();
     fillCustomerSelect('apt-customer');
+    var aptCustomerInput = document.getElementById('apt-customer-search');
+    if (aptCustomerInput) aptCustomerInput.value = '';
     fillProjectSelect('apt-project', true);
     var sortBy = (document.getElementById('apt-sort') || {}).value || 'time_desc';
     var qs = [
@@ -686,11 +768,20 @@
           if (!item) return;
           setAppointmentEditMode(item);
           document.getElementById('apt-customer').value = item.customer_id || '';
+          var selectedCustomer = appointmentCustomerList.find(function (c) { return String(c.id) === String(item.customer_id); });
+          document.getElementById('apt-customer-search').value = selectedCustomer ? ((selectedCustomer.name || '') + (selectedCustomer.phone ? ('（' + selectedCustomer.phone + '）') : '')) : '';
           document.getElementById('apt-project').value = item.project_id || '';
           document.getElementById('apt-date').value = item.appointment_date || '';
           document.getElementById('apt-notes').value = item.notes || '';
           selectedAppointmentSlot = { start_time: item.start_time || '', end_time: item.end_time || '' };
           selectedAppointmentEquipmentId = item.equipment_id || '';
+          selectedAppointmentSlots = [{
+            start_time: item.start_time || '',
+            end_time: item.end_time || '',
+            equipment_id: item.equipment_id || '',
+            equipment_name: item.equipment_name || '',
+            equipment_label: String(item.equipment_name || '').slice(-2),
+          }];
           loadAppointmentSlotPanel(true);
         });
       });
@@ -1183,6 +1274,12 @@
   document.getElementById('apt-date').addEventListener('change', function () {
     loadAppointmentSlotPanel(false);
   });
+  document.getElementById('apt-customer-search').addEventListener('input', function () {
+    renderAppointmentCustomerOptions(this.value);
+  });
+  document.getElementById('apt-customer-search').addEventListener('change', function () {
+    applyAppointmentCustomerByInput();
+  });
   document.getElementById('apt-sort').addEventListener('change', loadAppointmentsPage);
   document.getElementById('btn-apt-cancel-edit').addEventListener('click', function () {
     setAppointmentEditMode(null);
@@ -1203,36 +1300,59 @@
   });
 
   document.getElementById('btn-apt-save').addEventListener('click', function () {
+    applyAppointmentCustomerByInput();
     var body = {
       customer_id: document.getElementById('apt-customer').value,
       project_id: document.getElementById('apt-project').value,
-      equipment_id: selectedAppointmentEquipmentId,
       appointment_date: document.getElementById('apt-date').value,
-      start_time: selectedAppointmentSlot ? selectedAppointmentSlot.start_time : '',
-      end_time: selectedAppointmentSlot ? selectedAppointmentSlot.end_time : '',
       notes: document.getElementById('apt-notes').value,
       status: 'scheduled'
     };
-    if (!body.customer_id || !body.project_id || !body.appointment_date || !body.start_time || !body.end_time || !body.equipment_id) {
+    if (!body.customer_id || !body.project_id || !body.appointment_date || !selectedAppointmentSlots.length) {
       showMsg('apt-msg', '请填写必填项', true);
+      return;
+    }
+    if (selectedAppointmentSlots.some(function (slot) { return !slot.equipment_id; })) {
+      showMsg('apt-msg', '请为每个已选时间段选择设备', true);
       return;
     }
     if (isPastDate(body.appointment_date)) {
       showMsg('apt-msg', '预约时间仅可选择当天及以后日期', true);
       return;
     }
+    var firstEquipment = selectedAppointmentSlots[0].equipment_id;
+    var allSameEquipment = selectedAppointmentSlots.every(function (slot) { return String(slot.equipment_id) === String(firstEquipment); });
+    if (!allSameEquipment) {
+      var confirmed = window.confirm('检测到连续时间段选择了不同设备，是否确认使用不同设备继续预约？');
+      if (!confirmed) {
+        showMsg('apt-msg', '请返回界面重新选择同一设备或调整时间段', true);
+        return;
+      }
+    }
+    selectedAppointmentSlots.sort(function (a, b) { return a.start_time.localeCompare(b.start_time); });
     var rows = [
-      ['客户', document.getElementById('apt-customer').selectedOptions[0] ? document.getElementById('apt-customer').selectedOptions[0].text : ''],
+      ['客户', document.getElementById('apt-customer-search').value || ''],
       ['项目', document.getElementById('apt-project').selectedOptions[0] ? document.getElementById('apt-project').selectedOptions[0].text : ''],
-      ['设备', (selectedAppointmentSlot && (selectedAppointmentSlot.available_equipment || []).find(function (e) { return String(e.id) === String(selectedAppointmentEquipmentId); }) || {}).name || ''],
-      ['预约时间', body.appointment_date + ' ' + body.start_time + '-' + body.end_time]
+      ['时间段', selectedAppointmentSlots.map(function (slot) { return slot.start_time + '-' + slot.end_time; }).join('、')],
+      ['设备', selectedAppointmentSlots.map(function (slot) { return slot.equipment_name || ('设备' + (slot.equipment_label || '-')); }).join('、')]
     ];
     openConfirmModal(appointmentEditId ? '确认修改预约后保存记录' : '确认预约信息', rows, function () {
-      var req = appointmentEditId ? put('/api/appointments/' + appointmentEditId, body) : post('/api/appointments', body);
-      req.then(function (res) {
-        if (res.error) { showMsg('apt-msg', res.error, true); return; }
+      var requests = selectedAppointmentSlots.map(function (slot) {
+        var payload = Object.assign({}, body, {
+          equipment_id: slot.equipment_id,
+          start_time: slot.start_time,
+          end_time: slot.end_time
+        });
+        if (appointmentEditId) {
+          return put('/api/appointments/' + appointmentEditId, payload);
+        }
+        return post('/api/appointments', payload);
+      });
+      Promise.all(requests).then(function (results) {
+        var err = results.find(function (res) { return res && res.error; });
+        if (err) { showMsg('apt-msg', err.error, true); return; }
         closeConfirmModal();
-        showMsg('apt-msg', appointmentEditId ? '预约修改成功' : res.message);
+        showMsg('apt-msg', appointmentEditId ? '预约修改成功' : '预约成功，共保存 ' + results.length + ' 条记录');
         loadAppointmentsPage();
       });
     });

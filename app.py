@@ -285,6 +285,14 @@ DEFAULT_PROJECT_EQUIPMENT_MAP = {
     '按摩': '按摩机',
 }
 
+APPOINTMENT_PROJECT_DEVICE_CONFIG = {
+    '听力测试': ['听力测试耳机01', '听力测试耳机02'],
+    '艾灸': ['艾灸01', '艾灸02'],
+    '高压氧仓': ['高压氧仓01', '高压氧仓02'],
+    '磁疗': ['磁疗01', '磁疗02'],
+    '红外理疗': ['红外理疗01', '红外理疗02'],
+}
+
 DEFAULT_ALLOWED_HOME_PROJECTS = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
 
 
@@ -496,14 +504,29 @@ def get_project_required_equipment_name(project_name, cursor=None):
             own_conn.close()
 
 
+def get_project_required_equipment_names(project_name, cursor=None):
+    own_conn = None
+    c = cursor
+    try:
+        if c is None:
+            own_conn = get_db()
+            c = own_conn.cursor()
+        c.execute(
+            "SELECT equipment_name FROM project_equipment_mapping WHERE project_name=? AND status='enabled' ORDER BY id ASC",
+            (project_name,),
+        )
+        rows = [r['equipment_name'] for r in c.fetchall() if r['equipment_name']]
+        if rows:
+            return rows
+        single = get_project_required_equipment_name(project_name, c)
+        return [single] if single else []
+    finally:
+        if own_conn is not None:
+            own_conn.close()
+
+
 def get_project_available_equipment(project_name, cursor):
-    cursor.execute(
-        "SELECT equipment_name FROM project_equipment_mapping WHERE project_name=? AND status='enabled' ORDER BY id ASC",
-        (project_name,),
-    )
-    mapped_names = [r['equipment_name'] for r in cursor.fetchall() if r['equipment_name']]
-    names = mapped_names or [get_project_required_equipment_name(project_name, cursor)]
-    names = [n for n in names if n]
+    names = get_project_required_equipment_names(project_name, cursor)
     if names:
         ph = ','.join('?' * len(names))
         cursor.execute(
@@ -1230,6 +1253,11 @@ def init_db():
         ('艾灸', '专用设备', 'MOXA-001', 'D区103室', 'available', '艾灸服务设备'),
         ('按摩机', '专用设备', 'MASS-001', 'D区104室', 'available', '按摩服务设备'),
     ]
+    for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
+        for idx, equipment_name in enumerate(equipment_names, start=1):
+            required_equipment_seeds.append(
+                (equipment_name, '专用设备', f'{idx:02d}', '', 'available', f'{project_name}预约设备')
+            )
     for row in required_equipment_seeds:
         c.execute('SELECT id FROM equipment WHERE name=?', (row[0],))
         if not c.fetchone():
@@ -1255,11 +1283,36 @@ def init_db():
                 row,
             )
 
+    for project_name in APPOINTMENT_PROJECT_DEVICE_CONFIG.keys():
+        c.execute('SELECT id FROM therapy_projects WHERE name=?', (project_name,))
+        existing = c.fetchone()
+        if not existing:
+            c.execute(
+                '''
+                INSERT INTO therapy_projects (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
+                VALUES (?,?,?,?,?,?,?,?)
+                ''',
+                (project_name, '理疗', 30, 1, '专用设备', 0, 'enabled', f'{project_name}服务项目'),
+            )
+        else:
+            c.execute(
+                '''UPDATE therapy_projects
+                   SET need_equipment=1, equipment_type='专用设备', status='enabled'
+                   WHERE id=?''',
+                (existing['id'],),
+            )
+
     for project_name, equipment_name in DEFAULT_PROJECT_EQUIPMENT_MAP.items():
         c.execute('''
             INSERT OR IGNORE INTO project_equipment_mapping (project_name, equipment_name, status)
             VALUES (?,?,?)
         ''', (project_name, equipment_name, 'enabled'))
+    for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
+        for equipment_name in equipment_names:
+            c.execute('''
+                INSERT OR IGNORE INTO project_equipment_mapping (project_name, equipment_name, status)
+                VALUES (?,?,?)
+            ''', (project_name, equipment_name, 'enabled'))
 
     c.execute('SELECT name, category FROM therapy_projects')
     all_projects = row_list(c.fetchall())
@@ -1866,8 +1919,8 @@ def api_appointment_create():
     if not project:
         conn.close()
         return error_response('项目不存在')
-    required_equipment_name = get_project_required_equipment_name(project['name'], c)
-    if required_equipment_name and not d.get('equipment_id'):
+    required_equipment_names = get_project_required_equipment_names(project['name'], c)
+    if required_equipment_names and not d.get('equipment_id'):
         conn.close()
         return error_response('该项目需要指定设备')
 
@@ -1877,7 +1930,7 @@ def api_appointment_create():
         if not equipment or equipment['status'] != 'available':
             conn.close()
             return error_response('设备不可用')
-        if required_equipment_name and equipment['name'] != required_equipment_name:
+        if required_equipment_names and equipment['name'] not in required_equipment_names:
             conn.close()
             return error_response('所选设备与项目不匹配')
 
@@ -2020,8 +2073,8 @@ def api_appointment_update(aid):
         conn.close()
         return error_response('项目不存在')
 
-    required_equipment_name = get_project_required_equipment_name(project['name'], c)
-    if required_equipment_name and not d.get('equipment_id'):
+    required_equipment_names = get_project_required_equipment_names(project['name'], c)
+    if required_equipment_names and not d.get('equipment_id'):
         conn.close()
         return error_response('该项目需要指定设备')
 
@@ -2031,7 +2084,7 @@ def api_appointment_update(aid):
         if not equipment or equipment['status'] != 'available':
             conn.close()
             return error_response('设备不可用')
-        if required_equipment_name and equipment['name'] != required_equipment_name:
+        if required_equipment_names and equipment['name'] not in required_equipment_names:
             conn.close()
             return error_response('所选设备与项目不匹配')
 

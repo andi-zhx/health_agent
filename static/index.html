@@ -17,6 +17,7 @@
     .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 20px; margin-bottom: 20px; }
     .card h2 { margin: 0 0 16px; font-size: 18px; font-weight: 600; }
     .form-row { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 12px; align-items: center; }
+    .form-row-right { justify-content: flex-end; }
     .form-row label { min-width: 90px; }
     input, select, textarea { padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
     input:focus, select:focus, textarea:focus { outline: none; border-color: #3498db; }
@@ -120,7 +121,7 @@
     .equipment-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
     .equipment-item { border: 1px solid #d1d5db; border-radius: 6px; background: #fff; padding: 8px 10px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
     .equipment-item.active { border-color: #2563eb; background: #eff6ff; }
-    .equipment-item input { margin-top: 2px; }
+    .equipment-item input { display: none; }
     .equipment-item .name { font-weight: 600; color: #1f2937; }
     .equipment-item .detail { font-size: 12px; color: #6b7280; margin-top: 2px; }
   </style>
@@ -392,7 +393,12 @@
         <div class="card">
           <h2>预约服务</h2>
           <div class="appointment-section-title">一、预约基础信息</div>
-          <div class="form-row"><label>客户</label><select id="apt-customer"></select></div>
+          <div class="form-row">
+            <label>客户</label>
+            <input type="text" id="apt-customer-search" list="apt-customer-options" placeholder="输入姓名或手机号搜索并选择客户">
+            <datalist id="apt-customer-options"></datalist>
+            <select id="apt-customer" class="hide"></select>
+          </div>
           <div class="form-row"><label>项目</label><select id="apt-project"></select></div>
           <div class="form-row">
             <label>日期</label>
@@ -412,7 +418,7 @@
             <button class="btn btn-danger" id="btn-apt-mark-cancel">改为取消预约</button>
             <button class="btn btn-secondary" id="btn-apt-cancel-edit">退出编辑</button>
           </div>
-          <div class="form-row">
+          <div class="form-row form-row-right">
             <button class="btn btn-primary" id="btn-apt-save">保存预约</button>
           </div>
           <div id="apt-msg"></div>
