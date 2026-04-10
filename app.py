@@ -496,6 +496,27 @@ def get_project_required_equipment_name(project_name, cursor=None):
             own_conn.close()
 
 
+def get_project_available_equipment(project_name, cursor):
+    cursor.execute(
+        "SELECT equipment_name FROM project_equipment_mapping WHERE project_name=? AND status='enabled' ORDER BY id ASC",
+        (project_name,),
+    )
+    mapped_names = [r['equipment_name'] for r in cursor.fetchall() if r['equipment_name']]
+    names = mapped_names or [get_project_required_equipment_name(project_name, cursor)]
+    names = [n for n in names if n]
+    if names:
+        ph = ','.join('?' * len(names))
+        cursor.execute(
+            f"SELECT id, name, location, model FROM equipment WHERE status='available' AND name IN ({ph}) ORDER BY name ASC, id ASC",
+            tuple(names),
+        )
+    else:
+        cursor.execute(
+            "SELECT id, name, location, model FROM equipment WHERE status='available' ORDER BY name ASC, id ASC"
+        )
+    return row_list(cursor.fetchall())
+
+
 def is_project_home_allowed(project_name, cursor=None):
     own_conn = None
     c = cursor
@@ -1804,7 +1825,6 @@ def api_appointments_list():
         JOIN customers c ON a.customer_id=c.id
         LEFT JOIN equipment e ON a.equipment_id=e.id
         LEFT JOIN therapy_projects p ON a.project_id=p.id
-        LEFT JOIN staff s ON a.staff_id=s.id
         WHERE 1=1
     '''
     params = []
@@ -1821,7 +1841,7 @@ def api_appointments_list():
     total = c.fetchone()['n']
     c.execute(f'''
         SELECT a.*, c.name as customer_name, c.phone as customer_phone, e.name as equipment_name,
-               p.name as project_name, s.name as staff_name
+               p.name as project_name
         {base_sql}
         ORDER BY {order_sql}
         LIMIT ? OFFSET ?
@@ -1874,27 +1894,21 @@ def api_appointment_create():
             conn.close()
             return error_response('该时段设备已被预约')
 
-    if d.get('staff_id'):
-        c.execute(f"SELECT COUNT(*) as n FROM appointments WHERE staff_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}",
-                  (d.get('staff_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')))
-        if c.fetchone()['n'] > 0:
-            conn.close()
-            return error_response('该服务人员该时段已被预约')
-
     c.execute('''
         INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, notes, updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
-    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), d.get('staff_id'), d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes')))
+    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes')))
     conn.commit()
     rid = c.lastrowid
     conn.close()
     return success_response({'id': rid}, '预约成功', 201)
 
 
-@app.route('/api/appointments/free-slots', methods=['GET'])
-def api_appointments_free_slots():
+@app.route('/api/appointments/slot-panel', methods=['GET'])
+def api_appointments_slot_panel():
     date = request.args.get('date')
     project_id = request.args.get('project_id', type=int)
+    exclude_appointment_id = request.args.get('exclude_appointment_id', type=int)
     if not date:
         return error_response('缺少 date')
     if not project_id:
@@ -1908,47 +1922,51 @@ def api_appointments_free_slots():
         conn.close()
         return error_response('项目不存在', 404, 'NOT_FOUND')
 
-    required_equipment_name = get_project_required_equipment_name(project['name'], c)
-    available_equipment = []
-    if required_equipment_name:
-        c.execute("SELECT id, name FROM equipment WHERE status='available' AND name=? ORDER BY name", (required_equipment_name,))
-        available_equipment = row_list(c.fetchall())
+    available_equipment = get_project_available_equipment(project['name'], c)
 
     slots = generate_time_slots('08:30', '16:00', 15)
-    result = []
+    slot_items = []
     for st, et in slots:
         free_equipment = []
         if available_equipment:
             for equipment in available_equipment:
                 c.execute(
-                    f"SELECT COUNT(*) as n FROM appointments WHERE appointment_date=? AND status='scheduled' AND equipment_id=? AND {overlap_condition()}",
-                    (date, equipment['id'], et, st),
+                    f"SELECT COUNT(*) as n FROM appointments WHERE appointment_date=? AND status='scheduled' AND equipment_id=? "
+                    f"AND (? IS NULL OR id<>?) AND {overlap_condition()}",
+                    (date, equipment['id'], exclude_appointment_id, exclude_appointment_id, et, st),
                 )
                 if c.fetchone()['n'] == 0:
-                    free_equipment.append({'id': equipment['id'], 'name': equipment['name']})
+                    free_equipment.append({
+                        'id': equipment['id'],
+                        'name': equipment['name'],
+                        'location': equipment.get('location'),
+                        'model': equipment.get('model'),
+                    })
 
-        c.execute(
-            f"SELECT staff_id FROM appointments WHERE appointment_date=? AND status='scheduled' AND staff_id IS NOT NULL AND {overlap_condition()}",
-            (date, et, st),
-        )
-        busy_staff_ids = {r['staff_id'] for r in c.fetchall()}
-
-        if busy_staff_ids:
-            ph = ','.join('?' * len(busy_staff_ids))
-            c.execute(f"SELECT COUNT(*) as n FROM staff WHERE status='available' AND id NOT IN ({ph})", tuple(busy_staff_ids))
-        else:
-            c.execute("SELECT COUNT(*) as n FROM staff WHERE status='available'")
-        available_staff_count = c.fetchone()['n']
-
-        result.append({
+        slot_items.append({
             'start_time': st,
             'end_time': et,
-            'available_staff_count': max(available_staff_count, 0),
+            'status': 'available' if free_equipment else 'full',
+            'available_equipment_count': len(free_equipment),
             'available_equipment': free_equipment,
         })
 
     conn.close()
-    return success_response(result)
+    return success_response({
+        'date': date,
+        'project_id': project_id,
+        'slots': slot_items,
+    })
+
+
+@app.route('/api/appointments/free-slots', methods=['GET'])
+def api_appointments_free_slots():
+    """兼容旧接口：返回结构与 slot-panel 保持同语义。"""
+    panel_resp, status = api_appointments_slot_panel()
+    if status != 200:
+        return panel_resp, status
+    data = panel_resp.get_json().get('data') or {}
+    return success_response(data.get('slots', []))
 
 
 @app.route('/api/appointments/available-options', methods=['GET'])
@@ -1974,16 +1992,8 @@ def api_appointments_available_options():
     else:
         c.execute("SELECT * FROM equipment WHERE status='available' ORDER BY name")
     avail_equipment = row_list(c.fetchall())
-    c.execute(f"SELECT staff_id FROM appointments WHERE appointment_date=? AND status='scheduled' AND {overlap_condition()} AND staff_id IS NOT NULL", (date, end_time, start_time))
-    busy_staff = [r['staff_id'] for r in c.fetchall()]
-    if busy_staff:
-        ph = ','.join('?' * len(busy_staff))
-        c.execute(f"SELECT * FROM staff WHERE status='available' AND id NOT IN ({ph}) ORDER BY name", busy_staff)
-    else:
-        c.execute("SELECT * FROM staff WHERE status='available' ORDER BY name")
-    avail_staff = row_list(c.fetchall())
     conn.close()
-    return success_response({'project': dict(project), 'available_equipment': avail_equipment, 'available_staff': avail_staff})
+    return success_response({'project': dict(project), 'available_equipment': avail_equipment})
 
 
 
@@ -2042,15 +2052,6 @@ def api_appointment_update(aid):
             conn.close()
             return error_response('该时段设备已被预约')
 
-    if d.get('staff_id'):
-        c.execute(
-            f"SELECT COUNT(*) as n FROM appointments WHERE id<>? AND staff_id=? AND appointment_date=? AND status='scheduled' AND {overlap_condition()}",
-            (aid, d.get('staff_id'), d.get('appointment_date'), d.get('end_time'), d.get('start_time')),
-        )
-        if c.fetchone()['n'] > 0:
-            conn.close()
-            return error_response('该服务人员该时段已被预约')
-
     c.execute(
         '''
         UPDATE appointments
@@ -2058,7 +2059,7 @@ def api_appointment_update(aid):
         WHERE id=?
         ''',
         (
-            d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), d.get('staff_id'),
+            d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None,
             d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes'),
             aid,
         ),
