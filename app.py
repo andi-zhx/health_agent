@@ -279,9 +279,6 @@ def require_login():
 
 
 DEFAULT_PROJECT_EQUIPMENT_MAP = {
-    '听力测试': '听力耳机',
-    '高压氧仓': '高压氧仓',
-    '艾灸': '艾灸',
     '按摩': '按摩机',
 }
 
@@ -1248,9 +1245,6 @@ def init_db():
 
 
     required_equipment_seeds = [
-        ('听力耳机', '专用设备', 'HT-001', 'D区101室', 'available', '听力测试专用设备'),
-        ('高压氧仓', '专用设备', 'HBOT-001', 'D区102室', 'available', '高压氧服务设备'),
-        ('艾灸', '专用设备', 'MOXA-001', 'D区103室', 'available', '艾灸服务设备'),
         ('按摩机', '专用设备', 'MASS-001', 'D区104室', 'available', '按摩服务设备'),
     ]
     for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
@@ -1313,6 +1307,17 @@ def init_db():
                 INSERT OR IGNORE INTO project_equipment_mapping (project_name, equipment_name, status)
                 VALUES (?,?,?)
             ''', (project_name, equipment_name, 'enabled'))
+    for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
+        placeholders = ','.join('?' * len(equipment_names))
+        c.execute(
+            f'''
+            UPDATE project_equipment_mapping
+               SET status='disabled'
+             WHERE project_name=?
+               AND equipment_name NOT IN ({placeholders})
+            ''',
+            (project_name, *equipment_names),
+        )
 
     c.execute('SELECT name, category FROM therapy_projects')
     all_projects = row_list(c.fetchall())
