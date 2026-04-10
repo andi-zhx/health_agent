@@ -526,6 +526,32 @@ def get_project_required_equipment_names(project_name, cursor=None):
 def get_project_available_equipment(project_name, cursor):
     names = get_project_required_equipment_names(project_name, cursor)
     if names:
+        for idx, equipment_name in enumerate(names, start=1):
+            cursor.execute(
+                "SELECT id, status FROM equipment WHERE name=? LIMIT 1",
+                (equipment_name,),
+            )
+            existing_equipment = cursor.fetchone()
+            if not existing_equipment:
+                cursor.execute(
+                    '''
+                    INSERT INTO equipment (name, type, model, location, status, description)
+                    VALUES (?,?,?,?,?,?)
+                    ''',
+                    (
+                        equipment_name,
+                        '专用设备',
+                        f'{idx:02d}',
+                        '',
+                        'available',
+                        f'{project_name}预约设备',
+                    ),
+                )
+            elif existing_equipment['status'] != 'available':
+                cursor.execute(
+                    "UPDATE equipment SET status='available' WHERE id=?",
+                    (existing_equipment['id'],),
+                )
         ph = ','.join('?' * len(names))
         cursor.execute(
             f"SELECT id, name, location, model FROM equipment WHERE status='available' AND name IN ({ph}) ORDER BY name ASC, id ASC",
@@ -1117,16 +1143,52 @@ def init_db():
         )
     ''')
 
+    # 统一启用新结构：单项目可绑定多设备。
+    # 为避免旧唯一索引逻辑混杂，这里直接重建映射表结构。
+    c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='project_equipment_mapping'")
+    has_mapping_table = c.fetchone() is not None
+    legacy_mappings = []
+    if has_mapping_table:
+        c.execute(
+            '''
+            SELECT project_name, equipment_name, status, created_at, updated_at
+              FROM project_equipment_mapping
+            '''
+        )
+        legacy_mappings = row_list(c.fetchall())
+        c.execute('DROP TABLE project_equipment_mapping')
+
     c.execute('''
-        CREATE TABLE IF NOT EXISTS project_equipment_mapping (
+        CREATE TABLE project_equipment_mapping (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_name TEXT NOT NULL UNIQUE,
+            project_name TEXT NOT NULL,
             equipment_name TEXT NOT NULL,
             status TEXT DEFAULT 'enabled',
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(project_name, equipment_name)
         )
     ''')
+
+    if legacy_mappings:
+        c.executemany(
+            '''
+            INSERT OR IGNORE INTO project_equipment_mapping
+                (project_name, equipment_name, status, created_at, updated_at)
+            VALUES (?,?,?,?,?)
+            ''',
+            [
+                (
+                    row.get('project_name'),
+                    row.get('equipment_name'),
+                    row.get('status') or 'enabled',
+                    row.get('created_at'),
+                    row.get('updated_at'),
+                )
+                for row in legacy_mappings
+                if row.get('project_name') and row.get('equipment_name')
+            ],
+        )
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS satisfaction_surveys (
