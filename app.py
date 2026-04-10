@@ -526,6 +526,32 @@ def get_project_required_equipment_names(project_name, cursor=None):
 def get_project_available_equipment(project_name, cursor):
     names = get_project_required_equipment_names(project_name, cursor)
     if names:
+        for idx, equipment_name in enumerate(names, start=1):
+            cursor.execute(
+                "SELECT id, status FROM equipment WHERE name=? LIMIT 1",
+                (equipment_name,),
+            )
+            existing_equipment = cursor.fetchone()
+            if not existing_equipment:
+                cursor.execute(
+                    '''
+                    INSERT INTO equipment (name, type, model, location, status, description)
+                    VALUES (?,?,?,?,?,?)
+                    ''',
+                    (
+                        equipment_name,
+                        '专用设备',
+                        f'{idx:02d}',
+                        '',
+                        'available',
+                        f'{project_name}预约设备',
+                    ),
+                )
+            elif existing_equipment['status'] != 'available':
+                cursor.execute(
+                    "UPDATE equipment SET status='available' WHERE id=?",
+                    (existing_equipment['id'],),
+                )
         ph = ','.join('?' * len(names))
         cursor.execute(
             f"SELECT id, name, location, model FROM equipment WHERE status='available' AND name IN ({ph}) ORDER BY name ASC, id ASC",
