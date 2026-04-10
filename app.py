@@ -427,47 +427,6 @@ def validate_home_appointment_payload(d):
     return None
 
 
-def validate_survey_payload(d):
-    if not d.get('customer_id'):
-        return '客户为必填项'
-    rating_fields = ('service_rating', 'equipment_rating', 'environment_rating', 'staff_rating')
-    for field in rating_fields:
-        value = d.get(field)
-        if value in (None, ''):
-            return f'{field} 为必填项'
-        try:
-            score = int(value)
-        except (TypeError, ValueError):
-            return f'{field} 必须为整数'
-        if score < 1 or score > 5:
-            return f'{field} 必须在1-5之间'
-    overall = d.get('overall_rating')
-    if overall not in (None, ''):
-        try:
-            overall_score = int(overall)
-        except (TypeError, ValueError):
-            return 'overall_rating 必须为整数'
-        if overall_score < 1 or overall_score > 5:
-            return 'overall_rating 必须在1-5之间'
-    return None
-
-
-def validate_equipment_usage_payload(d):
-    required_fields = ('customer_id', 'equipment_id', 'usage_date')
-    if not all(d.get(k) for k in required_fields):
-        return '缺少必填字段'
-    if not is_valid_date(d.get('usage_date')):
-        return '使用日期格式必须为 YYYY-MM-DD'
-    duration = d.get('duration_minutes')
-    if duration not in (None, ''):
-        try:
-            if int(duration) <= 0:
-                return '使用时长必须大于0'
-        except (TypeError, ValueError):
-            return '使用时长必须为整数'
-    return None
-
-
 def success_response(data=None, message='操作成功', status=200):
     return jsonify({'success': True, 'message': message, 'data': data if data is not None else {}}), status
 
@@ -908,41 +867,7 @@ def init_db():
         'source_record_id': 'INTEGER',
     })
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS equipment_usage (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            equipment_id INTEGER NOT NULL,
-            appointment_id INTEGER,
-            project_id INTEGER,
-            staff_id INTEGER,
-            usage_date TEXT NOT NULL,
-            duration_minutes INTEGER,
-            parameters TEXT,
-            notes TEXT,
-            operator TEXT,
-            usage_status TEXT,
-            usage_result TEXT,
-            customer_feedback TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (customer_id) REFERENCES customers(id),
-            FOREIGN KEY (equipment_id) REFERENCES equipment(id),
-            FOREIGN KEY (appointment_id) REFERENCES appointments(id)
-        )
-    ''')
-
-    ensure_columns(c, 'equipment_usage', {
-        'appointment_id': 'INTEGER',
-        'project_id': 'INTEGER',
-        'staff_id': 'INTEGER',
-        'parameters': 'TEXT',
-        'notes': 'TEXT',
-        'operator': 'TEXT',
-        'usage_status': 'TEXT',
-        'usage_result': 'TEXT',
-        'customer_feedback': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
-    })
+    c.execute('DROP TABLE IF EXISTS equipment_usage')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_assessments (
@@ -1216,37 +1141,7 @@ def init_db():
             ],
         )
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS satisfaction_surveys (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            appointment_id INTEGER,
-            service_project TEXT,
-            service_rating INTEGER,
-            equipment_rating INTEGER,
-            environment_rating INTEGER,
-            staff_rating INTEGER,
-            overall_rating INTEGER,
-            feedback TEXT,
-            suggestions TEXT,
-            survey_date TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (customer_id) REFERENCES customers(id),
-            FOREIGN KEY (appointment_id) REFERENCES appointments(id)
-        )
-    ''')
-
-    ensure_columns(c, 'satisfaction_surveys', {
-        'appointment_id': 'INTEGER',
-        'service_project': 'TEXT',
-        'service_rating': 'INTEGER',
-        'equipment_rating': 'INTEGER',
-        'environment_rating': 'INTEGER',
-        'staff_rating': 'INTEGER',
-        'overall_rating': 'INTEGER',
-        'feedback': 'TEXT',
-        'suggestions': 'TEXT',
-        'survey_date': 'TEXT DEFAULT CURRENT_TIMESTAMP',
-    })
+    c.execute('DROP TABLE IF EXISTS satisfaction_surveys')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_records (
@@ -1523,11 +1418,7 @@ def api_customer_get(cid):
         (cid,)
     )
     cust['appointments'] = row_list(c.fetchall())
-    c.execute(
-        'SELECT eu.*, e.name as equipment_name FROM equipment_usage eu JOIN equipment e ON eu.equipment_id=e.id WHERE eu.customer_id=? ORDER BY eu.usage_date DESC',
-        (cid,)
-    )
-    cust['usage_records'] = row_list(c.fetchall())
+    cust['usage_records'] = []
     c.execute('SELECT * FROM health_records WHERE customer_id=? ORDER BY record_date DESC', (cid,))
     cust['health_records'] = row_list(c.fetchall())
     c.execute('SELECT * FROM visit_checkins WHERE customer_id=? ORDER BY checkin_time DESC', (cid,))
@@ -2644,212 +2535,6 @@ def api_home_appointments_update(hid):
     return success_response({'id': hid}, '更新成功')
 
 
-# ========== 设备使用 ==========
-@app.route('/api/equipment-usage', methods=['GET'])
-def api_equipment_usage_list():
-    status = (request.args.get('status', '') or '').strip().lower()
-    date_from = (request.args.get('date_from', '') or '').strip()
-    date_to = (request.args.get('date_to', '') or '').strip()
-    sort_by = (request.args.get('sort_by', '') or 'date_desc').strip()
-    page, page_size, offset = parse_list_params()
-    order_sql = {
-        'date_desc': 'eu.usage_date DESC, eu.id DESC',
-        'date_asc': 'eu.usage_date ASC, eu.id ASC',
-        'name_asc': 'c.name COLLATE NOCASE ASC, eu.usage_date DESC, eu.id DESC',
-    }.get(sort_by, 'eu.usage_date DESC, eu.id DESC')
-    conn = get_db()
-    c = conn.cursor()
-    base_sql = '''
-        FROM equipment_usage eu
-        JOIN customers c ON eu.customer_id=c.id
-        LEFT JOIN equipment e ON eu.equipment_id=e.id
-        LEFT JOIN therapy_projects p ON eu.project_id=p.id
-        LEFT JOIN staff s ON eu.staff_id=s.id
-        WHERE 1=1
-    '''
-    params = []
-    if status:
-        base_sql += ' AND LOWER(COALESCE(eu.usage_status, ""))=?'
-        params.append(status)
-    if date_from:
-        base_sql += ' AND date(eu.usage_date) >= date(?)'
-        params.append(date_from)
-    if date_to:
-        base_sql += ' AND date(eu.usage_date) <= date(?)'
-        params.append(date_to)
-    c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
-    total = c.fetchone()['n']
-    c.execute(f'''
-        SELECT eu.*, c.name as customer_name, e.name as equipment_name, p.name as project_name, s.name as staff_name
-        {base_sql}
-        ORDER BY {order_sql}
-        LIMIT ? OFFSET ?
-    ''', params + [page_size, offset])
-    rows = row_list(c.fetchall())
-    conn.close()
-    return success_response(paginate_result(rows, total, page, page_size))
-
-
-@app.route('/api/equipment-usage', methods=['POST'])
-def api_equipment_usage_create():
-    d = request.json or {}
-    validation_error = validate_equipment_usage_payload(d)
-    if validation_error:
-        return error_response(validation_error)
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        INSERT INTO equipment_usage (customer_id, equipment_id, appointment_id, project_id, staff_id, usage_date, duration_minutes, parameters, notes, operator, usage_status, usage_result, customer_feedback)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ''', (d.get('customer_id'), d.get('equipment_id'), d.get('appointment_id'), d.get('project_id'), d.get('staff_id'), d.get('usage_date'), d.get('duration_minutes'), d.get('parameters'), d.get('notes'), d.get('operator'), d.get('usage_status'), d.get('usage_result'), d.get('customer_feedback')))
-    conn.commit()
-    id = c.lastrowid
-    conn.close()
-    return success_response({'id': id}, '记录已添加', 201)
-
-
-@app.route('/api/equipment-usage/summary', methods=['GET'])
-def api_equipment_usage_summary():
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        SELECT e.id as equipment_id,
-               e.name as equipment_name,
-               COUNT(eu.id) as usage_count,
-               COALESCE(SUM(eu.duration_minutes), 0) as total_duration_minutes,
-               COUNT(DISTINCT eu.customer_id) as customer_count
-        FROM equipment e
-        LEFT JOIN equipment_usage eu ON e.id = eu.equipment_id
-        GROUP BY e.id, e.name
-        ORDER BY usage_count DESC, total_duration_minutes DESC
-    ''')
-    rows = c.fetchall()
-    conn.close()
-    return success_response(row_list(rows))
-
-
-@app.route('/api/equipment-usage/by-project', methods=['GET'])
-def api_equipment_usage_by_project():
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        SELECT p.id as project_id, p.name as project_name,
-               COUNT(eu.id) as usage_count,
-               COALESCE(SUM(eu.duration_minutes), 0) as total_duration_minutes
-        FROM therapy_projects p
-        LEFT JOIN equipment_usage eu ON p.id = eu.project_id
-        GROUP BY p.id, p.name
-        ORDER BY usage_count DESC
-    ''')
-    rows = c.fetchall()
-    conn.close()
-    return success_response(row_list(rows))
-
-
-@app.route('/api/equipment-usage/by-customer', methods=['GET'])
-def api_equipment_usage_by_customer():
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        SELECT c.id as customer_id, c.name as customer_name,
-               COUNT(eu.id) as usage_count,
-               COALESCE(SUM(eu.duration_minutes), 0) as total_duration_minutes
-        FROM customers c
-        LEFT JOIN equipment_usage eu ON c.id = eu.customer_id
-        WHERE c.is_deleted=0
-        GROUP BY c.id, c.name
-        ORDER BY usage_count DESC, total_duration_minutes DESC
-    ''')
-    rows = c.fetchall()
-    conn.close()
-    return success_response(row_list(rows))
-
-
-@app.route('/api/equipment-usage/service-stats', methods=['GET'])
-def api_equipment_usage_service_stats():
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        SELECT COALESCE(p.name, '未分类项目') as project_name,
-               COUNT(a.id) as appointment_count
-        FROM appointments a
-        LEFT JOIN therapy_projects p ON a.project_id = p.id
-        WHERE a.status <> 'cancelled'
-        GROUP BY COALESCE(p.name, '未分类项目')
-        ORDER BY appointment_count DESC, project_name ASC
-    ''')
-    items = row_list(c.fetchall())
-    conn.close()
-    total = sum((x.get('appointment_count') or 0) for x in items)
-    return success_response({'items': items, 'total': total})
-
-
-# ========== 满意度 ==========
-@app.route('/api/satisfaction-surveys', methods=['GET'])
-def api_surveys_list():
-    status = (request.args.get('status', '') or '').strip().lower()
-    date_from = (request.args.get('date_from', '') or '').strip()
-    date_to = (request.args.get('date_to', '') or '').strip()
-    sort_by = (request.args.get('sort_by', '') or 'date_desc').strip()
-    page, page_size, offset = parse_list_params()
-    order_sql = {
-        'date_desc': 's.survey_date DESC, s.id DESC',
-        'date_asc': 's.survey_date ASC, s.id ASC',
-        'name_asc': 'c.name COLLATE NOCASE ASC, s.survey_date DESC, s.id DESC',
-        'rating_desc': 's.overall_rating DESC, s.id DESC',
-    }.get(sort_by, 's.survey_date DESC, s.id DESC')
-    conn = get_db()
-    c = conn.cursor()
-    base_sql = 'FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id WHERE 1=1'
-    params = []
-    if status:
-        if status == 'high':
-            base_sql += ' AND s.overall_rating >= 4'
-        elif status == 'mid':
-            base_sql += ' AND s.overall_rating = 3'
-        elif status == 'low':
-            base_sql += ' AND s.overall_rating <= 2'
-    if date_from:
-        base_sql += ' AND date(s.survey_date) >= date(?)'
-        params.append(date_from)
-    if date_to:
-        base_sql += ' AND date(s.survey_date) <= date(?)'
-        params.append(date_to)
-    c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
-    total = c.fetchone()['n']
-    c.execute(f'SELECT s.*, c.name as customer_name {base_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?', params + [page_size, offset])
-    rows = row_list(c.fetchall())
-    conn.close()
-    return success_response(paginate_result(rows, total, page, page_size))
-
-
-@app.route('/api/satisfaction-surveys', methods=['POST'])
-def api_survey_create():
-    d = request.json or {}
-    validation_error = validate_survey_payload(d)
-    if validation_error:
-        return error_response(validation_error)
-    service_rating = int(d.get('service_rating'))
-    equipment_rating = int(d.get('equipment_rating'))
-    environment_rating = int(d.get('environment_rating'))
-    staff_rating = int(d.get('staff_rating'))
-    overall_rating = d.get('overall_rating')
-    if overall_rating in (None, ''):
-        overall_rating = int(round((service_rating + equipment_rating + environment_rating + staff_rating) / 4.0))
-    else:
-        overall_rating = int(overall_rating)
-    conn = get_db()
-    c = conn.cursor()
-    c.execute('''
-        INSERT INTO satisfaction_surveys (customer_id, appointment_id, service_project, service_rating, equipment_rating, environment_rating, staff_rating, overall_rating, feedback, suggestions)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    ''', (d.get('customer_id'), d.get('appointment_id'), d.get('service_project'), service_rating, equipment_rating, environment_rating, staff_rating, overall_rating, d.get('feedback'), d.get('suggestions')))
-    conn.commit()
-    id = c.lastrowid
-    conn.close()
-    return success_response({'id': id}, '提交成功', 201)
-
-
 @app.route('/api/auth/login', methods=['POST'])
 def api_auth_login():
     data = request.json or {}
@@ -2877,7 +2562,7 @@ def api_search():
     q = (request.args.get('q') or '').strip()
     kind = request.args.get('type', 'all')
     if not q and kind == 'all':
-        return jsonify({'customers': [], 'health_records': [], 'appointments': [], 'visit_checkins': [], 'equipment_usage': [], 'surveys': []})
+        return jsonify({'customers': [], 'health_records': [], 'appointments': [], 'visit_checkins': []})
 
     conn = get_db()
     c = conn.cursor()
@@ -2906,19 +2591,7 @@ def api_search():
                   (like, like, like, like, like))
         result['visit_checkins'] = row_list(c.fetchall())
 
-    if kind in ('all', 'usage'):
-        c.execute('''SELECT eu.*, c.name as customer_name, e.name as equipment_name
-            FROM equipment_usage eu JOIN customers c ON eu.customer_id=c.id JOIN equipment e ON eu.equipment_id=e.id
-            WHERE c.name LIKE ? OR c.id_card LIKE ? OR c.phone LIKE ? OR eu.notes LIKE ? OR eu.operator LIKE ?
-            ORDER BY eu.usage_date DESC LIMIT 100''', (like, like, like, like, like))
-        result['equipment_usage'] = row_list(c.fetchall())
-
-    if kind in ('all', 'surveys'):
-        c.execute('SELECT s.*, c.name as customer_name FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id WHERE c.name LIKE ? OR c.id_card LIKE ? OR c.phone LIKE ? OR s.service_project LIKE ? OR s.feedback LIKE ? OR s.suggestions LIKE ? ORDER BY s.survey_date DESC LIMIT 100',
-                  (like, like, like, like, like, like))
-        result['surveys'] = row_list(c.fetchall())
-
-    for key in ('customers', 'health_records', 'appointments', 'visit_checkins', 'equipment_usage', 'surveys'):
+    for key in ('customers', 'health_records', 'appointments', 'visit_checkins'):
         if key not in result:
             result[key] = []
 
@@ -3016,19 +2689,6 @@ def api_dashboard_analytics():
     ''', equipment_params)
     equipment_usage_top = row_list(c.fetchall())
 
-    # 满意度分析
-    c.execute('''
-        SELECT
-            ROUND(AVG(service_rating), 2) as avg_service,
-            ROUND(AVG(equipment_rating), 2) as avg_equipment,
-            ROUND(AVG(environment_rating), 2) as avg_environment,
-            ROUND(AVG(staff_rating), 2) as avg_staff,
-            ROUND(AVG(COALESCE(overall_rating, (COALESCE(service_rating,0)+COALESCE(equipment_rating,0)+COALESCE(environment_rating,0)+COALESCE(staff_rating,0))/4.0)), 2) as avg_overall,
-            COUNT(*) as survey_count
-        FROM satisfaction_surveys
-    ''')
-    satisfaction = dict(c.fetchone())
-
     # 客户活跃度：有预约或有健康档案的客户
     c.execute('''
         SELECT COUNT(DISTINCT customer_id) as n FROM (
@@ -3046,7 +2706,6 @@ def api_dashboard_analytics():
         'appointment_trend': appointment_trend,
         'appointment_status': appointment_status,
         'equipment_usage_top': equipment_usage_top,
-        'satisfaction': satisfaction,
         'customer_activity': {
             'active_customers': active_customers,
             'total_customers': total_customers,
@@ -3245,7 +2904,7 @@ def api_export_query_download():
     dataset = (request.args.get('dataset') or 'all').strip()
     customer_id = request.args.get('customer_id')
 
-    allowed_datasets = {'all', 'customers', 'health', 'appointments', 'usage', 'surveys'}
+    allowed_datasets = {'all', 'customers', 'health', 'appointments'}
     if scope not in {'single', 'all'}:
         return jsonify({'error': '下载范围参数不合法'}), 400
     if dataset not in allowed_datasets:
@@ -3274,12 +2933,6 @@ def api_export_query_download():
             'appointments': ('预约记录', '''SELECT a.*, c.name as customer_name, c.phone as customer_phone, e.name as equipment_name
                 FROM appointments a JOIN customers c ON a.customer_id=c.id LEFT JOIN equipment e ON a.equipment_id=e.id
                 {where_clause} ORDER BY a.appointment_date DESC, a.start_time DESC'''),
-            'usage': ('仪器使用', '''SELECT eu.*, c.name as customer_name, c.phone, e.name as equipment_name
-                FROM equipment_usage eu JOIN customers c ON eu.customer_id=c.id LEFT JOIN equipment e ON eu.equipment_id=e.id
-                {where_clause} ORDER BY eu.usage_date DESC'''),
-            'surveys': ('满意度', '''SELECT s.*, c.name as customer_name, c.phone
-                FROM satisfaction_surveys s JOIN customers c ON s.customer_id=c.id
-                {where_clause} ORDER BY s.survey_date DESC'''),
         }
 
         target_keys = list(queries.keys()) if dataset == 'all' else [dataset]
@@ -3326,19 +2979,6 @@ def api_export_appointments():
     fp = os.path.join(UPLOAD_FOLDER, fn)
     df.to_excel(fp, index=False, engine='openpyxl')
     audit_log('导出数据', 'export', 'appointments', f'file={fn}')
-    return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
-
-
-@app.route('/api/export/equipment-usage', methods=['GET'])
-def api_export_usage():
-    conn = get_db()
-    df = pd.read_sql_query('''SELECT eu.id, c.name as customer_name, e.name as equipment_name, eu.usage_date, eu.duration_minutes, eu.parameters, eu.notes, eu.operator
-        FROM equipment_usage eu JOIN customers c ON eu.customer_id=c.id LEFT JOIN equipment e ON eu.equipment_id=e.id ORDER BY eu.usage_date DESC''', conn)
-    conn.close()
-    fn = 'equipment_usage_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
-    fp = os.path.join(UPLOAD_FOLDER, fn)
-    df.to_excel(fp, index=False, engine='openpyxl')
-    audit_log('导出数据', 'export', 'equipment_usage', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
 

@@ -88,9 +88,6 @@
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
     .status-pill-success { background: #27ae60; }
     .status-pill-cancelled { background: #e74c3c; }
-    .survey-rating-row { gap: 8px; }
-    .survey-rating-row label { min-width: 40px; }
-    .survey-rating-tip { color: #666; font-size: 12px; margin: -4px 0 10px; }
 
     .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(25,68,102,0.45), rgba(24,125,116,0.35)), url("images/login-bg-house.svg") center/cover no-repeat; padding: 20px; }
     .login-card { width: 100%; max-width: 420px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
@@ -162,8 +159,6 @@
       <a href="#" data-page="portrait">健康画像</a>
       <a href="#" data-page="appointments">预约服务</a>
       <a href="#" data-page="home-appointments">上门预约</a>
-            <a href="#" data-page="usage">仪器使用</a>
-      <a href="#" data-page="surveys">满意度</a>
       <a href="#" data-page="query-export">数据查询导出</a>
     </nav>
     <main class="main">
@@ -190,10 +185,6 @@
               <button class="btn btn-secondary btn-small" id="btn-equipment-range-query">查询</button>
             </div>
             <table class="mini-table"><thead><tr><th>设备</th><th>使用次数</th><th>总时长(分钟)</th></tr></thead><tbody id="equipment-usage-top"></tbody></table>
-          </div>
-          <div class="card">
-            <h2>客户满意度与活跃度</h2>
-            <table class="mini-table"><tbody id="satisfaction-summary"></tbody></table>
           </div>
         </div>
       </div>
@@ -494,49 +485,6 @@
           <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="home-list"></tbody></table>
         </div>
       </div>
-      <div id="page-usage" class="page hide">
-        <div class="card">
-          <h2>仪器使用统计（自动汇总预约服务）</h2>
-          <p style="color:#666; margin-top:0">系统自动统计“预约服务”中的项目预约次数，按受欢迎程度展示（无需手工录入）。</p>
-          <div id="usage-msg"></div>
-          <div id="usage-popularity-chart"></div>
-          <table><thead><tr><th>排名</th><th>服务项目</th><th>预约次数</th><th>占比</th></tr></thead><tbody id="usage-list"></tbody></table>
-          <h3>设备使用记录（最新20条）</h3>
-          <table><thead><tr><th>客户</th><th>设备</th><th>项目</th><th>日期</th><th>状态</th></tr></thead><tbody id="usage-record-list"></tbody></table>
-        </div>
-      </div>
-      <div id="page-surveys" class="page hide">
-        <div class="card">
-          <h2>满意度调查</h2>
-          <div class="form-row">
-            <label>客户</label>
-            <select id="survey-customer"></select>
-            <label>反馈项目</label>
-            <select id="survey-project" style="min-width:220px"></select>
-          </div>
-          <div class="form-row survey-rating-row">
-            <label>服务</label>
-            <input type="number" id="survey-service" min="1" max="5" value="5" style="width:50px">
-            <label>设备</label>
-            <input type="number" id="survey-equipment" min="1" max="5" value="5" style="width:50px">
-            <label>环境</label>
-            <input type="number" id="survey-env" min="1" max="5" value="5" style="width:50px">
-            <label>人员</label>
-            <input type="number" id="survey-staff" min="1" max="5" value="5" style="width:50px">
-          </div>
-          <p class="survey-rating-tip">评分说明：1-5分，1为最低，5为最高。</p>
-          <div class="form-row">
-            <label>反馈/建议</label>
-            <textarea id="survey-feedback" placeholder="可选" style="flex:1;max-width:400px"></textarea>
-          </div>
-          <div class="form-row">
-            <button class="btn btn-primary" id="btn-survey-save">提交</button>
-          </div>
-          <div id="survey-msg"></div>
-          <h3>满意度历史（最新20条）</h3>
-          <table><thead><tr><th>客户</th><th>项目</th><th>综合评分</th><th>日期</th></tr></thead><tbody id="survey-list"></tbody></table>
-        </div>
-      </div>
       <div id="page-query-export" class="page hide">
         <div class="card">
           <h2>数据查询导出</h2>
@@ -548,8 +496,6 @@
               <option value="customers">客户信息</option>
               <option value="health">健康档案</option>
               <option value="appointments">预约记录</option>
-                            <option value="usage">仪器使用</option>
-              <option value="surveys">满意度</option>
             </select>
             <button class="btn btn-primary" id="btn-search">查询</button>
           </div>
@@ -572,8 +518,6 @@
               <option value="customers">客户列表</option>
               <option value="health">健康档案</option>
               <option value="appointments">预约记录</option>
-                            <option value="usage">仪器使用</option>
-              <option value="surveys">满意度</option>
             </select>
             <button class="btn btn-primary" id="btn-query-export-download">下载Excel</button>
           </div>
