@@ -324,6 +324,41 @@
     document.getElementById('modal-edit-confirm').classList.add('hide');
   }
 
+  function openHistoryModal(title, rows) {
+    document.getElementById('modal-history-title').textContent = title;
+    if (!rows.length) {
+      document.getElementById('modal-history-content').innerHTML = '<div style="color:#666">暂无业务历史日志</div>';
+    } else {
+      document.getElementById('modal-history-content').innerHTML = rows.map(function (row) {
+        return [
+          '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;margin-bottom:10px">',
+          '<div><strong>创建时间：</strong>' + escapeHtml(row.created_at || '-') + '</div>',
+          '<div><strong>修改时间：</strong>' + escapeHtml(row.modified_time || '-') + '</div>',
+          '<div><strong>取消时间：</strong>' + escapeHtml(row.cancelled_time || '-') + '</div>',
+          '<div><strong>操作人：</strong>' + escapeHtml(row.operator || '-') + '</div>',
+          '<div><strong>变更前内容：</strong>' + escapeHtml(row.before_content || '-') + '</div>',
+          '<div><strong>变更后内容：</strong>' + escapeHtml(row.after_content || '-') + '</div>',
+          '</div>'
+        ].join('');
+      }).join('');
+    }
+    document.getElementById('modal-history').classList.remove('hide');
+  }
+
+  function closeHistoryModal() {
+    document.getElementById('modal-history').classList.add('hide');
+  }
+
+  function viewBusinessHistory(module, targetId, title) {
+    get('/api/business-history/' + module + '/' + targetId).then(function (res) {
+      if (res && res.error) {
+        showMsg(module === 'appointments' ? 'apt-msg' : 'home-msg', res.error, true);
+        return;
+      }
+      openHistoryModal(title, toList(res));
+    });
+  }
+
   function loadCustomers() {
     var q = document.getElementById('customer-search').value;
     var qs = [
@@ -933,8 +968,8 @@
       tbody.innerHTML = toList(list).map(function (a) {
         var meta = getStatusMeta(a.status);
         var action = meta.editable
-          ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button>'
-          : '';
+          ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-primary" data-apt-history="' + a.id + '">查看历史</button>'
+          : '<button class="btn btn-small btn-primary" data-apt-history="' + a.id + '">查看历史</button>';
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       var p = getPagination(list);
@@ -960,6 +995,11 @@
             equipment_label: String(item.equipment_name || '').slice(-2),
           }];
           loadAppointmentSlotPanel(true);
+        });
+      });
+      tbody.querySelectorAll('[data-apt-history]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          viewBusinessHistory('appointments', btn.dataset.aptHistory, '预约服务 - 业务历史日志');
         });
       });
     });
@@ -990,8 +1030,8 @@
       tbody.innerHTML = rows.map(function (a) {
         var meta = getStatusMeta(a.status);
         var action = meta.editable
-          ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button>'
-          : '';
+          ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-primary" data-home-history="' + a.id + '">查看历史</button>'
+          : '<button class="btn btn-small btn-primary" data-home-history="' + a.id + '">查看历史</button>';
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       var p = getPagination(list);
@@ -1016,6 +1056,11 @@
           document.getElementById('home-contact-phone').value = item.contact_phone || '';
           document.getElementById('home-notes').value = item.notes || '';
           loadHomeSlotPanel(true);
+        });
+      });
+      tbody.querySelectorAll('[data-home-history]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          viewBusinessHistory('home_appointments', btn.dataset.homeHistory, '上门预约 - 业务历史日志');
         });
       });
     });
@@ -1213,6 +1258,7 @@
   document.getElementById('btn-confirm-submit').addEventListener('click', function () {
     if (typeof pendingAction === 'function') pendingAction();
   });
+  document.getElementById('btn-history-close').addEventListener('click', closeHistoryModal);
   document.getElementById('btn-customer-add').addEventListener('click', function () { openCustomerModal(null); });
   document.getElementById('btn-modal-cancel').addEventListener('click', function () { document.getElementById('modal-customer').classList.add('hide'); });
   document.getElementById('btn-modal-save').addEventListener('click', function () {
