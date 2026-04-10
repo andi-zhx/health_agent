@@ -245,6 +245,7 @@
   var homeSlotPanel = [];
   var homeStaffPanel = null;
   var selectedHomeSlot = null;
+  var selectedHomeSlots = [];
   var appointmentProjects = [];
   var healthCustomerList = [];
   var listState = {
@@ -735,10 +736,10 @@
       tip.textContent = '请选择项目和日期后查看可预约时间段（08:30-16:00，每30分钟）';
       return;
     }
-    tip.textContent = '已加载 ' + slots.length + ' 个时间段';
+    tip.textContent = '可连续选择多个时间段（可再次点击取消，服务人员按当前高亮时间段加载）';
     box.innerHTML = slots.map(function (slot, idx) {
       var available = (slot.available_count || 0) > 0;
-      var selected = selectedHomeSlot && selectedHomeSlot.start_time === slot.start_time && selectedHomeSlot.end_time === slot.end_time;
+      var selected = selectedHomeSlots.some(function (x) { return x.start_time === slot.start_time && x.end_time === slot.end_time; });
       var cls = ['slot-card', available ? '' : 'full', selected ? 'selected' : ''].join(' ').trim();
       var meta = available ? ('可预约｜空闲人员 ' + (slot.available_count || 0) + ' 人') : '已约满';
       return '<div class="' + cls + '" data-home-slot-index="' + idx + '"><div class="time">' + slot.start_time + ' - ' + slot.end_time + '</div><div class="meta">' + meta + '</div></div>';
@@ -748,10 +749,24 @@
         var idx = Number(this.getAttribute('data-home-slot-index'));
         var picked = slots[idx];
         if (!picked || (picked.available_count || 0) <= 0) return;
-        selectedHomeSlot = { start_time: picked.start_time, end_time: picked.end_time };
-        document.getElementById('home-start').value = picked.start_time;
-        document.getElementById('home-end').value = picked.end_time;
-        document.getElementById('home-staff').value = '';
+        var existed = selectedHomeSlots.findIndex(function (x) { return x.start_time === picked.start_time && x.end_time === picked.end_time; });
+        if (existed >= 0) {
+          var isActive = selectedHomeSlot && selectedHomeSlot.start_time === picked.start_time && selectedHomeSlot.end_time === picked.end_time;
+          selectedHomeSlots.splice(existed, 1);
+          if (isActive) selectedHomeSlot = null;
+        } else {
+          selectedHomeSlot = { start_time: picked.start_time, end_time: picked.end_time };
+          selectedHomeSlots.push({ start_time: picked.start_time, end_time: picked.end_time });
+        }
+        if (!selectedHomeSlot && selectedHomeSlots.length) selectedHomeSlot = selectedHomeSlots[selectedHomeSlots.length - 1];
+        if (selectedHomeSlot) {
+          document.getElementById('home-start').value = selectedHomeSlot.start_time;
+          document.getElementById('home-end').value = selectedHomeSlot.end_time;
+        } else {
+          document.getElementById('home-start').value = '';
+          document.getElementById('home-end').value = '';
+          document.getElementById('home-staff').value = '';
+        }
         loadHomeStaffPanel();
         renderHomeSlotPanel();
       });
@@ -797,7 +812,10 @@
     var projectId = (document.getElementById('home-project') || {}).value || '';
     if (!date || !projectId) {
       homeSlotPanel = [];
-      if (!keepSelected) selectedHomeSlot = null;
+      if (!keepSelected) {
+        selectedHomeSlot = null;
+        selectedHomeSlots = [];
+      }
       renderHomeSlotPanel();
       renderHomeStaffPanel();
       return;
@@ -805,16 +823,27 @@
     get('/api/home-appointments/slot-panel?date=' + encodeURIComponent(date) + '&project_id=' + encodeURIComponent(projectId)).then(function (res) {
       homeSlotPanel = (res && res.slots) || [];
       if (keepSelected && selectedHomeSlot) {
-        var matched = homeSlotPanel.find(function (slot) {
-          return slot.start_time === selectedHomeSlot.start_time && slot.end_time === selectedHomeSlot.end_time && (slot.available_count || 0) > 0;
+        selectedHomeSlots = selectedHomeSlots.filter(function (picked) {
+          return homeSlotPanel.some(function (slot) {
+            return slot.start_time === picked.start_time && slot.end_time === picked.end_time && (slot.available_count || 0) > 0;
+          });
         });
-        if (!matched) {
+        var matched = selectedHomeSlots.find(function (picked) {
+          return picked.start_time === selectedHomeSlot.start_time && picked.end_time === selectedHomeSlot.end_time;
+        });
+        if (!matched && selectedHomeSlots.length) {
+          selectedHomeSlot = selectedHomeSlots[selectedHomeSlots.length - 1];
+          document.getElementById('home-start').value = selectedHomeSlot.start_time;
+          document.getElementById('home-end').value = selectedHomeSlot.end_time;
+        } else if (!matched) {
           selectedHomeSlot = null;
+          selectedHomeSlots = [];
           document.getElementById('home-start').value = '';
           document.getElementById('home-end').value = '';
         }
       } else {
         selectedHomeSlot = null;
+        selectedHomeSlots = [];
         document.getElementById('home-start').value = '';
         document.getElementById('home-end').value = '';
       }
@@ -938,6 +967,7 @@
     homeSlotPanel = [];
     homeStaffPanel = null;
     selectedHomeSlot = null;
+    selectedHomeSlots = [];
     document.getElementById('home-start').value = '';
     document.getElementById('home-end').value = '';
     document.getElementById('home-staff').value = '';
@@ -972,6 +1002,7 @@
           document.getElementById('home-project').value = item.project_id || '';
           document.getElementById('home-date').value = item.appointment_date || '';
           selectedHomeSlot = { start_time: item.start_time || '', end_time: item.end_time || '' };
+          selectedHomeSlots = [{ start_time: item.start_time || '', end_time: item.end_time || '' }];
           document.getElementById('home-start').value = item.start_time || '';
           document.getElementById('home-end').value = item.end_time || '';
           document.getElementById('home-staff').value = item.staff_id || '';
@@ -1528,29 +1559,40 @@
       notes: document.getElementById('home-notes').value,
       status: 'scheduled'
     };
-    if (!body.customer_id || !body.project_id || !body.staff_id || !body.appointment_date || !body.start_time || !body.end_time || !body.location) {
+    if (!body.customer_id || !body.project_id || !body.staff_id || !body.appointment_date || !body.location || !selectedHomeSlots.length) {
       showMsg('home-msg', '请填写必填项', true); return;
     }
-    var startMinute = Number(body.start_time.split(':')[1] || 0);
-    var endMinute = Number(body.end_time.split(':')[1] || 0);
-    if (body.start_time < '08:30' || body.end_time > '16:00' || body.start_time >= body.end_time || (startMinute !== 0 && startMinute !== 30) || (endMinute !== 0 && endMinute !== 30)) {
+    var invalidSlot = selectedHomeSlots.find(function (slot) {
+      var startMinute = Number(String(slot.start_time || '').split(':')[1] || 0);
+      var endMinute = Number(String(slot.end_time || '').split(':')[1] || 0);
+      return slot.start_time < '08:30' || slot.end_time > '16:00' || slot.start_time >= slot.end_time || (startMinute !== 0 && startMinute !== 30) || (endMinute !== 0 && endMinute !== 30);
+    });
+    if (invalidSlot) {
       showMsg('home-msg', '上门预约时间段需在08:30-16:00且按30分钟选择', true); return;
     }
+    selectedHomeSlots.sort(function (a, b) { return a.start_time.localeCompare(b.start_time); });
     var selectedCustomerText = document.getElementById('home-customer-search').value || '';
     var selectedStaff = (homeStaffPanel && homeStaffPanel.staff || []).find(function (s) { return String(s.staff_id) === String(body.staff_id); });
     var rows = [
       ['客户', selectedCustomerText],
       ['项目', document.getElementById('home-project').selectedOptions[0] ? document.getElementById('home-project').selectedOptions[0].text : ''],
       ['人员', selectedStaff ? selectedStaff.staff_name : ''],
-      ['预约时间', body.appointment_date + ' ' + body.start_time + '-' + body.end_time],
-      ['地点', body.location]
+      ['预约时间', body.appointment_date + ' ' + selectedHomeSlots.map(function (slot) { return slot.start_time + '-' + slot.end_time; }).join('、')],
+      ['地点', body.location],
+      ['联系人', body.contact_person || '-'],
+      ['电话', body.contact_phone || '-']
     ];
     openConfirmModal(homeAppointmentEditId ? '确认修改预约后保存记录' : '确认上门预约信息', rows, function () {
-      var req = homeAppointmentEditId ? put('/api/home-appointments/' + homeAppointmentEditId, body) : post('/api/home-appointments', body);
-      req.then(function (res) {
-        if (res.error) { showMsg('home-msg', res.error, true); return; }
+      var requests = selectedHomeSlots.map(function (slot) {
+        var payload = Object.assign({}, body, { start_time: slot.start_time, end_time: slot.end_time });
+        if (homeAppointmentEditId) return put('/api/home-appointments/' + homeAppointmentEditId, payload);
+        return post('/api/home-appointments', payload);
+      });
+      Promise.all(requests).then(function (results) {
+        var err = results.find(function (res) { return res && res.error; });
+        if (err) { showMsg('home-msg', err.error, true); return; }
         closeConfirmModal();
-        showMsg('home-msg', homeAppointmentEditId ? '上门预约修改成功' : res.message);
+        showMsg('home-msg', homeAppointmentEditId ? '上门预约修改成功' : ('上门预约成功，共保存 ' + results.length + ' 条记录'));
         loadHomeAppointmentsPage();
       });
     });
@@ -1563,6 +1605,7 @@
     });
     document.getElementById('home-customer-search').value = '';
     selectedHomeSlot = null;
+    selectedHomeSlots = [];
     homeStaffPanel = null;
     renderHomeSlotPanel();
     renderHomeStaffPanel();
