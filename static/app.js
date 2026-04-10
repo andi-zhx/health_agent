@@ -576,15 +576,11 @@
         '<div><div class="name">' + escapeHtml(item.name || '-') + '</div><div class="detail">设备' + escapeHtml(model) + '</div></div>' +
         '</label>';
     }).join('');
-    box.querySelectorAll('.equipment-item').forEach(function (row, idx) {
-      row.addEventListener('click', function () {
+    box.querySelectorAll('input[name="apt-equipment-radio"]').forEach(function (radio, idx) {
+      radio.addEventListener('change', function () {
         var picked = equipmentList[idx];
         if (!picked) return;
-        if (String(selectedAppointmentEquipmentId) === String(picked.id)) {
-          selectedAppointmentEquipmentId = '';
-        } else {
-          selectedAppointmentEquipmentId = String(picked.id);
-        }
+        selectedAppointmentEquipmentId = String(picked.id);
         var slotIndex = selectedAppointmentSlots.findIndex(function (x) {
           return x.start_time === selectedAppointmentSlot.start_time && x.end_time === selectedAppointmentSlot.end_time;
         });
@@ -627,9 +623,16 @@
         if (!picked || picked.status !== 'available') return;
         var existed = selectedAppointmentSlots.findIndex(function (x) { return x.start_time === picked.start_time && x.end_time === picked.end_time; });
         if (existed >= 0) {
-          selectedAppointmentSlots.splice(existed, 1);
-          selectedAppointmentSlot = null;
-          selectedAppointmentEquipmentId = '';
+          var current = selectedAppointmentSlots[existed];
+          var active = selectedAppointmentSlot && selectedAppointmentSlot.start_time === picked.start_time && selectedAppointmentSlot.end_time === picked.end_time;
+          if (active) {
+            selectedAppointmentSlots.splice(existed, 1);
+            selectedAppointmentSlot = null;
+            selectedAppointmentEquipmentId = '';
+          } else {
+            selectedAppointmentSlot = picked;
+            selectedAppointmentEquipmentId = current.equipment_id ? String(current.equipment_id) : '';
+          }
         } else {
           selectedAppointmentSlot = picked;
           selectedAppointmentEquipmentId = '';
