@@ -105,6 +105,24 @@
     .required-mark { color: #e74c3c; margin-left: 2px; font-weight: 700; }
     .identity-grid { display: flex; flex-direction: column; gap: 8px; }
     .identity-line { display: flex; align-items: center; gap: 10px; }
+    .appointment-section-title { margin: 12px 0 8px; font-size: 15px; color: #2c3e50; font-weight: 600; }
+    .appointment-tip { color: #6b7280; font-size: 13px; margin-bottom: 8px; }
+    .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 10px 0 14px; }
+    .slot-card { border: 1px solid #d1d5db; border-radius: 6px; background: #fff; padding: 10px; cursor: pointer; transition: all .15s ease; }
+    .slot-card:hover { border-color: #3b82f6; }
+    .slot-card .time { font-weight: 700; color: #1f2937; margin-bottom: 6px; }
+    .slot-card .meta { font-size: 12px; color: #4b5563; }
+    .slot-card.full { background: #f3f4f6; border-color: #d1d5db; cursor: not-allowed; }
+    .slot-card.full .time, .slot-card.full .meta { color: #9ca3af; }
+    .slot-card.selected { background: #3b82f6; border-color: #2563eb; }
+    .slot-card.selected .time, .slot-card.selected .meta { color: #fff; }
+    .equipment-panel { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #fafafa; margin-bottom: 10px; }
+    .equipment-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .equipment-item { border: 1px solid #d1d5db; border-radius: 6px; background: #fff; padding: 8px 10px; display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+    .equipment-item.active { border-color: #2563eb; background: #eff6ff; }
+    .equipment-item input { margin-top: 2px; }
+    .equipment-item .name { font-weight: 600; color: #1f2937; }
+    .equipment-item .detail { font-size: 12px; color: #6b7280; margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -373,27 +391,30 @@
       <div id="page-appointments" class="page hide">
         <div class="card">
           <h2>预约服务</h2>
+          <div class="appointment-section-title">一、预约基础信息</div>
           <div class="form-row"><label>客户</label><select id="apt-customer"></select></div>
           <div class="form-row"><label>项目</label><select id="apt-project"></select></div>
-          <div class="form-row"><label>设备</label><select id="apt-equipment"></select></div>
-          <div class="form-row"><label>人员</label><select id="apt-staff"></select></div>
           <div class="form-row">
-            <label>预约时间</label>
+            <label>日期</label>
             <input type="date" id="apt-date">
-            <label>开始</label><select id="apt-start"><option value="">请选择开始时间</option></select>
-            <label>结束</label><select id="apt-end"><option value="">请选择结束时间</option></select>
             <label>备注</label>
             <input type="text" id="apt-notes" placeholder="可选">
+          </div>
+          <div class="appointment-section-title">二、时间段选择</div>
+          <div id="apt-slot-tip" class="appointment-tip">请选择项目和日期后查看可预约时间</div>
+          <div id="apt-slots" class="slot-grid"></div>
+          <div class="appointment-section-title">三、设备选择</div>
+          <div id="apt-equipment-panel" class="equipment-panel">
+            <div id="apt-selected-slot" class="appointment-tip">请先选择可预约时间段</div>
+            <div id="apt-equipment-options" class="equipment-options"></div>
           </div>
           <div class="form-row hide" id="apt-edit-actions">
             <button class="btn btn-danger" id="btn-apt-mark-cancel">改为取消预约</button>
             <button class="btn btn-secondary" id="btn-apt-cancel-edit">退出编辑</button>
           </div>
           <div class="form-row">
-            <button class="btn btn-primary" id="btn-apt-check">查询空余时段</button>
             <button class="btn btn-primary" id="btn-apt-save">保存预约</button>
           </div>
-          <div id="apt-availability" style="color:#2c3e50;margin-bottom:8px"></div>
           <div id="apt-msg"></div>
           <div class="form-row">
             <label>历史排序</label>
@@ -402,7 +423,7 @@
               <option value="name_asc">按姓名排序</option>
             </select>
           </div>
-          <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>人员</th><th>日期</th><th>时间</th><th>状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="apt-list"></tbody></table>
+          <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>日期</th><th>时间</th><th>状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="apt-list"></tbody></table>
         </div>
       </div>
       <div id="page-home-appointments" class="page hide">
