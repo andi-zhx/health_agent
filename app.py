@@ -91,6 +91,41 @@ def audit_log(action, module, target_id='', details=''):
     conn.close()
 
 
+def build_appointment_change_text(record, module):
+    if not record:
+        return '-'
+    date_text = str(record.get('appointment_date') or '')
+    start_time = str(record.get('start_time') or '')
+    end_time = str(record.get('end_time') or '')
+    time_text = (start_time + '-' + end_time).strip('-')
+    project_name = str(record.get('project_name') or record.get('service_project') or '')
+    customer_name = str(record.get('customer_name') or '')
+    if module == 'home_appointments':
+        staff_name = str(record.get('staff_name') or '')
+        location = str(record.get('location') or record.get('home_address') or '')
+        return f"客户:{customer_name or '-'}；项目:{project_name or '-'}；时间:{date_text} {time_text or '-'}；地点:{location or '-'}；人员:{staff_name or '-'}"
+    equipment_name = str(record.get('equipment_name') or '')
+    return f"客户:{customer_name or '-'}；项目:{project_name or '-'}；时间:{date_text} {time_text or '-'}；设备:{equipment_name or '-'}"
+
+
+def insert_business_history_log(cursor, module, target_id, action_type, before_text='', after_text=''):
+    cursor.execute(
+        '''
+        INSERT INTO business_history_logs
+        (module, target_id, action_type, operator, before_content, after_content)
+        VALUES (?,?,?,?,?,?)
+        ''',
+        (
+            module,
+            int(target_id),
+            action_type,
+            session.get('username', 'anonymous'),
+            str(before_text or ''),
+            str(after_text or ''),
+        ),
+    )
+
+
 def ensure_columns(cursor, table_name, columns):
     cursor.execute(f'PRAGMA table_info({table_name})')
     exists = {row[1] for row in cursor.fetchall()}
@@ -1062,6 +1097,19 @@ def init_db():
         )
     ''')
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS business_history_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            module TEXT NOT NULL,
+            target_id INTEGER NOT NULL,
+            action_type TEXT NOT NULL,
+            operator TEXT,
+            before_content TEXT,
+            after_content TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
               ('backup_directory', BACKUP_FOLDER))
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
@@ -1957,8 +2005,28 @@ def api_appointment_create():
         INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, notes, updated_at)
         VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
     ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes')))
-    conn.commit()
     rid = c.lastrowid
+    c.execute(
+        '''
+        SELECT a.*, c.name as customer_name, e.name as equipment_name, p.name as project_name
+        FROM appointments a
+        LEFT JOIN customers c ON a.customer_id=c.id
+        LEFT JOIN equipment e ON a.equipment_id=e.id
+        LEFT JOIN therapy_projects p ON a.project_id=p.id
+        WHERE a.id=?
+        ''',
+        (rid,),
+    )
+    created_record = c.fetchone()
+    insert_business_history_log(
+        c,
+        'appointments',
+        rid,
+        'create',
+        '',
+        build_appointment_change_text(dict(created_record) if created_record else {}, 'appointments'),
+    )
+    conn.commit()
     conn.close()
     return success_response({'id': rid}, '预约成功', 201)
 
@@ -2068,8 +2136,19 @@ def api_appointment_update(aid):
 
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT id FROM appointments WHERE id=?', (aid,))
-    if not c.fetchone():
+    c.execute(
+        '''
+        SELECT a.*, c.name as customer_name, e.name as equipment_name, p.name as project_name
+        FROM appointments a
+        LEFT JOIN customers c ON a.customer_id=c.id
+        LEFT JOIN equipment e ON a.equipment_id=e.id
+        LEFT JOIN therapy_projects p ON a.project_id=p.id
+        WHERE a.id=?
+        ''',
+        (aid,),
+    )
+    old_row = c.fetchone()
+    if not old_row:
         conn.close()
         return error_response('预约记录不存在', 404, 'NOT_FOUND')
 
@@ -2123,6 +2202,27 @@ def api_appointment_update(aid):
             aid,
         ),
     )
+    before_text = build_appointment_change_text(dict(old_row), 'appointments')
+    c.execute(
+        '''
+        SELECT a.*, c.name as customer_name, e.name as equipment_name, p.name as project_name
+        FROM appointments a
+        LEFT JOIN customers c ON a.customer_id=c.id
+        LEFT JOIN equipment e ON a.equipment_id=e.id
+        LEFT JOIN therapy_projects p ON a.project_id=p.id
+        WHERE a.id=?
+        ''',
+        (aid,),
+    )
+    new_row = c.fetchone()
+    insert_business_history_log(
+        c,
+        'appointments',
+        aid,
+        'update',
+        before_text,
+        build_appointment_change_text(dict(new_row) if new_row else {}, 'appointments'),
+    )
     conn.commit()
     conn.close()
     return success_response({'id': aid}, '预约修改成功')
@@ -2131,7 +2231,17 @@ def api_appointment_update(aid):
 def api_appointment_cancel(aid):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT status FROM appointments WHERE id=?', (aid,))
+    c.execute(
+        '''
+        SELECT a.*, c.name as customer_name, e.name as equipment_name, p.name as project_name
+        FROM appointments a
+        LEFT JOIN customers c ON a.customer_id=c.id
+        LEFT JOIN equipment e ON a.equipment_id=e.id
+        LEFT JOIN therapy_projects p ON a.project_id=p.id
+        WHERE a.id=?
+        ''',
+        (aid,),
+    )
     row = c.fetchone()
     if not row:
         conn.close()
@@ -2142,6 +2252,14 @@ def api_appointment_cancel(aid):
     c.execute(
         "UPDATE appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (aid,),
+    )
+    insert_business_history_log(
+        c,
+        'appointments',
+        aid,
+        'cancel',
+        build_appointment_change_text(dict(row), 'appointments'),
+        '状态:取消预约',
     )
     conn.commit()
     conn.close()
@@ -2420,8 +2538,25 @@ def api_home_appointments_create():
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
         d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled')
     ))
-    conn.commit()
     rid = c.lastrowid
+    c.execute(
+        '''
+        SELECT *
+        FROM home_appointments
+        WHERE id=?
+        ''',
+        (rid,),
+    )
+    created_row = c.fetchone()
+    insert_business_history_log(
+        c,
+        'home_appointments',
+        rid,
+        'create',
+        '',
+        build_appointment_change_text(dict(created_row) if created_row else {}, 'home_appointments'),
+    )
+    conn.commit()
     conn.close()
     return success_response({'id': rid}, '上门预约成功', 201)
 
@@ -2430,7 +2565,7 @@ def api_home_appointments_create():
 def api_home_appointments_cancel(hid):
     conn = get_db()
     c = conn.cursor()
-    c.execute('SELECT status FROM home_appointments WHERE id=?', (hid,))
+    c.execute('SELECT * FROM home_appointments WHERE id=?', (hid,))
     row = c.fetchone()
     if not row:
         conn.close()
@@ -2441,6 +2576,14 @@ def api_home_appointments_cancel(hid):
     c.execute(
         "UPDATE home_appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
         (hid,),
+    )
+    insert_business_history_log(
+        c,
+        'home_appointments',
+        hid,
+        'cancel',
+        build_appointment_change_text(dict(row), 'home_appointments'),
+        '状态:取消预约',
     )
     conn.commit()
     conn.close()
@@ -2457,8 +2600,9 @@ def api_home_appointments_update(hid):
     conn = get_db()
     c = conn.cursor()
 
-    c.execute('SELECT id FROM home_appointments WHERE id=?', (hid,))
-    if not c.fetchone():
+    c.execute('SELECT * FROM home_appointments WHERE id=?', (hid,))
+    old_row = c.fetchone()
+    if not old_row:
         conn.close()
         return error_response('上门预约不存在', 404, 'NOT_FOUND')
 
@@ -2530,9 +2674,46 @@ def api_home_appointments_update(hid):
         d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled'),
         hid,
     ))
+    before_text = build_appointment_change_text(dict(old_row), 'home_appointments')
+    c.execute('SELECT * FROM home_appointments WHERE id=?', (hid,))
+    new_row = c.fetchone()
+    insert_business_history_log(
+        c,
+        'home_appointments',
+        hid,
+        'update',
+        before_text,
+        build_appointment_change_text(dict(new_row) if new_row else {}, 'home_appointments'),
+    )
     conn.commit()
     conn.close()
     return success_response({'id': hid}, '更新成功')
+
+
+@app.route('/api/business-history/<module>/<int:target_id>', methods=['GET'])
+def api_business_history(module, target_id):
+    if module not in ('appointments', 'home_appointments'):
+        return error_response('不支持的业务模块', 400, 'INVALID_MODULE')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT
+            l.*,
+            MAX(CASE WHEN l2.action_type='update' THEN l2.created_at END) AS modified_time,
+            MAX(CASE WHEN l2.action_type='cancel' THEN l2.created_at END) AS cancelled_time
+        FROM business_history_logs l
+        LEFT JOIN business_history_logs l2
+          ON l.module=l2.module AND l.target_id=l2.target_id
+        WHERE l.module=? AND l.target_id=?
+        GROUP BY l.id
+        ORDER BY l.created_at DESC, l.id DESC
+        ''',
+        (module, target_id),
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(rows)
 
 
 @app.route('/api/auth/login', methods=['POST'])
