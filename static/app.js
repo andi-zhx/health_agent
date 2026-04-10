@@ -523,6 +523,17 @@
     renderEquipmentOptions();
   }
 
+  function resetAppointmentForm() {
+    document.getElementById('apt-customer').value = '';
+    document.getElementById('apt-customer-search').value = '';
+    document.getElementById('apt-project').value = '';
+    document.getElementById('apt-date').value = today;
+    document.getElementById('apt-notes').value = '';
+    resetAppointmentSlotSelection();
+    appointmentSlotPanel = null;
+    renderAppointmentSlotPanel();
+  }
+
   function renderAppointmentCustomerOptions(keyword) {
     var optionBox = document.getElementById('apt-customer-options');
     if (!optionBox) return;
@@ -890,6 +901,20 @@
       document.getElementById('btn-home-save').textContent = '保存上门预约';
       if (bar) bar.classList.add('hide');
     }
+  }
+
+  function resetHomeAppointmentForm() {
+    ['home-customer', 'home-project', 'home-start', 'home-end', 'home-staff', 'home-location', 'home-contact-person', 'home-contact-phone', 'home-notes'].forEach(function (id) {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('home-customer-search').value = '';
+    document.getElementById('home-date').value = today;
+    homeSlotPanel = [];
+    homeStaffPanel = null;
+    selectedHomeSlot = null;
+    selectedHomeSlots = [];
+    renderHomeSlotPanel();
+    renderHomeStaffPanel();
   }
 
   function getStatusMeta(status) {
@@ -1538,6 +1563,7 @@
         if (err) { showMsg('apt-msg', err.error, true); return; }
         closeConfirmModal();
         showMsg('apt-msg', appointmentEditId ? '预约修改成功' : '预约成功，共保存 ' + results.length + ' 条记录');
+        resetAppointmentForm();
         loadAppointmentsPage();
       });
     });
@@ -1593,6 +1619,7 @@
         if (err) { showMsg('home-msg', err.error, true); return; }
         closeConfirmModal();
         showMsg('home-msg', homeAppointmentEditId ? '上门预约修改成功' : ('上门预约成功，共保存 ' + results.length + ' 条记录'));
+        resetHomeAppointmentForm();
         loadHomeAppointmentsPage();
       });
     });
@@ -1807,7 +1834,6 @@
 
   document.getElementById('home-customer-search').addEventListener('input', function () {
     renderHomeCustomerOptions(this.value);
-    applyHomeCustomerByInput();
   });
   document.getElementById('home-customer-search').addEventListener('change', applyHomeCustomerByInput);
   document.getElementById('home-project').addEventListener('change', function () { loadHomeSlotPanel(false); });
