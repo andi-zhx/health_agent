@@ -230,6 +230,7 @@
   var selectedHomeSlots = [];
   var appointmentProjects = [];
   var healthCustomerList = [];
+  var improvementCustomerList = [];
   var improvementEditingId = null;
   var improvementMeta = null;
   var listState = {
@@ -300,6 +301,65 @@
       var searchInput = document.getElementById('health-customer-search');
       renderHealthCustomerSelect(searchInput ? searchInput.value : '');
       applySelectedCustomerByInput();
+    });
+  }
+
+  function toDateTimeLocalValue(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    var normalized = raw.replace('T', ' ');
+    var m = normalized.match(/^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/);
+    if (!m) return '';
+    return m[1] + 'T' + m[2];
+  }
+
+  function normalizeServiceTimeForSave(value) {
+    var raw = String(value || '').trim();
+    if (!raw) return '';
+    return raw.replace('T', ' ');
+  }
+
+  function renderImprovementCustomerOptions(keyword) {
+    var optionBox = document.getElementById('improvement-customer-options');
+    if (!optionBox) return;
+    var q = String(keyword || '').trim();
+    var matched = improvementCustomerList.filter(function (c) {
+      var name = String(c.name || '');
+      var phone = String(c.phone || '');
+      return !q || name.indexOf(q) !== -1 || phone.indexOf(q) !== -1;
+    });
+    optionBox.innerHTML = matched.map(function (c) {
+      var label = (c.name || '') + (c.phone ? ('（' + c.phone + '）') : '');
+      return '<option value="' + escapeHtml(label) + '"></option>';
+    }).join('');
+  }
+
+  function applyImprovementCustomerByInput() {
+    var input = document.getElementById('improvement-customer-search');
+    var hidden = document.getElementById('improvement-customer');
+    if (!input || !hidden) return;
+    var raw = String(input.value || '').trim();
+    if (!raw) {
+      hidden.value = '';
+      return;
+    }
+    var normalized = raw.replace(/[（）]/g, function (x) { return x === '（' ? '(' : ')'; });
+    hidden.value = '';
+    var exact = improvementCustomerList.find(function (c) {
+      var label = (c.name || '') + (c.phone ? ('(' + c.phone + ')') : '');
+      return label === normalized || (c.name || '') === raw || (c.phone || '') === raw;
+    });
+    if (!exact) return;
+    hidden.value = exact.id;
+    input.value = (exact.name || '') + (exact.phone ? ('（' + exact.phone + '）') : '');
+  }
+
+  function initImprovementCustomerPicker() {
+    return get('/api/customers?page=1&page_size=500&sort_by=name_asc').then(function (list) {
+      improvementCustomerList = toList(list);
+      var searchInput = document.getElementById('improvement-customer-search');
+      renderImprovementCustomerOptions(searchInput ? searchInput.value : '');
+      applyImprovementCustomerByInput();
     });
   }
 
@@ -1166,28 +1226,35 @@
 
   function openImprovementModal(record, modeText) {
     ensureImprovementMeta().then(function () {
-      fillCustomerSelect('improvement-customer');
-      fillImprovementFormOptions();
-      var data = record || {};
-      improvementEditingId = data.id || null;
-      document.getElementById('improvement-modal-title').textContent = modeText || (improvementEditingId ? '编辑改善记录' : '新增改善记录');
-      document.getElementById('improvement-id').value = data.id || '';
-      document.getElementById('improvement-service-id').value = data.service_id || '';
-      document.getElementById('improvement-service-type').value = data.service_type || 'appointments';
-      setTimeout(function () {
-        document.getElementById('improvement-customer').value = data.customer_id || '';
-      }, 0);
-      document.getElementById('improvement-service-time').value = data.service_time || '';
-      document.getElementById('improvement-service-project').value = data.service_project || '';
-      document.getElementById('improvement-pre-service-status').value = data.pre_service_status || '';
-      document.getElementById('improvement-service-content').value = data.service_content || '';
-      document.getElementById('improvement-post-service-evaluation').value = data.post_service_evaluation || '';
-      document.getElementById('improvement-status').value = data.improvement_status || '';
-      document.getElementById('improvement-followup-time').value = data.followup_time || '';
-      document.getElementById('improvement-followup-date').value = data.followup_date || '';
-      document.getElementById('improvement-followup-method').value = data.followup_method || '';
-      document.getElementById('improvement-followup-result').value = data.followup_result || '';
-      document.getElementById('modal-improvement').classList.remove('hide');
+      initImprovementCustomerPicker().then(function () {
+        fillImprovementFormOptions();
+        var data = record || {};
+        improvementEditingId = data.id || null;
+        document.getElementById('improvement-modal-title').textContent = modeText || (improvementEditingId ? '编辑改善记录' : '新增改善记录');
+        document.getElementById('improvement-id').value = data.id || '';
+        document.getElementById('improvement-service-id').value = data.service_id || '';
+        document.getElementById('improvement-service-type').value = data.service_type || 'appointments';
+        var customerInput = document.getElementById('improvement-customer-search');
+        var customerHidden = document.getElementById('improvement-customer');
+        if (customerHidden) customerHidden.value = data.customer_id || '';
+        if (customerInput) {
+          var selected = improvementCustomerList.find(function (c) { return String(c.id) === String(data.customer_id || ''); });
+          customerInput.value = selected
+            ? ((selected.name || '') + (selected.phone ? ('（' + selected.phone + '）') : ''))
+            : (data.customer_name || '');
+        }
+        document.getElementById('improvement-service-time').value = toDateTimeLocalValue(data.service_time || '');
+        document.getElementById('improvement-service-project').value = data.service_project || '';
+        document.getElementById('improvement-pre-service-status').value = data.pre_service_status || '';
+        document.getElementById('improvement-service-content').value = data.service_content || '';
+        document.getElementById('improvement-post-service-evaluation').value = data.post_service_evaluation || '';
+        document.getElementById('improvement-status').value = data.improvement_status || '';
+        document.getElementById('improvement-followup-time').value = data.followup_time || '';
+        document.getElementById('improvement-followup-date').value = data.followup_date || '';
+        document.getElementById('improvement-followup-method').value = data.followup_method || '';
+        document.getElementById('improvement-followup-result').value = data.followup_result || '';
+        document.getElementById('modal-improvement').classList.remove('hide');
+      });
     });
   }
 
@@ -1201,7 +1268,7 @@
       var serviceEnd = (document.getElementById('improvement-filter-end').value || '').trim();
       var followupDone = (document.getElementById('improvement-filter-followup-done').value || '').trim();
       if (customerId) qs.push('customer_id=' + encodeURIComponent(customerId));
-      if (customerName) qs.push('customer_name=' + encodeURIComponent(customerName));
+      if (customerName) qs.push('customer_keyword=' + encodeURIComponent(customerName));
       if (serviceProject) qs.push('service_project=' + encodeURIComponent(serviceProject));
       if (status) qs.push('improvement_status=' + encodeURIComponent(status));
       if (serviceStart) qs.push('service_start=' + encodeURIComponent(serviceStart));
@@ -1828,11 +1895,12 @@
     document.getElementById('modal-improvement').classList.add('hide');
   });
   document.getElementById('btn-improvement-save').addEventListener('click', function () {
+    applyImprovementCustomerByInput();
     var payload = {
       service_id: (document.getElementById('improvement-service-id').value || '').trim() || null,
       service_type: (document.getElementById('improvement-service-type').value || 'appointments').trim(),
       customer_id: document.getElementById('improvement-customer').value,
-      service_time: (document.getElementById('improvement-service-time').value || '').trim(),
+      service_time: normalizeServiceTimeForSave(document.getElementById('improvement-service-time').value),
       service_project: (document.getElementById('improvement-service-project').value || '').trim(),
       pre_service_status: document.getElementById('improvement-pre-service-status').value.trim(),
       service_content: document.getElementById('improvement-service-content').value.trim(),
@@ -1856,6 +1924,12 @@
       showMsg('improvement-msg', id ? '改善记录已更新' : '改善记录已新增');
       loadImprovementTrackingPage();
     });
+  });
+  document.getElementById('improvement-customer-search').addEventListener('input', function () {
+    renderImprovementCustomerOptions(this.value);
+  });
+  document.getElementById('improvement-customer-search').addEventListener('change', function () {
+    applyImprovementCustomerByInput();
   });
 
 

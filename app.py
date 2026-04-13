@@ -2104,7 +2104,7 @@ def api_improvement_records_all():
         WHERE 1=1
     '''
     params = []
-    customer_name = (request.args.get('customer_name') or '').strip()
+    customer_keyword = (request.args.get('customer_keyword') or request.args.get('customer_name') or '').strip()
     service_project = (request.args.get('service_project') or '').strip()
     improvement_status = (request.args.get('improvement_status') or '').strip()
     service_start = (request.args.get('service_start') or '').strip()
@@ -2115,9 +2115,10 @@ def api_improvement_records_all():
     if customer_id:
         sql += ' AND r.customer_id=?'
         params.append(customer_id)
-    if customer_name:
-        sql += ' AND c.name LIKE ?'
-        params.append(f'%{customer_name}%')
+    if customer_keyword:
+        sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
+        keyword_like = f'%{customer_keyword}%'
+        params.extend([keyword_like, keyword_like])
     if service_project:
         sql += ' AND r.service_project=?'
         params.append(service_project)
@@ -2332,7 +2333,7 @@ def api_improvement_record_from_appointment():
     appt_dict = dict(appt)
     summary = get_latest_assessment_summary(c, appt_dict['customer_id'])
     conn.close()
-    service_time = f"{appt_dict.get('appointment_date') or ''} {appt_dict.get('start_time') or ''}-{appt_dict.get('end_time') or ''}".strip()
+    service_time = f"{appt_dict.get('appointment_date') or ''} {appt_dict.get('start_time') or ''}".strip()
     return success_response({
         'service_id': appt_dict.get('service_id'),
         'service_type': service_type,
