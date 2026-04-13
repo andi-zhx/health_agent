@@ -348,6 +348,20 @@ APPOINTMENT_PROJECT_DEVICE_CONFIG = {
 
 DEFAULT_ALLOWED_HOME_PROJECTS = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
 
+IMPROVEMENT_SERVICE_PROJECTS = [
+    '高压氧仓',
+    '毫米波理疗仪',
+    '疼痛治疗仪',
+    '太空针灸按摩仪',
+    '听力检测仪',
+    '艾灸机器人',
+    'AI 健康检测机器人',
+]
+
+IMPROVEMENT_STATUS_OPTIONS = ['明显改善', '部分改善', '无改善', '加重']
+FOLLOWUP_METHOD_OPTIONS = ['电话', '到店']
+FOLLOWUP_PRESET_OPTIONS = ['1个月', '3个月', '半年', '1年']
+
 
 def generate_time_slots(start='08:30', end='16:00', interval_minutes=30):
     slots = []
@@ -479,6 +493,51 @@ def validate_home_appointment_payload(d):
     status = str(d.get('status') or 'scheduled').strip().lower()
     if status not in {'scheduled', 'cancelled'}:
         return '预约状态不合法'
+    return None
+
+
+def get_latest_assessment_summary(cursor, customer_id):
+    cursor.execute(
+        '''
+        SELECT *
+        FROM health_assessments
+        WHERE customer_id=?
+        ORDER BY assessment_date DESC, id DESC
+        LIMIT 1
+        ''',
+        (customer_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return ''
+    data = dict(row)
+    summary_parts = []
+    for label, key in (
+        ('既往病史', 'past_medical_history'),
+        ('近期症状', 'recent_symptoms'),
+        ('睡眠', 'sleep_quality'),
+        ('血压', 'blood_pressure_test'),
+        ('血脂', 'blood_lipid_test'),
+        ('血糖', 'blood_sugar_test'),
+        ('最影响生活问题', 'life_impact_issues'),
+    ):
+        value = str(data.get(key) or '').strip()
+        if value:
+            summary_parts.append(f'{label}:{value}')
+    return '；'.join(summary_parts)
+
+
+def validate_improvement_payload(d):
+    required_fields = ('customer_id', 'service_time', 'service_project', 'improvement_status')
+    if not all(str(d.get(k) or '').strip() for k in required_fields):
+        return '缺少必填字段'
+    if str(d.get('service_project') or '').strip() not in IMPROVEMENT_SERVICE_PROJECTS:
+        return '服务项目不合法'
+    if str(d.get('improvement_status') or '').strip() not in IMPROVEMENT_STATUS_OPTIONS:
+        return '改善情况不合法'
+    followup_method = str(d.get('followup_method') or '').strip()
+    if followup_method and followup_method not in FOLLOWUP_METHOD_OPTIONS:
+        return '随访方式不合法'
     return None
 
 
@@ -1278,6 +1337,44 @@ def init_db():
         'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS service_improvement_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_id INTEGER,
+            service_type TEXT DEFAULT 'appointments',
+            customer_id INTEGER NOT NULL,
+            service_time TEXT NOT NULL,
+            service_project TEXT NOT NULL,
+            pre_service_status TEXT,
+            service_content TEXT,
+            post_service_evaluation TEXT,
+            improvement_status TEXT NOT NULL,
+            followup_time TEXT,
+            followup_date TEXT,
+            followup_method TEXT,
+            followup_result TEXT,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        )
+    ''')
+    ensure_columns(c, 'service_improvement_records', {
+        'service_id': 'INTEGER',
+        'service_type': "TEXT DEFAULT 'appointments'",
+        'customer_id': 'INTEGER',
+        'service_time': 'TEXT',
+        'service_project': 'TEXT',
+        'pre_service_status': 'TEXT',
+        'service_content': 'TEXT',
+        'post_service_evaluation': 'TEXT',
+        'improvement_status': 'TEXT',
+        'followup_time': 'TEXT',
+        'followup_date': 'TEXT',
+        'followup_method': 'TEXT',
+        'followup_result': 'TEXT',
+        'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
+    })
+
     c.execute("SELECT COUNT(*) FROM equipment")
     if c.fetchone()[0] == 0:
         for row in [
@@ -1962,6 +2059,290 @@ def api_health_assessment_delete(hid):
     conn.commit()
     conn.close()
     return jsonify({'message': '已删除'})
+
+
+# ========== 健康改善追踪 ==========
+@app.route('/api/improvement-records/meta', methods=['GET'])
+def api_improvement_records_meta():
+    return success_response({
+        'service_projects': IMPROVEMENT_SERVICE_PROJECTS,
+        'improvement_status_options': IMPROVEMENT_STATUS_OPTIONS,
+        'followup_method_options': FOLLOWUP_METHOD_OPTIONS,
+        'followup_time_options': FOLLOWUP_PRESET_OPTIONS,
+    })
+
+
+@app.route('/api/improvement-records', methods=['GET'])
+def api_improvement_records_by_customer():
+    customer_id = request.args.get('customer_id', type=int)
+    if not customer_id:
+        return error_response('customer_id 必填')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT r.*, c.name as customer_name
+        FROM service_improvement_records r
+        JOIN customers c ON r.customer_id=c.id
+        WHERE r.customer_id=?
+        ORDER BY r.service_time DESC, r.id DESC
+        ''',
+        (customer_id,),
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(rows)
+
+
+@app.route('/api/improvement-records/all', methods=['GET'])
+def api_improvement_records_all():
+    conn = get_db()
+    c = conn.cursor()
+    sql = '''
+        FROM service_improvement_records r
+        JOIN customers c ON r.customer_id=c.id
+        WHERE 1=1
+    '''
+    params = []
+    customer_name = (request.args.get('customer_name') or '').strip()
+    service_project = (request.args.get('service_project') or '').strip()
+    improvement_status = (request.args.get('improvement_status') or '').strip()
+    service_start = (request.args.get('service_start') or '').strip()
+    service_end = (request.args.get('service_end') or '').strip()
+    followup_done = (request.args.get('followup_done') or '').strip().lower()
+    customer_id = request.args.get('customer_id', type=int)
+
+    if customer_id:
+        sql += ' AND r.customer_id=?'
+        params.append(customer_id)
+    if customer_name:
+        sql += ' AND c.name LIKE ?'
+        params.append(f'%{customer_name}%')
+    if service_project:
+        sql += ' AND r.service_project=?'
+        params.append(service_project)
+    if improvement_status:
+        sql += ' AND r.improvement_status=?'
+        params.append(improvement_status)
+    if service_start:
+        sql += ' AND date(substr(r.service_time, 1, 10)) >= date(?)'
+        params.append(service_start)
+    if service_end:
+        sql += ' AND date(substr(r.service_time, 1, 10)) <= date(?)'
+        params.append(service_end)
+    if followup_done in ('yes', 'no'):
+        if followup_done == 'yes':
+            sql += " AND TRIM(COALESCE(r.followup_result,'')) <> ''"
+        else:
+            sql += " AND TRIM(COALESCE(r.followup_result,'')) = ''"
+
+    c.execute(
+        f'''
+        SELECT r.*, c.name as customer_name, c.phone as customer_phone
+        {sql}
+        ORDER BY r.service_time DESC, r.id DESC
+        '''
+        ,
+        params,
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(rows)
+
+
+@app.route('/api/improvement-records/<int:rid>', methods=['GET'])
+def api_improvement_record_get(rid):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT r.*, c.name as customer_name, c.phone as customer_phone, c.health_status
+        FROM service_improvement_records r
+        JOIN customers c ON r.customer_id=c.id
+        WHERE r.id=?
+        ''',
+        (rid,),
+    )
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return error_response('记录不存在', 404, 'NOT_FOUND')
+    return success_response(dict(row))
+
+
+@app.route('/api/improvement-records', methods=['POST'])
+def api_improvement_record_create():
+    d = request.json or {}
+    err = validate_improvement_payload(d)
+    if err:
+        return error_response(err)
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
+    if not c.fetchone():
+        conn.close()
+        return error_response('客户不存在')
+    c.execute(
+        '''
+        INSERT INTO service_improvement_records
+        (service_id, service_type, customer_id, service_time, service_project, pre_service_status, service_content,
+         post_service_evaluation, improvement_status, followup_time, followup_date, followup_method, followup_result, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+        ''',
+        (
+            d.get('service_id'),
+            d.get('service_type') or 'appointments',
+            d.get('customer_id'),
+            d.get('service_time'),
+            d.get('service_project'),
+            d.get('pre_service_status'),
+            d.get('service_content'),
+            d.get('post_service_evaluation'),
+            d.get('improvement_status'),
+            d.get('followup_time'),
+            d.get('followup_date'),
+            d.get('followup_method'),
+            d.get('followup_result'),
+        ),
+    )
+    rid = c.lastrowid
+    conn.commit()
+    conn.close()
+    audit_log('新增改善记录', 'service_improvement_records', rid, f"customer_id={d.get('customer_id')}")
+    return success_response({'id': rid}, '改善记录已添加', 201)
+
+
+@app.route('/api/improvement-records/<int:rid>', methods=['PUT'])
+def api_improvement_record_update(rid):
+    d = request.json or {}
+    err = validate_improvement_payload(d)
+    if err:
+        return error_response(err)
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id FROM service_improvement_records WHERE id=?', (rid,))
+    if not c.fetchone():
+        conn.close()
+        return error_response('记录不存在', 404, 'NOT_FOUND')
+    c.execute(
+        '''
+        UPDATE service_improvement_records
+        SET service_id=?, service_type=?, customer_id=?, service_time=?, service_project=?, pre_service_status=?, service_content=?,
+            post_service_evaluation=?, improvement_status=?, followup_time=?, followup_date=?, followup_method=?, followup_result=?,
+            updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+        WHERE id=?
+        ''',
+        (
+            d.get('service_id'),
+            d.get('service_type') or 'appointments',
+            d.get('customer_id'),
+            d.get('service_time'),
+            d.get('service_project'),
+            d.get('pre_service_status'),
+            d.get('service_content'),
+            d.get('post_service_evaluation'),
+            d.get('improvement_status'),
+            d.get('followup_time'),
+            d.get('followup_date'),
+            d.get('followup_method'),
+            d.get('followup_result'),
+            rid,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    audit_log('修改改善记录', 'service_improvement_records', rid, f"customer_id={d.get('customer_id')}")
+    return success_response({'id': rid}, '改善记录已更新')
+
+
+@app.route('/api/improvement-records/<int:rid>', methods=['DELETE'])
+def api_improvement_record_delete(rid):
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('DELETE FROM service_improvement_records WHERE id=?', (rid,))
+    conn.commit()
+    conn.close()
+    audit_log('删除改善记录', 'service_improvement_records', rid, '')
+    return success_response({}, '已删除')
+
+
+@app.route('/api/improvement-records/latest', methods=['GET'])
+def api_improvement_record_latest():
+    customer_id = request.args.get('customer_id', type=int)
+    if not customer_id:
+        return error_response('customer_id 必填')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT r.*, c.name as customer_name
+        FROM service_improvement_records r
+        JOIN customers c ON r.customer_id=c.id
+        WHERE r.customer_id=?
+        ORDER BY r.service_time DESC, r.id DESC
+        LIMIT 1
+        ''',
+        (customer_id,),
+    )
+    row = c.fetchone()
+    conn.close()
+    return success_response(dict(row) if row else {})
+
+
+@app.route('/api/improvement-records/from-appointment', methods=['GET'])
+def api_improvement_record_from_appointment():
+    service_id = request.args.get('service_id', type=int)
+    service_type = (request.args.get('service_type') or 'appointments').strip()
+    if not service_id:
+        return error_response('service_id 必填')
+    if service_type not in ('appointments', 'home_appointments'):
+        return error_response('service_type 不合法')
+    conn = get_db()
+    c = conn.cursor()
+    if service_type == 'home_appointments':
+        c.execute(
+            '''
+            SELECT h.id as service_id, h.customer_id, c.name as customer_name, c.phone as customer_phone,
+                   COALESCE(p.name, h.service_project, '') as service_project,
+                   h.appointment_date, h.start_time, h.end_time
+            FROM home_appointments h
+            JOIN customers c ON h.customer_id=c.id
+            LEFT JOIN therapy_projects p ON h.project_id=p.id
+            WHERE h.id=?
+            ''',
+            (service_id,),
+        )
+    else:
+        c.execute(
+            '''
+            SELECT a.id as service_id, a.customer_id, c.name as customer_name, c.phone as customer_phone,
+                   COALESCE(p.name, '') as service_project,
+                   a.appointment_date, a.start_time, a.end_time
+            FROM appointments a
+            JOIN customers c ON a.customer_id=c.id
+            LEFT JOIN therapy_projects p ON a.project_id=p.id
+            WHERE a.id=?
+            ''',
+            (service_id,),
+        )
+    appt = c.fetchone()
+    if not appt:
+        conn.close()
+        return error_response('预约记录不存在', 404, 'NOT_FOUND')
+    appt_dict = dict(appt)
+    summary = get_latest_assessment_summary(c, appt_dict['customer_id'])
+    conn.close()
+    service_time = f"{appt_dict.get('appointment_date') or ''} {appt_dict.get('start_time') or ''}-{appt_dict.get('end_time') or ''}".strip()
+    return success_response({
+        'service_id': appt_dict.get('service_id'),
+        'service_type': service_type,
+        'customer_id': appt_dict.get('customer_id'),
+        'customer_name': appt_dict.get('customer_name'),
+        'customer_phone': appt_dict.get('customer_phone'),
+        'service_project': appt_dict.get('service_project'),
+        'service_time': service_time,
+        'pre_service_status': summary,
+    })
 
 
 # ========== 预约 ==========

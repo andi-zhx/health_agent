@@ -164,6 +164,7 @@
       <a href="#" data-page="portrait">健康画像</a>
       <a href="#" data-page="appointments">预约服务</a>
       <a href="#" data-page="home-appointments">上门预约</a>
+      <a href="#" data-page="improvement-tracking">健康改善追踪</a>
       <a href="#" data-page="query-export">数据查询导出</a>
     </nav>
     <main class="main">
@@ -543,6 +544,33 @@
           <div id="query-export-msg"></div>
         </div>
       </div>
+      <div id="page-improvement-tracking" class="page hide">
+        <div class="card">
+          <h2>健康改善追踪</h2>
+          <div class="search-bar">
+            <input type="text" id="improvement-filter-customer-name" placeholder="客户姓名">
+            <select id="improvement-filter-service-project"><option value="">全部服务项目</option></select>
+            <select id="improvement-filter-status"><option value="">全部改善情况</option></select>
+            <label>服务时间</label>
+            <input type="date" id="improvement-filter-start">
+            <span>至</span>
+            <input type="date" id="improvement-filter-end">
+            <select id="improvement-filter-followup-done">
+              <option value="">随访结果(全部)</option>
+              <option value="yes">已填写随访结果</option>
+              <option value="no">未填写随访结果</option>
+            </select>
+            <button class="btn btn-primary" id="btn-improvement-search">查询</button>
+            <button class="btn btn-secondary" id="btn-improvement-reset">重置</button>
+            <button class="btn btn-primary" id="btn-improvement-add">新增改善记录</button>
+          </div>
+          <div id="improvement-msg"></div>
+          <table>
+            <thead><tr><th>客户姓名</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>随访方式</th><th>随访结果</th><th>操作</th></tr></thead>
+            <tbody id="improvement-list"></tbody>
+          </table>
+        </div>
+      </div>
     </main>
   </div>
   <div id="modal-customer" class="modal-mask hide">
@@ -591,6 +619,45 @@
       <div id="modal-history-content" style="max-height:420px;overflow:auto;line-height:1.8;color:#2c3e50"></div>
       <div class="modal-actions">
         <button class="btn btn-primary" id="btn-history-close">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-improvement" class="modal-mask hide">
+    <div class="modal" style="max-width:760px">
+      <h3 id="improvement-modal-title">新增改善记录</h3>
+      <input type="hidden" id="improvement-id">
+      <input type="hidden" id="improvement-service-type" value="appointments">
+      <div class="form-row">
+        <label>服务ID</label>
+        <input type="text" id="improvement-service-id" readonly>
+        <label>客户</label>
+        <select id="improvement-customer"></select>
+      </div>
+      <div class="form-row">
+        <label>服务时间</label>
+        <input type="text" id="improvement-service-time" placeholder="例如：2026-04-13 09:00-09:30">
+        <label>服务项目</label>
+        <select id="improvement-service-project"></select>
+      </div>
+      <div class="form-row"><label>服务前状态</label><textarea id="improvement-pre-service-status"></textarea></div>
+      <div class="form-row"><label>服务内容</label><textarea id="improvement-service-content"></textarea></div>
+      <div class="form-row"><label>服务后评估</label><textarea id="improvement-post-service-evaluation"></textarea></div>
+      <div class="form-row">
+        <label>改善情况</label>
+        <select id="improvement-status"></select>
+        <label>随访时间</label>
+        <select id="improvement-followup-time"></select>
+      </div>
+      <div class="form-row">
+        <label>随访日期</label>
+        <input type="date" id="improvement-followup-date">
+        <label>随访方式</label>
+        <select id="improvement-followup-method"></select>
+      </div>
+      <div class="form-row"><label>随访结果</label><textarea id="improvement-followup-result"></textarea></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-improvement-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-improvement-save">保存</button>
       </div>
     </div>
   </div>
