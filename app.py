@@ -673,14 +673,12 @@ HEALTH_ASSESSMENT_ALLOWED_VALUES = {
     'allergy_history': {'无', '有'},
     'smoking_status': {'无', '有'},
     'drinking_status': {'无', '有'},
-    'fatigue_last_month': {'无', '稍微疲劳', '比较疲劳', '非常疲劳'},
     'sleep_quality': {'很差', '差', '一般', '良好'},
     'sleep_hours': {'<6小时', '6-8小时', '9-10小时', '>10小时'},
     'blood_pressure_test': {'未监测', '监测：正常', '监测：偏低', '监测：偏高'},
     'blood_lipid_test': {'未监测', '监测：正常', '监测：偏高'},
     'blood_sugar_test': {'未监测', '监测：正常', '监测：偏低', '监测：偏高'},
     'chronic_pain': {'无', '有'},
-    'weekly_exercise_freq': {'<3次', '3-4次', '5-7次', '>7次'},
 }
 
 HEALTH_PORTRAIT_DISEASE_MAP = {
@@ -792,8 +790,7 @@ def extract_health_portrait(record):
     smoking = record.get('smoking_status') == '有'
     drinking = record.get('drinking_status') == '有'
     weak_sleep = record.get('sleep_quality') in ('很差', '差')
-    weak_exercise = record.get('weekly_exercise_freq') in ('<3次', '')
-    risk_score = disease_count + (1 if smoking else 0) + (1 if drinking else 0) + (1 if weak_sleep else 0) + (1 if weak_exercise else 0)
+    risk_score = disease_count + (1 if smoking else 0) + (1 if drinking else 0) + (1 if weak_sleep else 0)
     if age and age >= 65:
         risk_score += 1
 
@@ -1010,7 +1007,6 @@ def init_db():
             cigarettes_per_day INTEGER,
             drinking_status TEXT,
             drinking_years INTEGER,
-            fatigue_last_month TEXT,
             sleep_quality TEXT,
             sleep_hours TEXT,
             recent_symptoms TEXT,
@@ -1022,7 +1018,6 @@ def init_db():
             chronic_pain TEXT,
             pain_details TEXT,
             exercise_methods TEXT,
-            weekly_exercise_freq TEXT,
             health_needs TEXT,
             notes TEXT,
             created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
@@ -1035,6 +1030,61 @@ def init_db():
         'life_impact_issues': 'TEXT',
         'blood_sugar_test': 'TEXT',
     })
+    c.execute('PRAGMA table_info(health_assessments)')
+    health_assessment_columns = {row[1] for row in c.fetchall()}
+    if 'fatigue_last_month' in health_assessment_columns or 'weekly_exercise_freq' in health_assessment_columns:
+        c.execute('ALTER TABLE health_assessments RENAME TO health_assessments_old')
+        c.execute('''
+            CREATE TABLE health_assessments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER NOT NULL,
+                assessment_date TEXT NOT NULL,
+                assessor TEXT,
+                age INTEGER,
+                height_cm REAL,
+                weight_kg REAL,
+                address TEXT,
+                past_medical_history TEXT,
+                family_history TEXT,
+                allergy_history TEXT,
+                allergy_details TEXT,
+                smoking_status TEXT,
+                smoking_years INTEGER,
+                cigarettes_per_day INTEGER,
+                drinking_status TEXT,
+                drinking_years INTEGER,
+                sleep_quality TEXT,
+                sleep_hours TEXT,
+                recent_symptoms TEXT,
+                recent_symptom_detail TEXT,
+                life_impact_issues TEXT,
+                blood_pressure_test TEXT,
+                blood_lipid_test TEXT,
+                blood_sugar_test TEXT,
+                chronic_pain TEXT,
+                pain_details TEXT,
+                exercise_methods TEXT,
+                health_needs TEXT,
+                notes TEXT,
+                created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+                FOREIGN KEY (customer_id) REFERENCES customers(id)
+            )
+        ''')
+        c.execute('''
+            INSERT INTO health_assessments (
+                id, customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
+                allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years,
+                sleep_quality, sleep_hours, recent_symptoms, recent_symptom_detail, life_impact_issues, blood_pressure_test, blood_lipid_test,
+                blood_sugar_test, chronic_pain, pain_details, exercise_methods, health_needs, notes, created_at
+            )
+            SELECT
+                id, customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
+                allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years,
+                sleep_quality, sleep_hours, recent_symptoms, recent_symptom_detail, life_impact_issues, blood_pressure_test, blood_lipid_test,
+                blood_sugar_test, chronic_pain, pain_details, exercise_methods, health_needs, notes, created_at
+            FROM health_assessments_old
+        ''')
+        c.execute('DROP TABLE health_assessments_old')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS therapy_projects (
@@ -1601,6 +1651,37 @@ def api_customers_list():
     return success_response(paginate_result(rows, total, page, page_size))
 
 
+@app.route('/api/customers/history-view', methods=['GET'])
+def api_customers_history_view():
+    q = (request.args.get('search', '') or '').strip()
+    page, page_size, offset = parse_list_params()
+    conn = get_db()
+    c = conn.cursor()
+    where_sql = '''
+        c.is_deleted=0
+        AND EXISTS (SELECT 1 FROM health_assessments h WHERE h.customer_id = c.id)
+    '''
+    params = []
+    if q:
+        where_sql += ' AND (c.name LIKE ? OR c.phone LIKE ? OR c.id_card LIKE ?)'
+        params.extend([f'%{q}%', f'%{q}%', f'%{q}%'])
+    c.execute(f'SELECT COUNT(*) as n FROM customers c WHERE {where_sql}', params)
+    total = c.fetchone()['n']
+    c.execute(
+        f'''
+        SELECT c.id, c.name, c.age, c.identity_type, c.phone, c.created_at
+        FROM customers c
+        WHERE {where_sql}
+        ORDER BY c.created_at DESC, c.id DESC
+        LIMIT ? OFFSET ?
+        ''',
+        params + [page_size, offset]
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(paginate_result(rows, total, page, page_size))
+
+
 @app.route('/api/customers/<int:cid>', methods=['GET'])
 def api_customer_get(cid):
     conn = get_db()
@@ -1939,7 +2020,6 @@ def api_staff_update(sid):
 def api_health_assessments_list():
     customer_id = request.args.get('customer_id', type=int)
     search = (request.args.get('search', '') or '').strip()
-    status = (request.args.get('status', '') or '').strip().lower()
     date_from = (request.args.get('date_from', '') or '').strip()
     date_to = (request.args.get('date_to', '') or '').strip()
     sort_by = (request.args.get('sort_by', '') or 'date_desc').strip()
@@ -1960,9 +2040,6 @@ def api_health_assessments_list():
     if search:
         sql += ' AND c.name LIKE ?'
         params.append(f'%{search}%')
-    if status:
-        sql += ' AND LOWER(COALESCE(h.fatigue_last_month, "")) LIKE ?'
-        params.append(f'%{status}%')
     if date_from:
         sql += ' AND date(h.assessment_date) >= date(?)'
         params.append(date_from)
@@ -1990,17 +2067,17 @@ def api_health_assessment_create():
     c = conn.cursor()
     c.execute('''
         INSERT INTO health_assessments (customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
-         allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years, fatigue_last_month,
+         allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years,
          sleep_quality, sleep_hours, recent_symptoms, recent_symptom_detail, life_impact_issues, blood_pressure_test, blood_lipid_test, blood_sugar_test, chronic_pain, pain_details,
-         exercise_methods, weekly_exercise_freq, health_needs, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+         exercise_methods, health_needs, notes)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''', (
         d.get('customer_id'), d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
         d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
         d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-        d.get('fatigue_last_month'), d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
+        d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
         d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
-        parse_multi_value(d.get('exercise_methods')), d.get('weekly_exercise_freq'), parse_multi_value(d.get('health_needs')), d.get('notes')
+        parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes')
     ))
     conn.commit()
     rid = c.lastrowid
@@ -2035,16 +2112,16 @@ def api_health_assessment_update(hid):
         UPDATE health_assessments
         SET customer_id=?, assessment_date=?, assessor=?, age=?, height_cm=?, weight_kg=?, address=?, past_medical_history=?, family_history=?,
             allergy_history=?, allergy_details=?, smoking_status=?, smoking_years=?, cigarettes_per_day=?, drinking_status=?, drinking_years=?,
-            fatigue_last_month=?, sleep_quality=?, sleep_hours=?, recent_symptoms=?, recent_symptom_detail=?, life_impact_issues=?, blood_pressure_test=?, blood_lipid_test=?,
-            blood_sugar_test=?, chronic_pain=?, pain_details=?, exercise_methods=?, weekly_exercise_freq=?, health_needs=?, notes=?
+            sleep_quality=?, sleep_hours=?, recent_symptoms=?, recent_symptom_detail=?, life_impact_issues=?, blood_pressure_test=?, blood_lipid_test=?,
+            blood_sugar_test=?, chronic_pain=?, pain_details=?, exercise_methods=?, health_needs=?, notes=?
         WHERE id=?
     ''', (
         d.get('customer_id'), d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
         d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
         d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-        d.get('fatigue_last_month'), d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
+        d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
         d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
-        parse_multi_value(d.get('exercise_methods')), d.get('weekly_exercise_freq'), parse_multi_value(d.get('health_needs')), d.get('notes'), hid
+        parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes'), hid
     ))
     conn.commit()
     conn.close()

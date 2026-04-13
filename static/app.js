@@ -383,17 +383,14 @@
       'sort_by=created_desc'
     ];
     if (q) qs.push('search=' + encodeURIComponent(q));
-    get('/api/customers?' + qs.join('&')).then(function (list) {
+    get('/api/customers/history-view?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('customer-list');
       tbody.innerHTML = toList(list).map(function (c) {
         var createdAt = c.created_at ? String(c.created_at).replace('T', ' ').slice(0, 19) : '-';
-        return '<tr><td>' + (c.name || '') + '</td><td>' + (c.age == null ? '-' : c.age) + '</td><td>' + (c.identity_type || '-') + '</td><td>' + (c.phone || '') + '</td><td>' + createdAt + '</td><td><button class="btn btn-small btn-primary" data-edit="' + c.id + '">编辑</button></td></tr>';
+        return '<tr><td>' + (c.name || '') + '</td><td>' + (c.age == null ? '-' : c.age) + '</td><td>' + (c.identity_type || '-') + '</td><td>' + (c.phone || '') + '</td><td>' + createdAt + '</td></tr>';
       }).join('');
       var p = getPagination(list);
       showMsg('customer-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
-      tbody.querySelectorAll('[data-edit]').forEach(function (btn) {
-        btn.addEventListener('click', function () { openCustomerModal(btn.dataset.edit); });
-      });
     });
   }
 
@@ -498,7 +495,8 @@
     get('/api/health-assessments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('health-list');
       tbody.innerHTML = toList(list).map(function (h) {
-        return '<tr><td>' + (h.customer_name || '') + '</td><td>' + (h.assessment_date || '') + '</td><td>' + (h.height_cm || '-') + '</td><td>' + (h.weight_kg || '-') + '</td><td>' + (h.fatigue_last_month || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td>' + (h.weekly_exercise_freq || '-') + '</td><td>' + (h.past_medical_history || '-') + '</td><td><button class="btn btn-small btn-secondary" data-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-health-edit="' + h.id + '">编辑</button> <button class="btn btn-small btn-primary" data-health-improvement-customer="' + h.customer_id + '">查看改善记录</button></td></tr>';
+        var diagnosed = h.past_medical_history && String(h.past_medical_history).trim() ? '是' : '否';
+        return '<tr><td>' + (h.customer_name || '') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + diagnosed + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-health-edit="' + h.id + '">编辑</button> <button class="btn btn-small btn-primary" data-health-improvement-customer="' + h.customer_id + '">查看改善记录</button></td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-health-detail]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -1568,7 +1566,7 @@
     if (!/^\d+$/.test(customerBody.age) || parseInt(customerBody.age, 10) <= 0) { showMsg('health-msg', '年龄为必填项，且必须为正整数', true); return; }
     if (!customerBody.birth_date) { showMsg('health-msg', '出生日期为必填项', true); return; }
     if (!customerBody.identity_type) { showMsg('health-msg', '身份为必选项，请选择“本人”或“家属”', true); return; }
-    if (customerBody.id_card && customerBody.id_card.length !== 18) { showMsg('health-msg', '身份证号为18位时才可保存', true); return; }
+    if (customerBody.id_card && !/^\d{17}[\dXx]$/.test(customerBody.id_card)) { showMsg('health-msg', '身份证号格式不正确，应为18位（最后一位可为X）', true); return; }
     if (!/^\d{11}$/.test(customerBody.phone)) { showMsg('health-msg', '手机号必须为11位数字', true); return; }
     if (!customerBody.record_creator) { showMsg('health-msg', '建档人为必填项', true); return; }
     var lifeImpactIssues = healthCheckboxValues('ha-life-impact-issue');
