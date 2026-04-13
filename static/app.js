@@ -936,7 +936,7 @@
     if (status === 'cancelled') {
       return { text: '取消预约', cls: 'status-pill-cancelled', editable: false };
     }
-    return { text: '预约成功！', cls: 'status-pill-success', editable: true };
+    return { text: '预约成功', cls: 'status-pill-success', editable: true };
   }
 
   function renderStatusPill(status) {
@@ -946,6 +946,29 @@
 
   function renderOperationTime(record) {
     return record.updated_at || record.created_at || '-';
+  }
+
+  function getCheckinMeta(checkinStatus, bookingStatus) {
+    if (bookingStatus === 'cancelled') return { text: '-', cls: '' };
+    if (checkinStatus === 'checked_in') return { text: '已签到', cls: 'checkin-btn-checked' };
+    if (checkinStatus === 'no_show') return { text: '爽约', cls: 'checkin-btn-noshow' };
+    return { text: '待签到', cls: 'checkin-btn-pending' };
+  }
+
+  function renderCheckinCell(record, moduleName) {
+    var bookingStatus = String(record.status || '').toLowerCase();
+    var checkinStatus = String(record.checkin_status || 'pending').toLowerCase();
+    var meta = getCheckinMeta(checkinStatus, bookingStatus);
+    if (bookingStatus === 'cancelled') return '<span>-</span>';
+    var html = '<button class="checkin-btn ' + meta.cls + '" type="button" disabled>' + meta.text + '</button>';
+    var canOperate = checkinStatus === 'pending' && String(record.appointment_date || '') === today;
+    if (canOperate) {
+      html += '<div class="checkin-cell-actions">' +
+        '<button class="btn btn-small btn-primary" data-checkin-action="' + moduleName + '" data-checkin-id="' + record.id + '" data-checkin-target="checked_in">标记已签到</button>' +
+        '<button class="btn btn-small btn-secondary" data-checkin-action="' + moduleName + '" data-checkin-id="' + record.id + '" data-checkin-target="no_show">标记爽约</button>' +
+        '</div>';
+    }
+    return html;
   }
 
   function loadAppointmentsPage() {
@@ -970,7 +993,7 @@
         var action = meta.editable
           ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-primary" data-apt-history="' + a.id + '">查看历史</button>'
           : '<button class="btn btn-small btn-primary" data-apt-history="' + a.id + '">查看历史</button>';
-        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
+        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + renderCheckinCell(a, 'appointments') + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       var p = getPagination(list);
       showMsg('apt-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
@@ -1000,6 +1023,16 @@
       tbody.querySelectorAll('[data-apt-history]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           viewBusinessHistory('appointments', btn.dataset.aptHistory, '预约服务 - 业务历史日志');
+        });
+      });
+      tbody.querySelectorAll('[data-checkin-action="appointments"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = btn.getAttribute('data-checkin-target');
+          post('/api/appointments/' + btn.getAttribute('data-checkin-id') + '/checkin-status', { checkin_status: target }).then(function (res) {
+            if (res.error) { showMsg('apt-msg', res.error, true); return; }
+            showMsg('apt-msg', '签到状态已更新');
+            loadAppointmentsPage();
+          });
         });
       });
     });
@@ -1032,7 +1065,7 @@
         var action = meta.editable
           ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-primary" data-home-history="' + a.id + '">查看历史</button>'
           : '<button class="btn btn-small btn-primary" data-home-history="' + a.id + '">查看历史</button>';
-        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
+        return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + renderCheckinCell(a, 'home_appointments') + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       var p = getPagination(list);
       showMsg('home-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
@@ -1061,6 +1094,16 @@
       tbody.querySelectorAll('[data-home-history]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           viewBusinessHistory('home_appointments', btn.dataset.homeHistory, '上门预约 - 业务历史日志');
+        });
+      });
+      tbody.querySelectorAll('[data-checkin-action="home_appointments"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = btn.getAttribute('data-checkin-target');
+          post('/api/home-appointments/' + btn.getAttribute('data-checkin-id') + '/checkin-status', { checkin_status: target }).then(function (res) {
+            if (res.error) { showMsg('home-msg', res.error, true); return; }
+            showMsg('home-msg', '签到状态已更新');
+            loadHomeAppointmentsPage();
+          });
         });
       });
     });
@@ -1732,7 +1775,7 @@
       var cols = {
         customers: ['name', 'id_card', 'phone', 'address'],
         health_records: ['customer_name', 'record_date', 'height_cm', 'weight_kg', 'blood_pressure', 'symptoms', 'diagnosis'],
-        appointments: ['customer_name', 'equipment_name', 'appointment_date', 'start_time', 'end_time', 'status'],
+        appointments: ['customer_name', 'equipment_name', 'appointment_date', 'start_time', 'end_time', 'status', 'checkin_status'],
         visit_checkins: ['customer_name', 'checkin_time', 'purpose', 'notes']
       };
       Object.keys(labels).forEach(function (key) {

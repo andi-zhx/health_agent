@@ -71,10 +71,23 @@ def row_list(rows):
     return [dict(r) for r in rows]
 
 
+def get_request_ip():
+    header = request.headers.get('X-Forwarded-For', '')
+    if header:
+        return header.split(',')[0].strip()
+    return request.remote_addr or ''
+
+
 def audit_log(action, module, target_id='', details=''):
     conn = get_db()
     c = conn.cursor()
-    c.execute(
+    insert_audit_log(c, action, module, target_id, details)
+    conn.commit()
+    conn.close()
+
+
+def insert_audit_log(cursor, action, module, target_id='', details=''):
+    cursor.execute(
         '''
         INSERT INTO audit_logs (username, action, module, target_id, details)
         VALUES (?,?,?,?,?)
@@ -87,8 +100,6 @@ def audit_log(action, module, target_id='', details=''):
             str(details or ''),
         ),
     )
-    conn.commit()
-    conn.close()
 
 
 def build_appointment_change_text(record, module):
@@ -112,14 +123,15 @@ def insert_business_history_log(cursor, module, target_id, action_type, before_t
     cursor.execute(
         '''
         INSERT INTO business_history_logs
-        (module, target_id, action_type, operator, before_content, after_content)
-        VALUES (?,?,?,?,?,?)
+        (module, target_id, action_type, operator, operator_ip, before_content, after_content)
+        VALUES (?,?,?,?,?,?,?)
         ''',
         (
             module,
             int(target_id),
             action_type,
             session.get('username', 'anonymous'),
+            get_request_ip(),
             str(before_text or ''),
             str(after_text or ''),
         ),
@@ -436,7 +448,7 @@ def validate_appointment_payload(d):
     if d.get('start_time') >= d.get('end_time'):
         return '结束时间必须晚于开始时间'
     status = str(d.get('status') or 'scheduled').strip().lower()
-    if status not in {'scheduled', 'completed', 'cancelled'}:
+    if status not in {'scheduled', 'cancelled'}:
         return '预约状态不合法'
     return None
 
@@ -457,7 +469,7 @@ def validate_home_appointment_payload(d):
     if contact_phone and not re.fullmatch(r'^1\d{10}$', contact_phone):
         return '联系人手机号格式不正确'
     status = str(d.get('status') or 'scheduled').strip().lower()
-    if status not in {'scheduled', 'completed', 'cancelled'}:
+    if status not in {'scheduled', 'cancelled'}:
         return '预约状态不合法'
     return None
 
@@ -879,6 +891,10 @@ def init_db():
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
             status TEXT DEFAULT 'scheduled',
+            checkin_status TEXT DEFAULT 'pending',
+            checkin_updated_at TEXT,
+            checkin_updated_by TEXT,
+            checkin_updated_ip TEXT,
             notes TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -900,6 +916,10 @@ def init_db():
         'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
         'updated_at': "TEXT DEFAULT CURRENT_TIMESTAMP",
         'source_record_id': 'INTEGER',
+        'checkin_status': "TEXT DEFAULT 'pending'",
+        'checkin_updated_at': 'TEXT',
+        'checkin_updated_by': 'TEXT',
+        'checkin_updated_ip': 'TEXT',
     })
 
     c.execute('DROP TABLE IF EXISTS equipment_usage')
@@ -1034,6 +1054,10 @@ def init_db():
             contact_phone TEXT,
             notes TEXT,
             status TEXT DEFAULT 'scheduled',
+            checkin_status TEXT DEFAULT 'pending',
+            checkin_updated_at TEXT,
+            checkin_updated_by TEXT,
+            checkin_updated_ip TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             source_record_id INTEGER,
@@ -1063,6 +1087,10 @@ def init_db():
         'updated_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
         'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
         'source_record_id': 'INTEGER',
+        'checkin_status': "TEXT DEFAULT 'pending'",
+        'checkin_updated_at': 'TEXT',
+        'checkin_updated_by': 'TEXT',
+        'checkin_updated_ip': 'TEXT',
     })
 
     c.execute('''
@@ -1104,8 +1132,25 @@ def init_db():
             target_id INTEGER NOT NULL,
             action_type TEXT NOT NULL,
             operator TEXT,
+            operator_ip TEXT,
             before_content TEXT,
             after_content TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    ensure_columns(c, 'business_history_logs', {
+        'operator_ip': 'TEXT',
+    })
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS task_execution_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_name TEXT NOT NULL,
+            task_date TEXT,
+            affected_rows INTEGER DEFAULT 0,
+            details TEXT,
+            executed_by TEXT,
+            executed_ip TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -2001,10 +2046,11 @@ def api_appointment_create():
             conn.close()
             return error_response('该时段设备已被预约')
 
+    checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
-        INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, notes, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
-    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes')))
+        INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, checkin_status, notes, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('notes')))
     rid = c.lastrowid
     c.execute(
         '''
@@ -2190,15 +2236,19 @@ def api_appointment_update(aid):
             conn.close()
             return error_response('该时段设备已被预约')
 
+    new_status = str(d.get('status', 'scheduled') or 'scheduled').strip().lower()
+    old_checkin_status = str(old_row['checkin_status'] or 'pending').strip().lower()
+    next_checkin_status = 'none' if new_status == 'cancelled' else ('pending' if old_checkin_status == 'none' else old_checkin_status)
+
     c.execute(
         '''
         UPDATE appointments
-        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, notes=?, updated_at=CURRENT_TIMESTAMP
+        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, notes=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
         ''',
         (
             d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None,
-            d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), d.get('notes'),
+            d.get('appointment_date'), d.get('start_time'), d.get('end_time'), new_status, next_checkin_status, d.get('notes'),
             aid,
         ),
     )
@@ -2250,8 +2300,8 @@ def api_appointment_cancel(aid):
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
-        "UPDATE appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
-        (aid,),
+        "UPDATE appointments SET status='cancelled', checkin_status='none', checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (session.get('username', 'anonymous'), get_request_ip(), aid),
     )
     insert_business_history_log(
         c,
@@ -2265,6 +2315,59 @@ def api_appointment_cancel(aid):
     conn.close()
     audit_log('取消预约', 'appointments', aid, '门店预约取消')
     return success_response({'id': aid}, '已取消')
+
+
+def update_checkin_status(cursor, table_name, module_name, record_id, target_status):
+    cursor.execute(f'SELECT * FROM {table_name} WHERE id=?', (record_id,))
+    row = cursor.fetchone()
+    if not row:
+        return None, '预约记录不存在'
+    booking_status = str(row['status'] or '').strip().lower()
+    current_checkin = str(row['checkin_status'] or 'pending').strip().lower()
+    appointment_date = str(row['appointment_date'] or '').strip()
+
+    if booking_status != 'scheduled':
+        return None, '仅预约成功状态可操作签到'
+    if not is_valid_date(appointment_date):
+        return None, '预约日期异常，无法签到'
+    today_text = datetime.now().strftime('%Y-%m-%d')
+    if appointment_date != today_text:
+        return None, '仅预约当日允许操作签到状态'
+    if current_checkin == 'no_show':
+        return None, '爽约状态不可修改'
+    if current_checkin != 'pending':
+        return None, '当前签到状态不可修改'
+    if target_status not in {'checked_in', 'no_show'}:
+        return None, '签到状态不合法'
+
+    before_text = f"预约状态:预约成功；签到状态:{'待签到' if current_checkin == 'pending' else current_checkin}"
+    after_text = f"预约状态:预约成功；签到状态:{'已签到' if target_status == 'checked_in' else '爽约'}"
+    cursor.execute(
+        f'''
+        UPDATE {table_name}
+        SET checkin_status=?, checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP
+        WHERE id=?
+        ''',
+        (target_status, session.get('username', 'anonymous'), get_request_ip(), record_id),
+    )
+    insert_business_history_log(cursor, module_name, record_id, 'checkin_status_update', before_text, after_text)
+    insert_audit_log(cursor, '更新签到状态', module_name, record_id, f'{current_checkin}->{target_status}')
+    return dict(row), None
+
+
+@app.route('/api/appointments/<int:aid>/checkin-status', methods=['POST'])
+def api_appointment_checkin_status(aid):
+    payload = request.json or {}
+    target_status = str(payload.get('checkin_status') or '').strip().lower()
+    conn = get_db()
+    c = conn.cursor()
+    _, err = update_checkin_status(c, 'appointments', 'appointments', aid, target_status)
+    if err:
+        conn.close()
+        return error_response(err)
+    conn.commit()
+    conn.close()
+    return success_response({'id': aid, 'checkin_status': target_status}, '签到状态更新成功')
 
 
 # ========== 上门预约 ==========
@@ -2526,17 +2629,18 @@ def api_home_appointments_create():
     home_address = d.get('home_address') or d.get('location')
     home_time = d.get('home_time') or f"{d.get('start_time')}-{d.get('end_time')}"
 
+    checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
         INSERT INTO home_appointments (
             customer_id, project_id, staff_id,
             customer_name, phone, home_time, home_address, service_project, staff_name,
-            appointment_date, start_time, end_time, location, contact_person, contact_phone, notes, status, updated_at
+            appointment_date, start_time, end_time, location, contact_person, contact_phone, notes, status, checkin_status, updated_at
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
-        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled')
+        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled'), checkin_status
     ))
     rid = c.lastrowid
     c.execute(
@@ -2574,8 +2678,8 @@ def api_home_appointments_cancel(hid):
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
-        "UPDATE home_appointments SET status='cancelled', updated_at=CURRENT_TIMESTAMP WHERE id=?",
-        (hid,),
+        "UPDATE home_appointments SET status='cancelled', checkin_status='none', checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        (session.get('username', 'anonymous'), get_request_ip(), hid),
     )
     insert_business_history_log(
         c,
@@ -2589,6 +2693,21 @@ def api_home_appointments_cancel(hid):
     conn.close()
     audit_log('取消预约', 'home_appointments', hid, '上门预约取消')
     return success_response({'id': hid}, '已取消')
+
+
+@app.route('/api/home-appointments/<int:hid>/checkin-status', methods=['POST'])
+def api_home_appointments_checkin_status(hid):
+    payload = request.json or {}
+    target_status = str(payload.get('checkin_status') or '').strip().lower()
+    conn = get_db()
+    c = conn.cursor()
+    _, err = update_checkin_status(c, 'home_appointments', 'home_appointments', hid, target_status)
+    if err:
+        conn.close()
+        return error_response(err)
+    conn.commit()
+    conn.close()
+    return success_response({'id': hid, 'checkin_status': target_status}, '签到状态更新成功')
 
 
 @app.route('/api/home-appointments/<int:hid>', methods=['PUT'])
@@ -2660,18 +2779,22 @@ def api_home_appointments_update(hid):
     home_address = d.get('home_address') or d.get('location')
     home_time = d.get('home_time') or f"{d.get('start_time')}-{d.get('end_time')}"
 
+    new_status = str(d.get('status', 'scheduled') or 'scheduled').strip().lower()
+    old_checkin_status = str(old_row['checkin_status'] or 'pending').strip().lower()
+    next_checkin_status = 'none' if new_status == 'cancelled' else ('pending' if old_checkin_status == 'none' else old_checkin_status)
+
     c.execute('''
         UPDATE home_appointments
         SET customer_id=?, project_id=?, staff_id=?,
             customer_name=?, phone=?, home_time=?, home_address=?, service_project=?, staff_name=?,
             appointment_date=?, start_time=?, end_time=?, location=?,
-            contact_person=?, contact_phone=?, notes=?, status=?, updated_at=CURRENT_TIMESTAMP
+            contact_person=?, contact_phone=?, notes=?, status=?, checkin_status=?, updated_at=CURRENT_TIMESTAMP
         WHERE id=?
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
         d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'),
-        d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled'),
+        d.get('contact_person'), d.get('contact_phone'), d.get('notes'), new_status, next_checkin_status,
         hid,
     ))
     before_text = build_appointment_change_text(dict(old_row), 'home_appointments')
@@ -2688,6 +2811,67 @@ def api_home_appointments_update(hid):
     conn.commit()
     conn.close()
     return success_response({'id': hid}, '更新成功')
+
+
+@app.route('/api/tasks/checkin-auto-no-show', methods=['POST'])
+def api_task_checkin_auto_no_show():
+    payload = request.json or {}
+    task_date = str(payload.get('task_date') or datetime.now().strftime('%Y-%m-%d')).strip()
+    if not is_valid_date(task_date):
+        return error_response('task_date 格式必须为 YYYY-MM-DD')
+    operator = session.get('username', 'system')
+    operator_ip = get_request_ip()
+
+    conn = get_db()
+    c = conn.cursor()
+    affected_total = 0
+    detail_rows = []
+    for table_name, module_name in (('appointments', 'appointments'), ('home_appointments', 'home_appointments')):
+        c.execute(
+            f'''
+            SELECT id
+            FROM {table_name}
+            WHERE appointment_date=?
+              AND status='scheduled'
+              AND COALESCE(checkin_status, 'pending')='pending'
+            ''',
+            (task_date,),
+        )
+        ids = [r['id'] for r in c.fetchall()]
+        if not ids:
+            detail_rows.append(f'{module_name}:0')
+            continue
+        ph = ','.join('?' * len(ids))
+        c.execute(
+            f'''
+            UPDATE {table_name}
+            SET checkin_status='no_show', checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP
+            WHERE id IN ({ph})
+            ''',
+            [operator, operator_ip] + ids,
+        )
+        for rid in ids:
+            insert_business_history_log(
+                c,
+                module_name,
+                rid,
+                'checkin_auto_no_show',
+                '签到状态:待签到',
+                '签到状态:爽约（系统自动流转）',
+            )
+        affected_total += len(ids)
+        detail_rows.append(f'{module_name}:{len(ids)}')
+
+    c.execute(
+        '''
+        INSERT INTO task_execution_logs (task_name, task_date, affected_rows, details, executed_by, executed_ip)
+        VALUES (?,?,?,?,?,?)
+        ''',
+        ('checkin_auto_no_show', task_date, affected_total, '；'.join(detail_rows), operator, operator_ip),
+    )
+    conn.commit()
+    conn.close()
+    return success_response({'task_date': task_date, 'affected_rows': affected_total, 'details': detail_rows}, '自动流转执行完成')
 
 
 @app.route('/api/business-history/<module>/<int:target_id>', methods=['GET'])
