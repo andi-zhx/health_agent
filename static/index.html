@@ -548,7 +548,7 @@
         <div class="card">
           <h2>健康改善追踪</h2>
           <div class="search-bar">
-            <input type="text" id="improvement-filter-customer-name" placeholder="客户姓名">
+            <input type="text" id="improvement-filter-customer-name" placeholder="客户姓名或手机号">
             <select id="improvement-filter-service-project"><option value="">全部服务项目</option></select>
             <select id="improvement-filter-status"><option value="">全部改善情况</option></select>
             <label>服务时间</label>
@@ -631,11 +631,13 @@
         <label>服务ID</label>
         <input type="text" id="improvement-service-id" readonly>
         <label>客户</label>
-        <select id="improvement-customer"></select>
+        <input type="text" id="improvement-customer-search" list="improvement-customer-options" placeholder="输入姓名或手机号搜索并选择客户">
+        <datalist id="improvement-customer-options"></datalist>
+        <input type="hidden" id="improvement-customer">
       </div>
       <div class="form-row">
         <label>服务时间</label>
-        <input type="text" id="improvement-service-time" placeholder="例如：2026-04-13 09:00-09:30">
+        <input type="datetime-local" id="improvement-service-time">
         <label>服务项目</label>
         <select id="improvement-service-project"></select>
       </div>
