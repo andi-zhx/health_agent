@@ -108,6 +108,11 @@
     .required-mark { color: #e74c3c; margin-left: 2px; font-weight: 700; }
     .identity-grid { display: flex; flex-direction: column; gap: 8px; }
     .identity-line { display: flex; align-items: center; gap: 10px; }
+    .base-info-grid { display: grid; grid-template-columns: repeat(2, minmax(260px, 1fr)); gap: 10px 14px; }
+    .base-info-item { display: flex; align-items: center; gap: 8px; }
+    .base-info-item label { min-width: 72px; margin: 0; }
+    .base-info-item input { flex: 1; min-width: 0; }
+    .base-info-item-full { grid-column: 1 / -1; }
     .appointment-section-title { margin: 12px 0 8px; font-size: 15px; color: #2c3e50; font-weight: 600; }
     .appointment-tip { color: #6b7280; font-size: 13px; margin-bottom: 8px; }
     .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin: 10px 0 14px; }
@@ -201,7 +206,6 @@
             <input type="text" id="customer-search" placeholder="请输入姓名或手机号">
             <button class="btn btn-primary" id="btn-customer-search">查询</button>
             <button class="btn btn-secondary" id="btn-customer-reset">显示全部</button>
-            <button class="btn btn-primary" id="btn-customer-add">新增客户</button>
           </div>
           <div id="customer-msg"></div>
           <table>
@@ -214,20 +218,58 @@
         <div class="card">
           <h2>健康评估档案</h2>
           <div class="health-section">
-            <div class="form-row">
-              <div class="health-group-title">基础信息</div>
-              <label>姓名</label>
-              <input type="text" id="health-customer-search" list="health-customer-options" placeholder="输入姓名或手机号搜索并选择客户" style="width:260px">
-              <datalist id="health-customer-options"></datalist>
-              <input type="hidden" id="health-customer">
-              <label>年龄</label>
-              <input type="text" inputmode="numeric" id="ha-age" placeholder="自动关联" style="width:90px" readonly>
-              <label>身高(cm)</label>
-              <input type="text" inputmode="numeric" id="ha-height-cm" placeholder="可选" style="width:90px">
-              <label>体重(kg)</label>
-              <input type="text" inputmode="numeric" id="ha-weight-kg" placeholder="可选" style="width:90px">
-              <label>地址</label>
-              <input type="text" id="ha-address" placeholder="自动关联" style="flex:1;max-width:320px" readonly>
+            <div class="health-group-title">基础信息</div>
+            <input type="hidden" id="health-customer">
+            <div class="base-info-grid">
+              <div class="base-info-item">
+                <label>姓名<span class="required-mark">*</span></label>
+                <input type="text" id="ha-name" placeholder="请输入姓名">
+              </div>
+              <div class="base-info-item">
+                <label>性别<span class="required-mark">*</span></label>
+                <input type="text" id="ha-gender" placeholder="请输入性别">
+              </div>
+              <div class="base-info-item">
+                <label>年龄<span class="required-mark">*</span></label>
+                <input type="text" inputmode="numeric" id="ha-age" placeholder="请输入年龄">
+              </div>
+              <div class="base-info-item">
+                <label>出生日期<span class="required-mark">*</span></label>
+                <input type="date" id="ha-birth-date">
+              </div>
+              <div class="base-info-item">
+                <label>身高(cm)</label>
+                <input type="text" inputmode="numeric" id="ha-height-cm" placeholder="可选">
+              </div>
+              <div class="base-info-item">
+                <label>体重(kg)</label>
+                <input type="text" inputmode="numeric" id="ha-weight-kg" placeholder="可选">
+              </div>
+              <div class="base-info-item base-info-item-full">
+                <label>身份<span class="required-mark">*</span></label>
+                <div class="identity-line">
+                  <label><input type="radio" id="ha-identity-self" name="ha-identity-type" value="本人">本人</label>
+                  <span>军级</span>
+                  <input type="text" id="ha-military-rank" placeholder="可选填写" style="max-width:180px">
+                  <label><input type="radio" id="ha-identity-family" name="ha-identity-type" value="家属">家属</label>
+                </div>
+              </div>
+              <div class="base-info-item base-info-item-full">
+                <label>身份证</label>
+                <input type="text" id="ha-id-card" maxlength="18" placeholder="可选填写">
+              </div>
+              <div class="base-info-item">
+                <label>电话<span class="required-mark">*</span></label>
+                <input type="text" id="ha-phone" maxlength="11" placeholder="请输入电话">
+              </div>
+              <div class="base-info-item">
+                <label>地址</label>
+                <input type="text" id="ha-address" placeholder="可选填写">
+              </div>
+              <div class="base-info-item base-info-item-full">
+                <label>建档人<span class="required-mark">*</span></label>
+                <input type="text" id="ha-record-creator" placeholder="请输入建档人">
+              </div>
             </div>
           </div>
           <div class="health-section">

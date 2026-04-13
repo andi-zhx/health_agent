@@ -251,57 +251,9 @@
   }
 
   function selectedCustomerName() {
-    var cid = String(document.getElementById('health-customer').value || '');
-    var customer = healthCustomerList.find(function (c) { return String(c.id) === cid; });
-    return customer ? ((customer.name || '') + (customer.phone ? (' ' + customer.phone) : '')) : '';
-  }
-
-  function renderHealthCustomerSelect(keyword) {
-    var optionBox = document.getElementById('health-customer-options');
-    if (!optionBox) return;
-    var q = String(keyword || '').trim();
-    var matched = healthCustomerList.filter(function (c) {
-      var name = String(c.name || '');
-      var phone = String(c.phone || '');
-      return !q || name.indexOf(q) !== -1 || phone.indexOf(q) !== -1;
-    });
-    optionBox.innerHTML = matched.map(function (c) {
-      var label = (c.name || '') + (c.phone ? ('（' + c.phone + '）') : '');
-      return '<option value="' + escapeHtml(label) + '"></option>';
-    }).join('');
-  }
-
-  function applySelectedCustomerByInput() {
-    var input = document.getElementById('health-customer-search');
-    var hidden = document.getElementById('health-customer');
-    if (!input || !hidden) return;
-    var raw = String(input.value || '').trim();
-    if (!raw) {
-      hidden.value = '';
-      document.getElementById('ha-age').value = '';
-      document.getElementById('ha-address').value = '';
-      return;
-    }
-    var normalized = raw.replace(/[（）]/g, function (x) { return x === '（' ? '(' : ')'; });
-    hidden.value = '';
-    var exact = healthCustomerList.find(function (c) {
-      var label = (c.name || '') + (c.phone ? ('(' + c.phone + ')') : '');
-      return label === normalized || (c.name || '') === raw || (c.phone || '') === raw;
-    });
-    if (!exact) return;
-    hidden.value = exact.id;
-    input.value = (exact.name || '') + (exact.phone ? ('（' + exact.phone + '）') : '');
-    document.getElementById('ha-age').value = exact.age || '';
-    document.getElementById('ha-address').value = exact.address || '';
-  }
-
-  function initHealthCustomerPicker() {
-    get('/api/customers?page=1&page_size=500&sort_by=name_asc').then(function (list) {
-      healthCustomerList = toList(list);
-      var searchInput = document.getElementById('health-customer-search');
-      renderHealthCustomerSelect(searchInput ? searchInput.value : '');
-      applySelectedCustomerByInput();
-    });
+    var name = (document.getElementById('ha-name').value || '').trim();
+    var phone = (document.getElementById('ha-phone').value || '').trim();
+    return name + (phone ? (' ' + phone) : '');
   }
 
   function toDateTimeLocalValue(value) {
@@ -536,7 +488,6 @@
   }
 
   function loadHealthPage() {
-    initHealthCustomerPicker();
     var q = (document.getElementById('health-search').value || '').trim();
     var qs = [
       'page=' + listState.health.page,
@@ -559,6 +510,15 @@
       tbody.querySelectorAll('[data-health-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           get('/api/health-assessments/' + btn.dataset.healthEdit).then(function (data) {
+            if (data && data.customer_id) {
+              get('/api/customers/' + data.customer_id).then(function (customer) {
+                var merged = Object.assign({}, data || {}, customer || {});
+                editingHealthSnapshot = merged && merged.id ? JSON.parse(JSON.stringify(merged)) : null;
+                setHealthEditMode(!!(merged && merged.id));
+                fillHealthForm(merged);
+              });
+              return;
+            }
             editingHealthSnapshot = data && data.id ? JSON.parse(JSON.stringify(data)) : null;
             setHealthEditMode(!!(data && data.id));
             fillHealthForm(data || {});
@@ -1488,11 +1448,6 @@
     document.getElementById('health-search').value = '';
     loadHealthPage();
   });
-  document.getElementById('health-customer-search').addEventListener('input', function (e) {
-    renderHealthCustomerSelect(e.target.value);
-    applySelectedCustomerByInput();
-  });
-  document.getElementById('health-customer-search').addEventListener('change', applySelectedCustomerByInput);
   document.getElementById('btn-health-cancel-edit').addEventListener('click', function () {
     if (editingHealthSnapshot && editingHealthSnapshot.id) {
       fillHealthForm(editingHealthSnapshot);
@@ -1508,7 +1463,6 @@
     if (typeof pendingAction === 'function') pendingAction();
   });
   document.getElementById('btn-history-close').addEventListener('click', closeHistoryModal);
-  document.getElementById('btn-customer-add').addEventListener('click', function () { openCustomerModal(null); });
   document.getElementById('btn-modal-cancel').addEventListener('click', function () { document.getElementById('modal-customer').classList.add('hide'); });
   document.getElementById('btn-modal-save').addEventListener('click', function () {
     var id = document.getElementById('modal-customer-id').value;
@@ -1596,7 +1550,27 @@
   document.getElementById('btn-health-save').addEventListener('click', function () {
     var cid = document.getElementById('health-customer').value;
     var hid = document.getElementById('health-id').value;
-    if (!cid) { showMsg('health-msg', '请选择客户', true); return; }
+    var identityType = healthRadioValue('ha-identity-type');
+    var customerBody = {
+      name: (document.getElementById('ha-name').value || '').trim(),
+      gender: (document.getElementById('ha-gender').value || '').trim(),
+      age: (document.getElementById('ha-age').value || '').trim(),
+      birth_date: document.getElementById('ha-birth-date').value || null,
+      identity_type: identityType,
+      military_rank: (document.getElementById('ha-military-rank').value || '').trim(),
+      id_card: (document.getElementById('ha-id-card').value || '').trim(),
+      phone: (document.getElementById('ha-phone').value || '').trim(),
+      address: (document.getElementById('ha-address').value || '').trim(),
+      record_creator: (document.getElementById('ha-record-creator').value || '').trim()
+    };
+    if (!customerBody.name) { showMsg('health-msg', '姓名为必填项', true); return; }
+    if (!customerBody.gender) { showMsg('health-msg', '性别为必填项', true); return; }
+    if (!/^\d+$/.test(customerBody.age) || parseInt(customerBody.age, 10) <= 0) { showMsg('health-msg', '年龄为必填项，且必须为正整数', true); return; }
+    if (!customerBody.birth_date) { showMsg('health-msg', '出生日期为必填项', true); return; }
+    if (!customerBody.identity_type) { showMsg('health-msg', '身份为必选项，请选择“本人”或“家属”', true); return; }
+    if (customerBody.id_card && customerBody.id_card.length !== 18) { showMsg('health-msg', '身份证号为18位时才可保存', true); return; }
+    if (!/^\d{11}$/.test(customerBody.phone)) { showMsg('health-msg', '手机号必须为11位数字', true); return; }
+    if (!customerBody.record_creator) { showMsg('health-msg', '建档人为必填项', true); return; }
     var lifeImpactIssues = healthCheckboxValues('ha-life-impact-issue');
     var lifeImpactIssueOther = healthValue('ha-life-impact-issue-other');
     var normalizedLifeImpactIssues = lifeImpactIssues.filter(function (item) { return item !== '其他'; });
@@ -1611,7 +1585,7 @@
       customer_id: parseInt(cid, 10),
       assessment_date: healthValue('health-date'),
       assessor: null,
-      age: healthValue('ha-age'),
+      age: customerBody.age,
       height_cm: healthValue('ha-height-cm', 'health-height'),
       weight_kg: healthValue('ha-weight-kg', 'health-weight'),
       address: healthValue('ha-address'),
@@ -1640,56 +1614,81 @@
       health_needs: healthCheckboxValues('health-need').concat(healthValue('ha-health-needs-other') ? ['其他:' + healthValue('ha-health-needs-other')] : []),
       notes: healthCheckboxValues('ha-special-condition').join('、')
     };
+    function resetHealthPageAfterSave() {
+      fillHealthForm({});
+      clearHealthEditState();
+      document.getElementById('health-search').value = '';
+      renderHealthDetail(null);
+      loadHealthPage();
+      window.scrollTo(0, 0);
+    }
 
-    if (!hid) {
-      post('/api/health-assessments', body).then(function (res) {
+    function saveHealthAssessment() {
+      if (!hid) {
+        post('/api/health-assessments', body).then(function (res) {
+          if (res.error) { showMsg('health-msg', res.error, true); return; }
+          showMsg('health-msg', res.message);
+          resetHealthPageAfterSave();
+        });
+        return;
+      }
+
+      var confirmRows = [
+        ['客户', selectedCustomerName()],
+        ['年龄', body.age],
+        ['身高(cm)', body.height_cm],
+        ['体重(kg)', body.weight_kg],
+        ['地址', body.address],
+        ['既往病史', body.past_medical_history],
+        ['家族慢性病史', body.family_history],
+        ['过敏史', body.allergy_history],
+        ['过敏详情', body.allergy_details],
+        ['吸烟情况', body.smoking_status],
+        ['烟龄', body.smoking_years],
+        ['饮酒情况', body.drinking_status],
+        ['饮酒年限', body.drinking_years],
+        ['睡眠状况', body.sleep_quality],
+        ['睡眠时长', body.sleep_hours],
+        ['近半年症状', body.recent_symptoms],
+        ['详细情况', body.recent_symptom_detail],
+        ['最影响生活的问题', body.life_impact_issues],
+        ['近半年血压', body.blood_pressure_test],
+        ['近半年血脂', body.blood_lipid_test],
+        ['近半年血糖', body.blood_sugar_test],
+        ['运动方式', (body.exercise_methods || []).join('、')],
+        ['健康需求', (body.health_needs || []).join('、')],
+        ['特殊情况', body.notes]
+      ];
+
+      openConfirmModal('请确认修改后的健康档案信息', confirmRows, function () {
+        put('/api/health-assessments/' + hid, body).then(function (res) {
+          if (res.error) { showMsg('health-msg', res.error, true); return; }
+          closeConfirmModal();
+          showMsg('health-msg', res.message);
+          resetHealthPageAfterSave();
+        });
+      });
+    }
+
+    function saveCustomerThenAssessment(customerId) {
+      document.getElementById('health-customer').value = customerId;
+      body.customer_id = parseInt(customerId, 10);
+      saveHealthAssessment();
+    }
+
+    if (cid) {
+      put('/api/customers/' + cid, customerBody).then(function (res) {
         if (res.error) { showMsg('health-msg', res.error, true); return; }
-        showMsg('health-msg', res.message);
-        fillHealthForm({});
-        clearHealthEditState();
-        loadHealthPage();
+        saveCustomerThenAssessment(cid);
       });
       return;
     }
 
-    var confirmRows = [
-      ['客户', selectedCustomerName()],
-      ['年龄', body.age],
-      ['身高(cm)', body.height_cm],
-      ['体重(kg)', body.weight_kg],
-      ['地址', body.address],
-      ['既往病史', body.past_medical_history],
-      ['家族慢性病史', body.family_history],
-      ['过敏史', body.allergy_history],
-      ['过敏详情', body.allergy_details],
-      ['吸烟情况', body.smoking_status],
-      ['烟龄', body.smoking_years],
-      ['饮酒情况', body.drinking_status],
-      ['饮酒年限', body.drinking_years],
-      ['睡眠状况', body.sleep_quality],
-      ['睡眠时长', body.sleep_hours],
-      ['近半年症状', body.recent_symptoms],
-      ['详细情况', body.recent_symptom_detail],
-      ['最影响生活的问题', body.life_impact_issues],
-      ['近半年血压', body.blood_pressure_test],
-      ['近半年血脂', body.blood_lipid_test],
-      ['近半年血糖', body.blood_sugar_test],
-      ['运动方式', (body.exercise_methods || []).join('、')],
-      ['健康需求', (body.health_needs || []).join('、')],
-      ['特殊情况', body.notes]
-    ];
-
-    openConfirmModal('请确认修改后的健康档案信息', confirmRows, function () {
-      put('/api/health-assessments/' + hid, body).then(function (res) {
-        if (res.error) { showMsg('health-msg', res.error, true); return; }
-        closeConfirmModal();
-        showMsg('health-msg', res.message);
-        clearHealthEditState();
-        loadHealthPage();
-        get('/api/health-assessments/' + hid).then(function (data) {
-          renderHealthDetail(data || {});
-        });
-      });
+    post('/api/customers', customerBody).then(function (res) {
+      if (res.error) { showMsg('health-msg', res.error, true); return; }
+      var newCustomerId = res.id || (res.data && res.data.id);
+      if (!newCustomerId) { showMsg('health-msg', '客户创建失败，请重试', true); return; }
+      saveCustomerThenAssessment(newCustomerId);
     });
   });
   document.querySelectorAll('input[name="ha-life-impact-issue"]').forEach(function (el) {
@@ -2101,18 +2100,17 @@
     document.querySelectorAll('input[name^="ha-"]').forEach(function (el) { if (el.type === 'radio') el.checked = false; });
     document.querySelectorAll('input[name="health-exercise-method"], input[name="health-need"], input[name="ha-diagnosed-disease"], input[name="ha-family-disease"], input[name="ha-special-condition"], input[name="ha-recent-symptom"], input[name="ha-life-impact-issue"]').forEach(function (el) { el.checked = false; });
     document.getElementById('health-id').value = data.id || '';
-    if (data.customer_id) {
-      var selected = healthCustomerList.find(function (c) { return String(c.id) === String(data.customer_id); });
-      if (selected) {
-        document.getElementById('health-customer-search').value = (selected.name || '') + (selected.phone ? ('（' + selected.phone + '）') : '');
-      }
-    } else if (data.customer_name && !document.getElementById('health-customer-search').value) {
-      document.getElementById('health-customer-search').value = data.customer_name;
-    } else if (!data.id) {
-      document.getElementById('health-customer-search').value = '';
-    }
-    renderHealthCustomerSelect(document.getElementById('health-customer-search').value);
     document.getElementById('health-customer').value = data.customer_id || '';
+    document.getElementById('ha-name').value = data.customer_name || '';
+    document.getElementById('ha-gender').value = data.gender || '';
+    document.getElementById('ha-birth-date').value = (data.birth_date || '').slice(0, 10);
+    document.getElementById('ha-id-card').value = data.id_card || '';
+    document.getElementById('ha-phone').value = data.phone || '';
+    document.getElementById('ha-record-creator').value = data.record_creator || '';
+    document.getElementById('ha-military-rank').value = data.military_rank || '';
+    var identityType = String(data.identity_type || '').trim();
+    document.getElementById('ha-identity-self').checked = identityType === '本人';
+    document.getElementById('ha-identity-family').checked = identityType === '家属';
     document.getElementById('health-date').value = (data.assessment_date || today || '').slice(0, 10);
     document.getElementById('ha-age').value = data.age || '';
     document.getElementById('ha-height-cm').value = data.height_cm || '';
