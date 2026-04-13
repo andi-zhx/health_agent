@@ -15,6 +15,7 @@ import re
 from collections import Counter
 from datetime import datetime
 from datetime import timedelta
+import time
 
 try:
     import tkinter as tk
@@ -25,6 +26,13 @@ except Exception:
 
 # 项目根目录（app.py 所在目录）
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 统一进程时区（服务器/程序）与数据库时间语义，默认使用北京时间
+APP_TIMEZONE = os.environ.get('APP_TIMEZONE', 'Asia/Shanghai')
+os.environ['TZ'] = APP_TIMEZONE
+if hasattr(time, 'tzset'):
+    time.tzset()
+
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
 app.secret_key = os.environ.get('FLASK_SECRET_KEY') or 'health-agent-secret-key-change-me'
 
@@ -277,10 +285,10 @@ def set_setting_value(key, value):
     c = conn.cursor()
     c.execute('''
         INSERT INTO system_settings (setting_key, setting_value, updated_at)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
+        VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
         ON CONFLICT(setting_key) DO UPDATE SET
             setting_value=excluded.setting_value,
-            updated_at=CURRENT_TIMESTAMP
+            updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
     ''', (key, value))
     conn.commit()
     conn.close()
@@ -836,8 +844,8 @@ def init_db():
             chronic_diseases TEXT,
             health_status TEXT,
             therapy_contraindications TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -868,7 +876,7 @@ def init_db():
             location TEXT,
             status TEXT DEFAULT 'available',
             description TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -877,7 +885,7 @@ def init_db():
         'location': 'TEXT',
         'status': "TEXT DEFAULT 'available'",
         'description': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
     c.execute('''
@@ -896,8 +904,8 @@ def init_db():
             checkin_updated_by TEXT,
             checkin_updated_ip TEXT,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             source_record_id INTEGER,
             FOREIGN KEY (customer_id) REFERENCES customers(id),
             FOREIGN KEY (equipment_id) REFERENCES equipment(id)
@@ -913,8 +921,8 @@ def init_db():
         'end_time': 'TEXT',
         'status': "TEXT DEFAULT 'scheduled'",
         'notes': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
-        'updated_at': "TEXT DEFAULT CURRENT_TIMESTAMP",
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
+        'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
         'source_record_id': 'INTEGER',
         'checkin_status': "TEXT DEFAULT 'pending'",
         'checkin_updated_at': 'TEXT',
@@ -958,7 +966,7 @@ def init_db():
             weekly_exercise_freq TEXT,
             health_needs TEXT,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
     ''')
@@ -980,7 +988,7 @@ def init_db():
             price REAL,
             status TEXT DEFAULT 'enabled',
             description TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -992,7 +1000,7 @@ def init_db():
         'price': 'REAL',
         'status': "TEXT DEFAULT 'enabled'",
         'description': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
     c.execute('''
@@ -1002,7 +1010,7 @@ def init_db():
             category TEXT,
             status TEXT DEFAULT 'enabled',
             description TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -1011,7 +1019,7 @@ def init_db():
         'category': 'TEXT',
         'status': "TEXT DEFAULT 'enabled'",
         'description': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
     c.execute('''
@@ -1022,7 +1030,7 @@ def init_db():
             phone TEXT,
             status TEXT DEFAULT 'available',
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -1031,7 +1039,7 @@ def init_db():
         'phone': 'TEXT',
         'status': "TEXT DEFAULT 'available'",
         'notes': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
     c.execute('''
@@ -1058,8 +1066,8 @@ def init_db():
             checkin_updated_at TEXT,
             checkin_updated_by TEXT,
             checkin_updated_ip TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             source_record_id INTEGER,
             FOREIGN KEY (customer_id) REFERENCES customers(id),
             FOREIGN KEY (project_id) REFERENCES therapy_projects(id),
@@ -1084,8 +1092,8 @@ def init_db():
         'contact_phone': 'TEXT',
         'notes': 'TEXT',
         'status': "TEXT DEFAULT 'scheduled'",
-        'updated_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
         'source_record_id': 'INTEGER',
         'checkin_status': "TEXT DEFAULT 'pending'",
         'checkin_updated_at': 'TEXT',
@@ -1109,7 +1117,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS system_settings (
             setting_key TEXT PRIMARY KEY,
             setting_value TEXT,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -1121,7 +1129,7 @@ def init_db():
             module TEXT,
             target_id TEXT,
             details TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -1135,7 +1143,7 @@ def init_db():
             operator_ip TEXT,
             before_content TEXT,
             after_content TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
     ensure_columns(c, 'business_history_logs', {
@@ -1151,7 +1159,7 @@ def init_db():
             details TEXT,
             executed_by TEXT,
             executed_ip TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -1169,8 +1177,8 @@ def init_db():
             allow_home INTEGER DEFAULT 0,
             project_category TEXT,
             status TEXT DEFAULT 'enabled',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         )
     ''')
 
@@ -1180,8 +1188,8 @@ def init_db():
             project_name TEXT NOT NULL,
             staff_id INTEGER NOT NULL,
             status TEXT DEFAULT 'enabled',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             UNIQUE(project_name, staff_id),
             FOREIGN KEY (staff_id) REFERENCES staff(id)
         )
@@ -1208,8 +1216,8 @@ def init_db():
             project_name TEXT NOT NULL,
             equipment_name TEXT NOT NULL,
             status TEXT DEFAULT 'enabled',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             UNIQUE(project_name, equipment_name)
         )
     ''')
@@ -1247,7 +1255,7 @@ def init_db():
             symptoms TEXT,
             diagnosis TEXT,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
     ''')
@@ -1259,7 +1267,7 @@ def init_db():
             checkin_time TEXT NOT NULL,
             purpose TEXT,
             notes TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             FOREIGN KEY (customer_id) REFERENCES customers(id)
         )
     ''')
@@ -1267,7 +1275,7 @@ def init_db():
     ensure_columns(c, 'visit_checkins', {
         'purpose': 'TEXT',
         'notes': 'TEXT',
-        'created_at': 'TEXT DEFAULT CURRENT_TIMESTAMP',
+        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
     c.execute("SELECT COUNT(*) FROM equipment")
@@ -1570,7 +1578,7 @@ def api_customer_update(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
     c.execute('''
-        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
+        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?
     ''', (
         d.get('name'), d.get('id_card'), d.get('phone'), d.get('email'), d.get('address'),
         d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
@@ -1592,7 +1600,7 @@ def api_customer_delete(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
 
-    c.execute('UPDATE customers SET is_deleted=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', (cid,))
+    c.execute("UPDATE customers SET is_deleted=1, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?", (cid,))
     conn.commit()
     conn.close()
     return success_response({'id': cid}, '已删除')
@@ -2049,7 +2057,7 @@ def api_appointment_create():
     checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
         INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, checkin_status, notes, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        VALUES (?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
     ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('notes')))
     rid = c.lastrowid
     c.execute(
@@ -2243,7 +2251,7 @@ def api_appointment_update(aid):
     c.execute(
         '''
         UPDATE appointments
-        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, notes=?, updated_at=CURRENT_TIMESTAMP
+        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, notes=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         WHERE id=?
         ''',
         (
@@ -2300,7 +2308,7 @@ def api_appointment_cancel(aid):
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
-        "UPDATE appointments SET status='cancelled', checkin_status='none', checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        "UPDATE appointments SET status='cancelled', checkin_status='none', checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?",
         (session.get('username', 'anonymous'), get_request_ip(), aid),
     )
     insert_business_history_log(
@@ -2345,7 +2353,7 @@ def update_checkin_status(cursor, table_name, module_name, record_id, target_sta
     cursor.execute(
         f'''
         UPDATE {table_name}
-        SET checkin_status=?, checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP
+        SET checkin_status=?, checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         WHERE id=?
         ''',
         (target_status, session.get('username', 'anonymous'), get_request_ip(), record_id),
@@ -2636,7 +2644,7 @@ def api_home_appointments_create():
             customer_name, phone, home_time, home_address, service_project, staff_name,
             appointment_date, start_time, end_time, location, contact_person, contact_phone, notes, status, checkin_status, updated_at
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
@@ -2678,7 +2686,7 @@ def api_home_appointments_cancel(hid):
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
-        "UPDATE home_appointments SET status='cancelled', checkin_status='none', checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP WHERE id=?",
+        "UPDATE home_appointments SET status='cancelled', checkin_status='none', checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?",
         (session.get('username', 'anonymous'), get_request_ip(), hid),
     )
     insert_business_history_log(
@@ -2788,7 +2796,7 @@ def api_home_appointments_update(hid):
         SET customer_id=?, project_id=?, staff_id=?,
             customer_name=?, phone=?, home_time=?, home_address=?, service_project=?, staff_name=?,
             appointment_date=?, start_time=?, end_time=?, location=?,
-            contact_person=?, contact_phone=?, notes=?, status=?, checkin_status=?, updated_at=CURRENT_TIMESTAMP
+            contact_person=?, contact_phone=?, notes=?, status=?, checkin_status=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         WHERE id=?
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
@@ -2845,7 +2853,7 @@ def api_task_checkin_auto_no_show():
         c.execute(
             f'''
             UPDATE {table_name}
-            SET checkin_status='no_show', checkin_updated_at=CURRENT_TIMESTAMP, checkin_updated_by=?, checkin_updated_ip=?, updated_at=CURRENT_TIMESTAMP
+            SET checkin_status='no_show', checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
             WHERE id IN ({ph})
             ''',
             [operator, operator_ip] + ids,
