@@ -88,6 +88,11 @@
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
     .status-pill-success { background: #27ae60; }
     .status-pill-cancelled { background: #e74c3c; }
+    .checkin-btn { border: none; border-radius: 999px; padding: 4px 10px; color: #fff; font-size: 12px; font-weight: 600; }
+    .checkin-btn-pending { background: #3498db; }
+    .checkin-btn-checked { background: #27ae60; }
+    .checkin-btn-noshow { background: #95a5a6; }
+    .checkin-cell-actions { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
 
     .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(25,68,102,0.45), rgba(24,125,116,0.35)), url("images/login-bg-house.svg") center/cover no-repeat; padding: 20px; }
     .login-card { width: 100%; max-width: 420px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
@@ -428,7 +433,7 @@
               <option value="name_asc">按姓名排序</option>
             </select>
           </div>
-          <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>日期</th><th>时间</th><th>状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="apt-list"></tbody></table>
+          <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>日期</th><th>时间</th><th>预约状态</th><th>签到状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="apt-list"></tbody></table>
         </div>
       </div>
       <div id="page-home-appointments" class="page hide">
@@ -482,7 +487,7 @@
               <option value="name_asc">按姓名排序</option>
             </select>
           </div>
-          <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="home-list"></tbody></table>
+          <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>预约状态</th><th>签到状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="home-list"></tbody></table>
         </div>
       </div>
       <div id="page-query-export" class="page hide">
