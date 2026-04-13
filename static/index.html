@@ -209,7 +209,7 @@
           </div>
           <div id="customer-msg"></div>
           <table>
-            <thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th><th>操作</th></tr></thead>
+            <thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th></tr></thead>
             <tbody id="customer-list"></tbody>
           </table>
         </div>
@@ -227,7 +227,11 @@
               </div>
               <div class="base-info-item">
                 <label>性别<span class="required-mark">*</span></label>
-                <input type="text" id="ha-gender" placeholder="请输入性别">
+                <select id="ha-gender">
+                  <option value="">请选择性别</option>
+                  <option value="男">男</option>
+                  <option value="女">女</option>
+                </select>
               </div>
               <div class="base-info-item">
                 <label>年龄<span class="required-mark">*</span></label>
@@ -392,7 +396,7 @@
             <button class="btn btn-primary" id="btn-health-search">查询</button>
             <button class="btn btn-secondary" id="btn-health-reset">显示全部</button>
           </div>
-          <table><thead><tr><th>客户</th><th>日期</th><th>身高</th><th>体重</th><th>疲劳</th><th>睡眠</th><th>锻炼频次</th><th>病史</th><th>操作</th></tr></thead><tbody id="health-list"></tbody></table>
+          <table><thead><tr><th>客户</th><th>年龄</th><th>是否确诊过疾病</th><th>近半年症状</th><th>睡眠</th><th>操作</th></tr></thead><tbody id="health-list"></tbody></table>
           <div id="health-detail" class="health-section" style="display:none;margin-top:14px"></div>
         </div>
       </div>
