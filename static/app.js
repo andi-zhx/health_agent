@@ -255,7 +255,7 @@
     homeAppointments: { page: 1, page_size: 20 },
     auditLogs: { page: 1, page_size: 20 }
   };
-  var APPOINTMENT_PROJECT_NAMES = ['听力测试', '艾灸', '高压氧仓', '磁疗', '红外理疗'];
+  var APPOINTMENT_PROJECT_NAMES = ['高压氧仓', '毫米波理疗仪', '疼痛治疗仪', '听力检测仪', '太空针灸按摩仪', '艾灸机器人', 'AI健康检测机器人', '手持式干式荧光免疫分析仪', '健康随诊箱'];
 
   function escapeHtml(value) {
     return String(value == null ? '' : value)
