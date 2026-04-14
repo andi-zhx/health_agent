@@ -77,6 +77,23 @@
     .hbar .bar-track { flex: 1; height: 12px; border-radius: 99px; background: #edf2f7; overflow: hidden; }
     .hbar .bar-fill { height: 100%; background: #3498db; }
     .hbar .value { width: 24px; text-align: right; color: #2c3e50; font-weight: 600; font-size: 12px; }
+    .vbar-compare { width: 100%; overflow-x: auto; }
+    .vbar-chart { min-width: 420px; display: flex; align-items: flex-end; gap: 20px; height: 220px; padding: 12px 8px 0; border-bottom: 1px solid #dbe3ee; }
+    .vbar-group { flex: 1; min-width: 80px; }
+    .vbar-bars { height: 180px; display: flex; align-items: flex-end; justify-content: center; gap: 10px; }
+    .vbar-item { width: 28px; border-radius: 6px 6px 0 0; position: relative; }
+    .vbar-item .num { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #334155; font-weight: 600; }
+    .vbar-label { margin-top: 8px; text-align: center; font-size: 12px; color: #64748b; }
+    .compare-legend { margin-top: 8px; display: flex; gap: 14px; font-size: 12px; color: #64748b; }
+    .compare-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+    .compare-legend .male::before { background: #8ecbff; }
+    .compare-legend .female::before { background: #ffb6c1; }
+    .radar-wrap { width: 100%; max-width: 420px; }
+    .radar-svg { width: 100%; height: 320px; }
+    .heatmap-wrap { overflow-x: auto; }
+    .heatmap-table { border-collapse: collapse; min-width: 720px; width: 100%; }
+    .heatmap-table th, .heatmap-table td { border: 1px solid #e2e8f0; padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; }
+    .heatmap-cell { color: #0f172a; font-size: 11px; line-height: 1.45; border-radius: 4px; padding: 4px; }
     .kpi-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
     .kpi-card { min-width:130px; background:#f8fbff; border:1px solid #e5eef8; border-radius:8px; padding:10px; }
     .kpi-card .k { color:#607d8b; font-size:12px; }
@@ -558,7 +575,8 @@
                 <div id="portrait-gender-pie"></div>
                 <div id="portrait-gender-legend" class="legend"></div>
               </div>
-              <div id="portrait-age-bars" class="hbar" style="margin-top:12px"></div>
+              <h4>年龄段男女人数对比</h4>
+              <div id="portrait-age-gender-bars" class="vbar-compare" style="margin-top:12px"></div>
               <div class="chart-row" style="margin-top:12px">
                 <div id="portrait-bmi-pie"></div>
                 <div id="portrait-bmi-legend" class="legend"></div>
@@ -570,18 +588,26 @@
                 <div id="portrait-risk-donut"></div>
                 <div id="portrait-risk-legend" class="legend"></div>
               </div>
-              <h4>疾病 TOP10</h4>
-              <div id="portrait-disease-top10" class="hbar"></div>
-              <h4>家族史 TOP10</h4>
-              <div id="portrait-family-top10" class="hbar"></div>
+              <h4>过去确诊疾病</h4>
+              <div class="chart-row"><div id="portrait-disease-pie"></div><div id="portrait-disease-legend" class="legend"></div></div>
+              <h4>家族病史</h4>
+              <div class="chart-row"><div id="portrait-family-pie"></div><div id="portrait-family-legend" class="legend"></div></div>
+              <h4>近期症状（近半年）</h4>
+              <div id="portrait-recent-symptom-bars" class="hbar"></div>
             </div>
             <div class="portrait-panel">
               <h3>维度3：生活方式行为画像（可干预）</h3>
               <div id="portrait-habit-kpi" class="kpi-row"></div>
-              <h4>运动方式 TOP10</h4>
+              <h4>行为风险雷达图</h4>
+              <div id="portrait-habit-radar"></div>
+              <h4>运动方式</h4>
               <div id="portrait-exercise-top10" class="hbar"></div>
-              <h4>健康服务需求 TOP10</h4>
+              <h4>健康服务需求</h4>
               <div id="portrait-needs-top10" class="hbar"></div>
+            </div>
+            <div class="portrait-panel" style="grid-column: 1 / -1;">
+              <h3>维度4：干部健康改善情况</h3>
+              <div id="portrait-improvement-heatmap"></div>
             </div>
           </div>
         </div>

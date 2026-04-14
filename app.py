@@ -3707,6 +3707,13 @@ def api_dashboard_health_portrait():
     age_segments = ['<50岁', '50-60岁', '61-65岁', '66-70岁', '71-75岁', '76-80岁', '>80岁']
     age_distribution = {k: 0 for k in age_segments}
     genders = {'男': 0, '女': 0, '未知': 0}
+    age_gender_buckets = ['50-60岁', '60-70岁', '70-80岁', '80岁以上']
+    age_gender_distribution = {
+        '50-60岁': {'男': 0, '女': 0},
+        '60-70岁': {'男': 0, '女': 0},
+        '70-80岁': {'男': 0, '女': 0},
+        '80岁以上': {'男': 0, '女': 0},
+    }
     bmi_levels = {'偏瘦': 0, '正常': 0, '超重': 0, '肥胖': 0}
     risks = {'低风险': 0, '中风险': 0, '高风险': 0}
 
@@ -3714,6 +3721,7 @@ def api_dashboard_health_portrait():
     family_disease_counter = Counter()
     allergy_counter = Counter()
     pain_counter = Counter()
+    recent_symptom_counter = Counter()
     behavior_tag_counter = Counter()
     exercise_counter = Counter()
     demand_counter = Counter()
@@ -3748,6 +3756,15 @@ def api_dashboard_health_portrait():
 
         gender = (row.get('gender') or '').strip()
         genders[gender if gender in ('男', '女') else '未知'] += 1
+        if gender in ('男', '女') and age:
+            if 50 <= age < 60:
+                age_gender_distribution['50-60岁'][gender] += 1
+            elif 60 <= age < 70:
+                age_gender_distribution['60-70岁'][gender] += 1
+            elif 70 <= age < 80:
+                age_gender_distribution['70-80岁'][gender] += 1
+            elif age >= 80:
+                age_gender_distribution['80岁以上'][gender] += 1
 
         _, bmi_level = classify_bmi(row.get('height_cm'), row.get('weight_kg'))
         if bmi_level:
@@ -3763,6 +3780,7 @@ def api_dashboard_health_portrait():
         family_history_items = normalize_multi_text(row.get('family_history'))
         allergy_items = normalize_multi_text(row.get('allergy_details'))
         pain_items = normalize_multi_text(row.get('pain_details'))
+        recent_symptom_items = normalize_multi_text(row.get('recent_symptoms'))
         exercise_items = normalize_multi_text(row.get('exercise_methods'))
         demand_items = normalize_multi_text(row.get('health_needs'))
 
@@ -3774,6 +3792,8 @@ def api_dashboard_health_portrait():
             allergy_counter[item] += 1
         for item in pain_items:
             pain_counter[item] += 1
+        for item in recent_symptom_items:
+            recent_symptom_counter[item] += 1
         for item in exercise_items:
             exercise_counter[item] += 1
         for item in demand_items:
@@ -3826,6 +3846,49 @@ def api_dashboard_health_portrait():
     total = len(records)
     senior_count = age_distribution['66-70岁'] + age_distribution['71-75岁'] + age_distribution['76-80岁'] + age_distribution['>80岁']
 
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT r.service_project, r.service_content, r.improvement_status,
+               a.status AS appointment_status, ha.status AS home_appointment_status
+        FROM service_improvement_records r
+        LEFT JOIN appointments a ON r.service_type='appointment' AND r.service_id=a.id
+        LEFT JOIN home_appointments ha ON r.service_type='home' AND r.service_id=ha.id
+    ''')
+    improvement_rows = row_list(c.fetchall())
+    conn.close()
+
+    heatmap = {}
+    status_order = ['无改善', '部分改善', '明显改善', '加重']
+    for row in improvement_rows:
+        appt_status = (row.get('appointment_status') or '').strip().lower()
+        home_status = (row.get('home_appointment_status') or '').strip().lower()
+        if appt_status == 'cancelled' or home_status == 'cancelled':
+            continue
+        project = (row.get('service_project') or '未标注项目').strip() or '未标注项目'
+        content = (row.get('service_content') or '').strip()
+        parts = normalize_multi_text(content) or ['未标注部位']
+        status = (row.get('improvement_status') or '').strip()
+        if status not in status_order:
+            status = '无改善'
+        project_bucket = heatmap.setdefault(project, {})
+        for part in parts:
+            part_name = part.strip() or '未标注部位'
+            cell = project_bucket.setdefault(part_name, {'count': 0, 'statuses': {s: 0 for s in status_order}})
+            cell['count'] += 1
+            cell['statuses'][status] += 1
+
+    heatmap_rows = []
+    for project, cols in heatmap.items():
+        for part, cell in cols.items():
+            status_summary = ' / '.join([f'{k}{cell["statuses"].get(k, 0)}' for k in status_order if cell["statuses"].get(k, 0)])
+            heatmap_rows.append({
+                'service_project': project,
+                'therapy_part': part,
+                'count': cell['count'],
+                'status_summary': status_summary or '无改善0',
+            })
+
     return jsonify({
         'total_customers': total,
         'dimension1': {
@@ -3836,12 +3899,20 @@ def api_dashboard_health_portrait():
             },
             'gender_distribution': [{'name': k, 'count': v} for k, v in genders.items()],
             'age_distribution': [{'name': k, 'count': age_distribution[k]} for k in age_segments],
+            'age_gender_distribution': [
+                {
+                    'name': bucket,
+                    'male': age_gender_distribution[bucket]['男'],
+                    'female': age_gender_distribution[bucket]['女'],
+                } for bucket in age_gender_buckets
+            ],
             'bmi_distribution': [{'name': k, 'count': v} for k, v in bmi_levels.items()],
         },
         'dimension2': {
             'risk_distribution': [{'name': k, 'count': v} for k, v in risks.items()],
-            'disease_top10': [{'name': k, 'count': v} for k, v in past_disease_counter.most_common(10)],
-            'family_history_top10': [{'name': k, 'count': v} for k, v in family_disease_counter.most_common(10)],
+            'past_disease_distribution': [{'name': k, 'count': v} for k, v in past_disease_counter.most_common()],
+            'family_history_distribution': [{'name': k, 'count': v} for k, v in family_disease_counter.most_common()],
+            'recent_symptom_distribution': [{'name': k, 'count': v} for k, v in recent_symptom_counter.most_common()],
             'allergy_top10': [{'name': k, 'count': v} for k, v in allergy_counter.most_common(10)],
             'pain_top10': [{'name': k, 'count': v} for k, v in pain_counter.most_common(10)],
             'family_history_ratio': round((family_history_people * 100.0 / total), 1) if total else 0,
@@ -3862,6 +3933,9 @@ def api_dashboard_health_portrait():
             'fatigue_distribution': [{'name': k, 'count': v} for k, v in fatigue_counter.items()],
             'behavior_tags': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
         },
+        'dimension4': {
+            'improvement_matrix': heatmap_rows,
+        }
     })
 
 
