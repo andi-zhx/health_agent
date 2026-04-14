@@ -780,6 +780,7 @@
     document.getElementById('apt-project').value = '';
     document.getElementById('apt-date').value = today;
     document.getElementById('apt-notes').value = '';
+    setCompanionRadio('apt-has-companion', '无');
     resetAppointmentSlotSelection();
     appointmentSlotPanel = null;
     renderAppointmentSlotPanel();
@@ -1160,6 +1161,7 @@
     });
     document.getElementById('home-customer-search').value = '';
     document.getElementById('home-date').value = today;
+    setCompanionRadio('home-has-companion', '无');
     homeSlotPanel = [];
     homeStaffPanel = null;
     selectedHomeSlot = null;
@@ -1243,6 +1245,7 @@
           document.getElementById('apt-customer-search').value = selectedCustomer ? ((selectedCustomer.name || '') + (selectedCustomer.phone ? ('（' + selectedCustomer.phone + '）') : '')) : '';
           document.getElementById('apt-project').value = item.project_id || '';
           document.getElementById('apt-date').value = item.appointment_date || '';
+          setCompanionRadio('apt-has-companion', item.has_companion || '无');
           document.getElementById('apt-notes').value = item.notes || '';
           selectedAppointmentSlot = { start_time: item.start_time || '', end_time: item.end_time || '' };
           selectedAppointmentEquipmentId = item.equipment_id || '';
@@ -1332,6 +1335,7 @@
           document.getElementById('home-location').value = item.location || '';
           document.getElementById('home-contact-person').value = item.contact_person || '';
           document.getElementById('home-contact-phone').value = item.contact_phone || '';
+          setCompanionRadio('home-has-companion', item.has_companion || '无');
           document.getElementById('home-notes').value = item.notes || '';
           loadHomeSlotPanel(true);
         });
@@ -1501,8 +1505,6 @@
       renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution));
       renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
       renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-      renderCircleChart('portrait-risk-donut', toList(d2.risk_distribution), true);
-      renderLegend('portrait-risk-legend', toList(d2.risk_distribution));
       renderCircleChart('portrait-disease-pie', toList(d2.past_disease_distribution), false);
       renderLegend('portrait-disease-legend', toList(d2.past_disease_distribution));
       renderCircleChart('portrait-family-pie', toList(d2.family_history_distribution), false);
@@ -1524,7 +1526,7 @@
       ]);
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
-      renderImprovementHeatmap('portrait-improvement-heatmap', toList((res.dimension4 || {}).improvement_matrix));
+      renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
     });
   }
 
@@ -1732,6 +1734,69 @@
       return '<tr><th>' + project + '</th>' + tds + '</tr>';
     }).join('') + '</tbody>';
     box.innerHTML = '<div class="heatmap-wrap"><table class="heatmap-table">' + thead + tbody + '</table></div>';
+  }
+
+  function renderImprovementStackedBars(elId, list) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var statusOrder = ['无改善', '部分改善', '明显改善', '加重'];
+    var statusColors = {
+      '无改善': '#94a3b8',
+      '部分改善': '#60a5fa',
+      '明显改善': '#22c55e',
+      '加重': '#ef4444'
+    };
+    var buckets = {};
+    list.forEach(function (item) {
+      var project = (item.service_project || '未标注项目').trim() || '未标注项目';
+      if (!buckets[project]) {
+        buckets[project] = { total: 0, statuses: { '无改善': 0, '部分改善': 0, '明显改善': 0, '加重': 0 } };
+      }
+      buckets[project].total += Number(item.count || 0);
+      var summary = String(item.status_summary || '');
+      statusOrder.forEach(function (status) {
+        var reg = new RegExp(status + '(\\d+)');
+        var matched = summary.match(reg);
+        if (matched) buckets[project].statuses[status] += Number(matched[1] || 0);
+      });
+    });
+    var rows = Object.keys(buckets).map(function (project) {
+      var row = buckets[project];
+      return { project: project, total: row.total, statuses: row.statuses };
+    }).sort(function (a, b) { return b.total - a.total; });
+    var legend = '<div class="stacked-legend">' + statusOrder.map(function (status) {
+      return '<span style="--color:' + statusColors[status] + ';">' + status + '</span>';
+    }).join('') + '</div>';
+    var listHtml = '<div class="stacked-chart">' + rows.map(function (row) {
+      var segments = statusOrder.map(function (status) {
+        var value = Number(row.statuses[status] || 0);
+        var width = row.total ? ((value * 100) / row.total) : 0;
+        return '<div class="stacked-segment" style="width:' + width.toFixed(2) + '%;background:' + statusColors[status] + '" title="' + status + '：' + value + '"></div>';
+      }).join('');
+      return '<div class="stacked-row"><div class="stacked-label">' + escapeHtml(row.project) + '</div><div class="stacked-track">' + segments + '</div><div class="stacked-value">' + row.total + '</div></div>';
+    }).join('') + '</div>';
+    box.innerHTML = legend + listHtml;
+  }
+
+  function getCompanionValue(name) {
+    var picked = document.querySelector('input[name="' + name + '"]:checked');
+    return picked ? picked.value : '无';
+  }
+
+  function setCompanionRadio(name, value) {
+    var radios = document.querySelectorAll('input[name="' + name + '"]');
+    if (!radios.length) return;
+    var found = false;
+    radios.forEach(function (radio) {
+      var checked = String(radio.value) === String(value || '无');
+      radio.checked = checked;
+      if (checked) found = true;
+    });
+    if (!found) radios[0].checked = true;
   }
 
   function chartColor(idx) {
@@ -2084,6 +2149,7 @@
       customer_id: document.getElementById('apt-customer').value,
       project_id: document.getElementById('apt-project').value,
       appointment_date: document.getElementById('apt-date').value,
+      has_companion: getCompanionValue('apt-has-companion'),
       notes: document.getElementById('apt-notes').value,
       status: 'scheduled'
     };
@@ -2112,6 +2178,7 @@
     var rows = [
       ['客户', document.getElementById('apt-customer-search').value || ''],
       ['项目', document.getElementById('apt-project').selectedOptions[0] ? document.getElementById('apt-project').selectedOptions[0].text : ''],
+      ['家属陪同', body.has_companion || '无'],
       ['时间段', selectedAppointmentSlots.map(function (slot) { return slot.start_time + '-' + slot.end_time; }).join('、')],
       ['设备', selectedAppointmentSlots.map(function (slot) { return slot.equipment_name || ('设备' + (slot.equipment_label || '-')); }).join('、')]
     ];
@@ -2151,10 +2218,11 @@
       location: document.getElementById('home-location').value,
       contact_person: document.getElementById('home-contact-person').value,
       contact_phone: document.getElementById('home-contact-phone').value,
+      has_companion: getCompanionValue('home-has-companion'),
       notes: document.getElementById('home-notes').value,
       status: 'scheduled'
     };
-    if (!body.customer_id || !body.project_id || !body.staff_id || !body.appointment_date || !body.location || !selectedHomeSlots.length) {
+    if (!body.customer_id || !body.project_id || !body.staff_id || !body.appointment_date || !body.location || !body.contact_phone || !selectedHomeSlots.length) {
       showMsg('home-msg', '请填写必填项', true); return;
     }
     var invalidSlot = selectedHomeSlots.find(function (slot) {
@@ -2175,7 +2243,8 @@
       ['预约时间', body.appointment_date + ' ' + selectedHomeSlots.map(function (slot) { return slot.start_time + '-' + slot.end_time; }).join('、')],
       ['地点', body.location],
       ['联系人', body.contact_person || '-'],
-      ['电话', body.contact_phone || '-']
+      ['电话', body.contact_phone || '-'],
+      ['家属陪同', body.has_companion || '无']
     ];
     openConfirmModal(homeAppointmentEditId ? '确认修改预约后保存记录' : '确认上门预约信息', rows, function () {
       var requests = selectedHomeSlots.map(function (slot) {
@@ -2199,6 +2268,7 @@
     ['home-start', 'home-end', 'home-location', 'home-contact-person', 'home-contact-phone', 'home-notes', 'home-staff', 'home-customer'].forEach(function (id) {
       document.getElementById(id).value = '';
     });
+    setCompanionRadio('home-has-companion', '无');
     document.getElementById('home-customer-search').value = '';
     selectedHomeSlot = null;
     selectedHomeSlots = [];

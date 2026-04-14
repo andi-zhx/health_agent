@@ -95,6 +95,14 @@
     .heatmap-table { border-collapse: collapse; min-width: 720px; width: 100%; }
     .heatmap-table th, .heatmap-table td { border: 1px solid #e2e8f0; padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; }
     .heatmap-cell { color: #0f172a; font-size: 11px; line-height: 1.45; border-radius: 4px; padding: 4px; }
+    .stacked-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; font-size: 12px; color: #475569; }
+    .stacked-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 2px; vertical-align: middle; background: var(--color); }
+    .stacked-chart { display: flex; flex-direction: column; gap: 10px; }
+    .stacked-row { display: grid; grid-template-columns: 120px 1fr 44px; gap: 10px; align-items: center; }
+    .stacked-label { color: #334155; font-size: 12px; }
+    .stacked-track { display: flex; height: 20px; border-radius: 999px; overflow: hidden; background: #edf2f7; }
+    .stacked-segment { height: 100%; }
+    .stacked-value { text-align: right; font-size: 12px; color: #334155; }
     .kpi-row { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; }
     .kpi-card { min-width:130px; background:#f8fbff; border:1px solid #e5eef8; border-radius:8px; padding:10px; }
     .kpi-card .k { color:#607d8b; font-size:12px; }
@@ -581,10 +589,6 @@
             </div>
             <div class="portrait-panel">
               <h3>维度2：疾病风险与遗传画像（核心）</h3>
-              <div class="chart-row">
-                <div id="portrait-risk-donut"></div>
-                <div id="portrait-risk-legend" class="legend"></div>
-              </div>
               <h4>过去确诊疾病</h4>
               <div class="chart-row"><div id="portrait-disease-pie"></div><div id="portrait-disease-legend" class="legend"></div></div>
               <h4>家族病史</h4>
@@ -604,7 +608,7 @@
             </div>
             <div class="portrait-panel" style="grid-column: 1 / -1;">
               <h3>维度4：干部健康改善情况</h3>
-              <div id="portrait-improvement-heatmap"></div>
+              <div id="portrait-improvement-stacked"></div>
             </div>
           </div>
         </div>
@@ -623,8 +627,15 @@
           <div class="form-row">
             <label>日期</label>
             <input type="date" id="apt-date">
+          </div>
+          <div class="form-row">
+            <label>是否有家属陪同</label>
+            <label style="min-width:auto"><input type="radio" name="apt-has-companion" value="有">有</label>
+            <label style="min-width:auto"><input type="radio" name="apt-has-companion" value="无" checked>无</label>
+          </div>
+          <div class="form-row">
             <label>备注</label>
-            <input type="text" id="apt-notes" placeholder="可选">
+            <input type="text" id="apt-notes" placeholder="可选" style="flex:1;max-width:520px">
           </div>
           <div class="appointment-section-title">二、时间段选择</div>
           <div id="apt-slot-tip" class="appointment-tip">请选择项目和日期后查看可预约时间</div>
@@ -656,25 +667,30 @@
         <div class="card">
           <h2>上门预约</h2>
           <div class="form-row">
-            <label>客户</label>
+            <label>客户<span class="required-mark">*</span></label>
             <input type="text" id="home-customer-search" list="home-customer-options" placeholder="输入姓名或手机号搜索并选择客户" style="width:280px">
             <datalist id="home-customer-options"></datalist>
             <input type="hidden" id="home-customer">
           </div>
           <div class="form-row">
-            <label>项目</label><select id="home-project" style="min-width:260px"></select>
+            <label>项目<span class="required-mark">*</span></label><select id="home-project" style="min-width:260px"></select>
           </div>
           <div class="form-row">
-            <label>日期</label><input type="date" id="home-date">
+            <label>日期<span class="required-mark">*</span></label><input type="date" id="home-date">
           </div>
           <div class="form-row">
-            <label>地点</label><input type="text" id="home-location" style="flex:1;max-width:520px">
+            <label>地点<span class="required-mark">*</span></label><input type="text" id="home-location" style="flex:1;max-width:520px">
           </div>
           <div class="form-row">
             <label>联系人</label><input type="text" id="home-contact-person" style="flex:1;max-width:520px">
           </div>
           <div class="form-row">
-            <label>电话</label><input type="text" id="home-contact-phone" style="flex:1;max-width:520px">
+            <label>电话<span class="required-mark">*</span></label><input type="text" id="home-contact-phone" style="flex:1;max-width:520px">
+          </div>
+          <div class="form-row">
+            <label>是否有家属陪同</label>
+            <label style="min-width:auto"><input type="radio" name="home-has-companion" value="有">有</label>
+            <label style="min-width:auto"><input type="radio" name="home-has-companion" value="无" checked>无</label>
           </div>
           <div class="form-row">
             <label>备注</label><input type="text" id="home-notes" style="flex:1;max-width:520px">

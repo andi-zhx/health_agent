@@ -119,12 +119,13 @@ def build_appointment_change_text(record, module):
     time_text = (start_time + '-' + end_time).strip('-')
     project_name = str(record.get('project_name') or record.get('service_project') or '')
     customer_name = str(record.get('customer_name') or '')
+    has_companion = str(record.get('has_companion') or '无')
     if module == 'home_appointments':
         staff_name = str(record.get('staff_name') or '')
         location = str(record.get('location') or record.get('home_address') or '')
-        return f"客户:{customer_name or '-'}；项目:{project_name or '-'}；时间:{date_text} {time_text or '-'}；地点:{location or '-'}；人员:{staff_name or '-'}"
+        return f"客户:{customer_name or '-'}；项目:{project_name or '-'}；时间:{date_text} {time_text or '-'}；地点:{location or '-'}；人员:{staff_name or '-'}；家属陪同:{has_companion or '无'}"
     equipment_name = str(record.get('equipment_name') or '')
-    return f"客户:{customer_name or '-'}；项目:{project_name or '-'}；时间:{date_text} {time_text or '-'}；设备:{equipment_name or '-'}"
+    return f"客户:{customer_name or '-'}；项目:{project_name or '-'}；时间:{date_text} {time_text or '-'}；设备:{equipment_name or '-'}；家属陪同:{has_companion or '无'}"
 
 
 def insert_business_history_log(cursor, module, target_id, action_type, before_text='', after_text=''):
@@ -476,7 +477,7 @@ def validate_appointment_payload(d):
 
 
 def validate_home_appointment_payload(d):
-    required_fields = ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time', 'location')
+    required_fields = ('customer_id', 'project_id', 'appointment_date', 'start_time', 'end_time', 'location', 'contact_phone')
     if not all(d.get(k) for k in required_fields):
         return '缺少必填字段'
     if not is_valid_date(d.get('appointment_date')):
@@ -959,6 +960,7 @@ def init_db():
             checkin_updated_at TEXT,
             checkin_updated_by TEXT,
             checkin_updated_ip TEXT,
+            has_companion TEXT DEFAULT '无',
             notes TEXT,
             created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
@@ -977,6 +979,7 @@ def init_db():
         'end_time': 'TEXT',
         'status': "TEXT DEFAULT 'scheduled'",
         'notes': 'TEXT',
+        'has_companion': "TEXT DEFAULT '无'",
         'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
         'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
         'source_record_id': 'INTEGER',
@@ -1169,6 +1172,7 @@ def init_db():
             location TEXT NOT NULL,
             contact_person TEXT,
             contact_phone TEXT,
+            has_companion TEXT DEFAULT '无',
             notes TEXT,
             status TEXT DEFAULT 'scheduled',
             checkin_status TEXT DEFAULT 'pending',
@@ -1199,6 +1203,7 @@ def init_db():
         'location': 'TEXT',
         'contact_person': 'TEXT',
         'contact_phone': 'TEXT',
+        'has_companion': "TEXT DEFAULT '无'",
         'notes': 'TEXT',
         'status': "TEXT DEFAULT 'scheduled'",
         'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
@@ -2523,9 +2528,9 @@ def api_appointment_create():
 
     checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
-        INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, checkin_status, notes, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
-    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('notes')))
+        INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, checkin_status, has_companion, notes, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('has_companion', '无'), d.get('notes')))
     rid = c.lastrowid
     c.execute(
         '''
@@ -2719,12 +2724,12 @@ def api_appointment_update(aid):
     c.execute(
         '''
         UPDATE appointments
-        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, notes=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, has_companion=?, notes=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         WHERE id=?
         ''',
         (
             d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None,
-            d.get('appointment_date'), d.get('start_time'), d.get('end_time'), new_status, next_checkin_status, d.get('notes'),
+            d.get('appointment_date'), d.get('start_time'), d.get('end_time'), new_status, next_checkin_status, d.get('has_companion', '无'), d.get('notes'),
             aid,
         ),
     )
@@ -3111,13 +3116,13 @@ def api_home_appointments_create():
         INSERT INTO home_appointments (
             customer_id, project_id, staff_id,
             customer_name, phone, home_time, home_address, service_project, staff_name,
-            appointment_date, start_time, end_time, location, contact_person, contact_phone, notes, status, checkin_status, updated_at
+            appointment_date, start_time, end_time, location, contact_person, contact_phone, has_companion, notes, status, checkin_status, updated_at
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
-        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('notes'), d.get('status', 'scheduled'), checkin_status
+        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), d.get('status', 'scheduled'), checkin_status
     ))
     rid = c.lastrowid
     c.execute(
@@ -3266,13 +3271,13 @@ def api_home_appointments_update(hid):
         SET customer_id=?, project_id=?, staff_id=?,
             customer_name=?, phone=?, home_time=?, home_address=?, service_project=?, staff_name=?,
             appointment_date=?, start_time=?, end_time=?, location=?,
-            contact_person=?, contact_phone=?, notes=?, status=?, checkin_status=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            contact_person=?, contact_phone=?, has_companion=?, notes=?, status=?, checkin_status=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         WHERE id=?
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
         d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'),
-        d.get('contact_person'), d.get('contact_phone'), d.get('notes'), new_status, next_checkin_status,
+        d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), new_status, next_checkin_status,
         hid,
     ))
     before_text = build_appointment_change_text(dict(old_row), 'home_appointments')
@@ -4088,6 +4093,7 @@ EXPORT_FIELD_ZH = {
     'location': '地点',
     'contact_person': '联系人',
     'contact_phone': '联系人电话',
+    'has_companion': '是否有家属陪同',
     'service_time': '服务时间',
     'improvement_summary': '改善情况',
     'followup_time': '随访时间',
@@ -4098,8 +4104,8 @@ EXPORT_FIELD_ZH = {
 EXPORT_COLUMNS_BY_KEY = {
     'basic': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
     'health': ['id', 'customer_id', 'assessment_date', 'assessor', 'age', 'height_cm', 'weight_kg', 'address', 'past_medical_history', 'family_history', 'allergy_history', 'allergy_details', 'smoking_status', 'smoking_years', 'cigarettes_per_day', 'drinking_status', 'drinking_years', 'fatigue_last_month', 'sleep_quality', 'sleep_hours', 'blood_pressure_test', 'blood_lipid_test', 'chronic_pain', 'pain_details', 'exercise_methods', 'weekly_exercise_freq', 'health_needs', 'notes', 'created_at', 'customer_name', 'customer_phone'],
-    'appointments': ['id', 'customer_id', 'equipment_id', 'appointment_date', 'start_time', 'end_time', 'status', 'notes', 'created_at', 'project_id', 'staff_id', 'updated_at', 'customer_name', 'customer_phone', 'equipment_name', 'project_name'],
-    'home_appointments': ['id', 'customer_id', 'project_id', 'staff_id', 'customer_name', 'phone', 'home_time', 'home_address', 'service_project', 'staff_name', 'appointment_date', 'start_time', 'end_time', 'location', 'contact_person', 'contact_phone', 'notes', 'status', 'created_at', 'updated_at', 'project_name'],
+    'appointments': ['id', 'customer_id', 'equipment_id', 'appointment_date', 'start_time', 'end_time', 'status', 'has_companion', 'notes', 'created_at', 'project_id', 'staff_id', 'updated_at', 'customer_name', 'customer_phone', 'equipment_name', 'project_name'],
+    'home_appointments': ['id', 'customer_id', 'project_id', 'staff_id', 'customer_name', 'phone', 'home_time', 'home_address', 'service_project', 'staff_name', 'appointment_date', 'start_time', 'end_time', 'location', 'contact_person', 'contact_phone', 'has_companion', 'notes', 'status', 'created_at', 'updated_at', 'project_name'],
     'improvement': ['id', 'customer_id', 'service_project', 'service_time', 'improvement_summary', 'followup_time', 'followup_method', 'followup_result', 'notes', 'created_at', 'updated_at', 'customer_name', 'customer_phone'],
     'customers': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
 }
