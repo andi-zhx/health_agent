@@ -3501,24 +3501,58 @@ def api_search():
 def api_dashboard_stats():
     conn = get_db()
     c = conn.cursor()
-    today = datetime.now().strftime('%Y-%m-%d')
-    c.execute('SELECT COUNT(*) as n FROM customers WHERE is_deleted=0')
-    total_customers = c.fetchone()['n']
-    c.execute("SELECT COUNT(*) as n FROM appointments WHERE appointment_date=? AND status='scheduled'", (today,))
-    today_appointments = c.fetchone()['n']
-    c.execute("SELECT COUNT(*) as n FROM appointments WHERE appointment_date>=? AND status='scheduled'", (today,))
-    pending = c.fetchone()['n']
-    c.execute('SELECT COUNT(*) as n FROM equipment')
-    total_equipment = c.fetchone()['n']
-    c.execute("SELECT COUNT(*) as n FROM equipment WHERE status='available'")
-    available = c.fetchone()['n']
+    c.execute("SELECT COUNT(*) as n FROM appointments WHERE status='completed'")
+    completed_appointments = c.fetchone()['n']
+    c.execute("SELECT COUNT(*) as n FROM home_appointments WHERE status='completed'")
+    completed_home_appointments = c.fetchone()['n']
+    cumulative_service_count = completed_appointments + completed_home_appointments
+
+    c.execute('''
+        SELECT ROUND(AVG(month_total), 1) as avg_count
+        FROM (
+            SELECT month_key, SUM(month_total) as month_total
+            FROM (
+                SELECT strftime('%Y-%m', appointment_date) as month_key, COUNT(*) as month_total
+                FROM appointments
+                WHERE status='completed'
+                GROUP BY month_key
+                UNION ALL
+                SELECT strftime('%Y-%m', appointment_date) as month_key, COUNT(*) as month_total
+                FROM home_appointments
+                WHERE status='completed'
+                GROUP BY month_key
+            ) raw_monthly
+            GROUP BY month_key
+        ) monthly
+    ''')
+    month_avg_row = c.fetchone()
+    monthly_avg_service_count = month_avg_row['avg_count'] if month_avg_row and month_avg_row['avg_count'] is not None else 0
+
+    c.execute('''
+        SELECT MAX(day_total) as max_day_total
+        FROM (
+            SELECT appointment_date, SUM(day_total) as day_total
+            FROM (
+                SELECT appointment_date, COUNT(*) as day_total
+                FROM appointments
+                WHERE status='completed'
+                GROUP BY appointment_date
+                UNION ALL
+                SELECT appointment_date, COUNT(*) as day_total
+                FROM home_appointments
+                WHERE status='completed'
+                GROUP BY appointment_date
+            ) raw_daily
+            GROUP BY appointment_date
+        ) daily
+    ''')
+    max_day_row = c.fetchone()
+    single_day_peak_service_count = max_day_row['max_day_total'] if max_day_row and max_day_row['max_day_total'] is not None else 0
     conn.close()
     return jsonify({
-        'total_customers': total_customers,
-        'today_appointments': today_appointments,
-        'pending_appointments': pending,
-        'total_equipment': total_equipment,
-        'available_equipment': available,
+        'cumulative_service_count': cumulative_service_count,
+        'monthly_avg_service_count': monthly_avg_service_count,
+        'single_day_peak_service_count': single_day_peak_service_count,
     })
 
 
@@ -3533,12 +3567,24 @@ def api_dashboard_analytics():
     today = datetime.now().date()
     start_day = today - timedelta(days=6)
     c.execute('''
-        SELECT appointment_date, COUNT(*) as n
-        FROM appointments
-        WHERE appointment_date BETWEEN ? AND ?
+        SELECT appointment_date, SUM(n) as n
+        FROM (
+            SELECT appointment_date, COUNT(*) as n
+            FROM appointments
+            WHERE status <> 'cancelled' AND appointment_date BETWEEN ? AND ?
+            GROUP BY appointment_date
+            UNION ALL
+            SELECT appointment_date, COUNT(*) as n
+            FROM home_appointments
+            WHERE status <> 'cancelled' AND appointment_date BETWEEN ? AND ?
+            GROUP BY appointment_date
+        ) merged
         GROUP BY appointment_date
         ORDER BY appointment_date
-    ''', (start_day.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')))
+    ''', (
+        start_day.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d'),
+        start_day.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
+    ))
     appt_map = {row['appointment_date']: row['n'] for row in c.fetchall()}
     appointment_trend = []
     for i in range(7):
@@ -3556,7 +3602,7 @@ def api_dashboard_analytics():
     appointment_status = row_list(c.fetchall())
 
     # 设备使用统计（按预约服务历史记录汇总总时长 + 次数）
-    equipment_join_conditions = ["a.status <> 'cancelled'"]
+    equipment_join_conditions = ["a.status = 'completed'"]
     equipment_params = []
     if equipment_start_date:
         equipment_join_conditions.append('a.appointment_date >= ?')
@@ -3568,22 +3614,47 @@ def api_dashboard_analytics():
     if equipment_join_sql:
         equipment_join_sql = ' AND ' + equipment_join_sql
     c.execute(f'''
-        SELECT e.name as equipment_name,
-               COUNT(a.id) as usage_count,
-               COALESCE(SUM(
-                   CASE
-                       WHEN a.start_time IS NOT NULL AND a.end_time IS NOT NULL
-                            AND a.end_time > a.start_time
-                       THEN (strftime('%s', '2000-01-01 ' || a.end_time) - strftime('%s', '2000-01-01 ' || a.start_time)) / 60
-                       ELSE 0
-                   END
-               ), 0) as total_duration_minutes
-        FROM equipment e
-        LEFT JOIN appointments a ON e.id = a.equipment_id{equipment_join_sql}
-        GROUP BY e.id, e.name
-        ORDER BY total_duration_minutes DESC, usage_count DESC
+        SELECT equipment_name,
+               SUM(usage_count) as usage_count,
+               SUM(total_duration_minutes) as total_duration_minutes
+        FROM (
+            SELECT COALESCE(e.name, p.name, '未配置设备') as equipment_name,
+                   COUNT(a.id) as usage_count,
+                   COALESCE(SUM(
+                       CASE
+                           WHEN a.start_time IS NOT NULL AND a.end_time IS NOT NULL
+                                AND a.end_time > a.start_time
+                           THEN (strftime('%s', '2000-01-01 ' || a.end_time) - strftime('%s', '2000-01-01 ' || a.start_time)) / 60
+                           ELSE 0
+                       END
+                   ), 0) as total_duration_minutes
+            FROM appointments a
+            LEFT JOIN equipment e ON e.id = a.equipment_id
+            LEFT JOIN therapy_projects p ON p.id = a.project_id
+            WHERE 1=1{equipment_join_sql}
+            GROUP BY COALESCE(e.name, p.name, '未配置设备')
+            UNION ALL
+            SELECT COALESCE(p.name, '未配置设备') as equipment_name,
+                   COUNT(h.id) as usage_count,
+                   COALESCE(SUM(
+                       CASE
+                           WHEN h.start_time IS NOT NULL AND h.end_time IS NOT NULL
+                                AND h.end_time > h.start_time
+                           THEN (strftime('%s', '2000-01-01 ' || h.end_time) - strftime('%s', '2000-01-01 ' || h.start_time)) / 60
+                           ELSE 0
+                       END
+                   ), 0) as total_duration_minutes
+            FROM home_appointments h
+            LEFT JOIN therapy_projects p ON p.id = h.project_id
+            WHERE h.status = 'completed'
+              AND (? = '' OR h.appointment_date >= ?)
+              AND (? = '' OR h.appointment_date <= ?)
+            GROUP BY COALESCE(p.name, '未配置设备')
+        ) merged
+        GROUP BY equipment_name
+        ORDER BY usage_count DESC, total_duration_minutes DESC
         LIMIT 10
-    ''', equipment_params)
+    ''', equipment_params + [equipment_start_date, equipment_start_date, equipment_end_date, equipment_end_date])
     equipment_usage_top = row_list(c.fetchall())
 
     # 客户活跃度：有预约或有健康档案的客户
