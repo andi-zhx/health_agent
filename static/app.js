@@ -1471,13 +1471,16 @@
       ]);
       renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
       renderLegend('portrait-gender-legend', toList(d1.gender_distribution));
-      renderHorizontalBars('portrait-age-bars', toList(d1.age_distribution), '#27ae60');
+      renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution));
       renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
       renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
       renderCircleChart('portrait-risk-donut', toList(d2.risk_distribution), true);
       renderLegend('portrait-risk-legend', toList(d2.risk_distribution));
-      renderHorizontalBars('portrait-disease-top10', toList(d2.disease_top10), '#8e44ad');
-      renderHorizontalBars('portrait-family-top10', toList(d2.family_history_top10), '#c0392b');
+      renderCircleChart('portrait-disease-pie', toList(d2.past_disease_distribution), false);
+      renderLegend('portrait-disease-legend', toList(d2.past_disease_distribution));
+      renderCircleChart('portrait-family-pie', toList(d2.family_history_distribution), false);
+      renderLegend('portrait-family-legend', toList(d2.family_history_distribution));
+      renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
 
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
@@ -1485,9 +1488,36 @@
         { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' },
         { name: '低运动+不良习惯', value: d3.low_exercise_bad_habit_people || 0 }
       ]);
+      renderRadarChart('portrait-habit-radar', [
+        { name: '吸烟', value: d3.smoking_ratio || 0 },
+        { name: '饮酒', value: d3.drinking_ratio || 0 },
+        { name: '睡眠异常', value: d3.sleep_abnormal_ratio || 0 },
+        { name: '睡眠质量差', value: d3.poor_sleep_quality_ratio || 0 },
+        { name: '烟酒叠加', value: d3.smoking_drinking_ratio || 0 }
+      ]);
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
+      renderImprovementHeatmap('portrait-improvement-heatmap', toList((res.dimension4 || {}).improvement_matrix));
     });
+  }
+
+  function renderAgeGenderCompare(elId, list) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var max = Math.max.apply(null, list.map(function (x) { return Math.max(x.male || 0, x.female || 0); }).concat([1]));
+    var groups = list.map(function (x) {
+      var maleHeight = Math.round(((x.male || 0) * 160) / max);
+      var femaleHeight = Math.round(((x.female || 0) * 160) / max);
+      return '<div class="vbar-group"><div class="vbar-bars">' +
+        '<div class="vbar-item" style="height:' + maleHeight + 'px;background:#8ecbff"><span class="num">' + (x.male || 0) + '</span></div>' +
+        '<div class="vbar-item" style="height:' + femaleHeight + 'px;background:#ffb6c1"><span class="num">' + (x.female || 0) + '</span></div>' +
+        '</div><div class="vbar-label">' + (x.name || '-') + '</div></div>';
+    }).join('');
+    box.innerHTML = '<div class="vbar-chart">' + groups + '</div><div class="compare-legend"><span class="male">男性</span><span class="female">女性</span></div>';
   }
 
   function renderKpiCards(elId, items) {
@@ -1599,6 +1629,82 @@
       var width = Math.round(((x.count || 0) * 100) / max);
       return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + '</div></div>';
     }).join('');
+  }
+
+  function renderRadarChart(elId, items) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var list = toList(items).filter(function (x) { return (x.value || 0) >= 0; });
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var cx = 170; var cy = 150; var radius = 95;
+    var levels = [20, 40, 60, 80, 100];
+    var axis = list.map(function (item, idx) {
+      var angle = (Math.PI * 2 * idx / list.length) - Math.PI / 2;
+      return {
+        name: item.name,
+        value: Math.max(0, Math.min(100, Number(item.value || 0))),
+        x: cx + radius * Math.cos(angle),
+        y: cy + radius * Math.sin(angle),
+        angle: angle
+      };
+    });
+    var grids = levels.map(function (lv) {
+      var r = radius * lv / 100;
+      var points = axis.map(function (p) {
+        return (cx + r * Math.cos(p.angle)) + ',' + (cy + r * Math.sin(p.angle));
+      }).join(' ');
+      return '<polygon points="' + points + '" fill="none" stroke="#e2e8f0" stroke-width="1"></polygon>';
+    }).join('');
+    var spokes = axis.map(function (p) {
+      return '<line x1="' + cx + '" y1="' + cy + '" x2="' + p.x + '" y2="' + p.y + '" stroke="#e2e8f0" stroke-width="1"></line>';
+    }).join('');
+    var valuePoints = axis.map(function (p) {
+      var r = radius * p.value / 100;
+      return (cx + r * Math.cos(p.angle)) + ',' + (cy + r * Math.sin(p.angle));
+    }).join(' ');
+    var labels = axis.map(function (p) {
+      var lx = cx + (radius + 18) * Math.cos(p.angle);
+      var ly = cy + (radius + 18) * Math.sin(p.angle);
+      return '<text x="' + lx + '" y="' + ly + '" font-size="11" fill="#475569" text-anchor="middle">' + p.name + ' ' + p.value + '%</text>';
+    }).join('');
+    box.innerHTML = '<div class="radar-wrap"><svg class="radar-svg" viewBox="0 0 340 300">' + grids + spokes +
+      '<polygon points="' + valuePoints + '" fill="rgba(59,130,246,0.25)" stroke="#2563eb" stroke-width="2"></polygon>' + labels + '</svg></div>';
+  }
+
+  function renderImprovementHeatmap(elId, list) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无数据</p>';
+      return;
+    }
+    var projects = [];
+    var parts = [];
+    var matrix = {};
+    list.forEach(function (item) {
+      var project = item.service_project || '未标注项目';
+      var part = item.therapy_part || '未标注部位';
+      if (projects.indexOf(project) < 0) projects.push(project);
+      if (parts.indexOf(part) < 0) parts.push(part);
+      if (!matrix[project]) matrix[project] = {};
+      matrix[project][part] = item;
+    });
+    var max = Math.max.apply(null, list.map(function (x) { return x.count || 0; }).concat([1]));
+    var thead = '<thead><tr><th>服务项目 \\ 理疗部位</th>' + parts.map(function (part) { return '<th>' + part + '</th>'; }).join('') + '</tr></thead>';
+    var tbody = '<tbody>' + projects.map(function (project) {
+      var tds = parts.map(function (part) {
+        var cell = (matrix[project] || {})[part];
+        if (!cell) return '<td>-</td>';
+        var ratio = (cell.count || 0) / max;
+        var bg = 'rgba(37,99,235,' + (0.12 + ratio * 0.58).toFixed(2) + ')';
+        return '<td><div class="heatmap-cell" style="background:' + bg + ';">' + (cell.count || 0) + '人次<br>' + (cell.status_summary || '') + '</div></td>';
+      }).join('');
+      return '<tr><th>' + project + '</th>' + tds + '</tr>';
+    }).join('') + '</tbody>';
+    box.innerHTML = '<div class="heatmap-wrap"><table class="heatmap-table">' + thead + tbody + '</table></div>';
   }
 
   function chartColor(idx) {
