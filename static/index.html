@@ -35,6 +35,7 @@
     .stat-box { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,.08); min-width: 140px; }
     .stat-box .num { font-size: 24px; font-weight: 700; color: #2c3e50; }
     .stat-box .label { font-size: 12px; color: #7f8c8d; margin-top: 4px; }
+    .stat-box .stat-extra { margin-top: 8px; font-size: 12px; color: #334155; line-height: 1.7; }
     .hide { display: none !important; }
     .search-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
     .search-bar input[type="text"] { width: 220px; }
@@ -163,6 +164,7 @@
     .section-pagination { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; font-size: 12px; }
     .section-pagination button { border: 1px solid #d1d5db; background: #fff; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
     .section-pagination button:disabled { color: #9ca3af; cursor: not-allowed; background: #f8fafc; }
+    .integrated-health-detail-content { border: 1px solid #dbe3ee; border-radius: 8px; background: #f8fbff; padding: 10px 12px; color: #334155; line-height: 1.8; }
     .home-hero { background: linear-gradient(120deg, #edf4ff 0%, #f5fffb 100%); border: 1px solid #d6e6ff; }
     .home-hero-title { margin: 0 0 10px; font-size: 24px; color: #103b67; }
     .home-hero-desc { margin: 0; color: #3b5b79; font-size: 14px; line-height: 1.8; }
@@ -228,11 +230,6 @@
         <div class="card">
           <h2>服务亮点</h2>
           <div class="home-highlight-grid">
-            <div class="home-highlight-card">
-              <h3>累计服务人次</h3>
-              <p>系统自动统计已完成预约服务与已完成上门预约总量，实时反映服务规模。</p>
-              <p id="home-highlight-total" style="margin-top:8px;font-weight:700;color:#1d4ed8;">累计服务人次：--</p>
-            </div>
             <div class="home-highlight-card">
               <h3>服务覆盖与响应</h3>
               <p>全年开展常态化军休所7项理疗服务，理疗服务响应度100%，支撑日常健康服务保障。</p>

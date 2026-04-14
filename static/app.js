@@ -107,15 +107,17 @@
     renderCurrentDate();
     get('/api/dashboard/stats').then(function (data) {
       var html = [
-        { num: data.cumulative_service_count || 0, label: '累计服务人次' },
+        {
+          num: data.cumulative_service_count || 0,
+          label: '累计服务人次',
+          extra: '<div class="stat-extra"><div>男性人次：' + (data.male_service_count || 0) + '</div><div>女性人次：' + (data.female_service_count || 0) + '</div></div>'
+        },
         { num: data.monthly_avg_service_count || 0, label: '月均服务人次' },
         { num: data.single_day_peak_service_count || 0, label: '单日最高服务量' }
-      ].map(function (s) { return '<div class="stat-box"><div class="num">' + s.num + '</div><div class="label">' + s.label + '</div></div>'; }).join('');
+      ].map(function (s) {
+        return '<div class="stat-box"><div class="num">' + s.num + '</div><div class="label">' + s.label + '</div>' + (s.extra || '') + '</div>';
+      }).join('');
       document.getElementById('stats').innerHTML = html;
-      var highlight = document.getElementById('home-highlight-total');
-      if (highlight) {
-        highlight.textContent = '累计服务人次：' + (data.cumulative_service_count || 0);
-      }
     }).catch(function () {});
 
     get('/api/dashboard/analytics' + buildEquipmentRangeQuery()).then(function (data) {
@@ -474,7 +476,7 @@
 
       var healthTbody = document.getElementById('integrated-health-list');
       healthTbody.innerHTML = toList(res.health).map(function (h) {
-        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-int-health-jump="' + h.customer_id + '">跳转详情页</button></td></tr>';
+        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-health-detail="' + h.id + '">详细信息</button></td></tr><tr class="integrated-health-detail-row hide" data-int-health-detail-row="' + h.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-health-detail-content="' + h.id + '">加载中...</div></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('health', res.health || {}, 'customerHealth');
 
@@ -537,15 +539,28 @@
   function bindIntegratedSectionActions() {
     document.querySelectorAll('[data-int-health-detail]').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        var detailId = btn.dataset.intHealthDetail;
+        var detailRow = document.querySelector('[data-int-health-detail-row="' + detailId + '"]');
+        var detailContent = document.querySelector('[data-int-health-detail-content="' + detailId + '"]');
+        if (!detailRow || !detailContent) return;
+        var isOpen = !detailRow.classList.contains('hide');
+        document.querySelectorAll('.integrated-health-detail-row').forEach(function (row) {
+          row.classList.add('hide');
+        });
+        if (isOpen) return;
+        detailRow.classList.remove('hide');
+        detailContent.innerHTML = '加载中...';
         get('/api/health-assessments/' + btn.dataset.intHealthDetail).then(function (data) {
-          if (!data || data.error) return;
-          renderHealthDetail(data);
-          showPage('health');
+          if (!data || data.error) {
+            detailContent.innerHTML = '<span style="color:#ef4444">加载失败</span>';
+            return;
+          }
+          var rows = buildHealthDetailRows(data);
+          detailContent.innerHTML = rows.map(function (row) {
+            return '<div><strong>' + escapeHtml(row[0]) + '：</strong>' + escapeHtml(row[1] || '-') + '</div>';
+          }).join('');
         });
       });
-    });
-    document.querySelectorAll('[data-int-health-jump]').forEach(function (btn) {
-      btn.addEventListener('click', function () { showPage('health'); });
     });
     document.querySelectorAll('[data-int-apt-history]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -638,6 +653,19 @@
     });
   }
 
+  function buildHealthDetailRows(data) {
+    return [
+      ['客户', data.customer_name], ['年龄', data.age],
+      ['身高(cm)', data.height_cm], ['体重(kg)', data.weight_kg], ['地址', data.address], ['既往病史', data.past_medical_history],
+      ['家族慢性病史', data.family_history], ['过敏史', data.allergy_history], ['过敏详情', data.allergy_details], ['吸烟情况', data.smoking_status],
+      ['烟龄', data.smoking_years], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
+      ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年症状', data.recent_symptoms], ['详细情况', data.recent_symptom_detail],
+      ['最影响生活的问题', data.life_impact_issues], ['近半年血压', data.blood_pressure_test],
+      ['近半年血脂', data.blood_lipid_test], ['近半年血糖', data.blood_sugar_test],
+      ['运动方式', (data.exercise_methods || []).join('、')], ['健康需求', (data.health_needs || []).join('、')], ['特殊情况', data.notes]
+    ];
+  }
+
   function renderHealthDetail(data) {
     var box = document.getElementById('health-detail');
     if (!box) return;
@@ -648,16 +676,7 @@
       return;
     }
     selectedHealthDetailId = String(data.id);
-    var rows = [
-      ['客户', data.customer_name], ['年龄', data.age],
-      ['身高(cm)', data.height_cm], ['体重(kg)', data.weight_kg], ['地址', data.address], ['既往病史', data.past_medical_history],
-      ['家族慢性病史', data.family_history], ['过敏史', data.allergy_history], ['过敏详情', data.allergy_details], ['吸烟情况', data.smoking_status],
-      ['烟龄', data.smoking_years], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
-      ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年症状', data.recent_symptoms], ['详细情况', data.recent_symptom_detail],
-      ['最影响生活的问题', data.life_impact_issues], ['近半年血压', data.blood_pressure_test],
-      ['近半年血脂', data.blood_lipid_test], ['近半年血糖', data.blood_sugar_test],
-      ['运动方式', (data.exercise_methods || []).join('、')], ['健康需求', (data.health_needs || []).join('、')], ['特殊情况', data.notes]
-    ];
+    var rows = buildHealthDetailRows(data);
     box.innerHTML = '<h3 style="margin-top:0">档案详细信息</h3>' + rows.map(function (row) {
       return '<div><strong>' + escapeHtml(row[0]) + '：</strong>' + escapeHtml(row[1] || '-') + '</div>';
     }).join('');
