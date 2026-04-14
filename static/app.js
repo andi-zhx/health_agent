@@ -107,7 +107,7 @@
     renderCurrentDate();
     get('/api/dashboard/stats').then(function (data) {
       var html = [
-        { num: data.cumulative_service_count || 0, label: '累计服务人次（已完成预约+已完成上门预约）' },
+        { num: data.cumulative_service_count || 0, label: '累计服务人次' },
         { num: data.monthly_avg_service_count || 0, label: '月均服务人次' },
         { num: data.single_day_peak_service_count || 0, label: '单日最高服务量' }
       ].map(function (s) { return '<div class="stat-box"><div class="num">' + s.num + '</div><div class="label">' + s.label + '</div></div>'; }).join('');
@@ -144,7 +144,7 @@
   function renderCurrentDate() {
     var box = document.getElementById('current-date');
     if (!box) return;
-    box.textContent = '军休所健康管理服务总览';
+    box.textContent = '军休所-静安所';
   }
 
   function buildEquipmentRangeQuery() {
