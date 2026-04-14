@@ -70,7 +70,10 @@
     if (link) link.classList.add('active');
     if (name === 'home') loadStats();
     if (name === 'customers') loadCustomers();
-    if (name === 'health') loadHealthPage();
+    if (name === 'health') {
+      if (typeof window !== 'undefined' && window.scrollTo) window.scrollTo({ top: 0, behavior: 'auto' });
+      loadHealthPage();
+    }
     if (name === 'portrait') loadPortraitPage();
     if (name === 'appointments') loadAppointmentsPage();
     if (name === 'home-appointments') loadHomeAppointmentsPage();
@@ -476,7 +479,7 @@
 
       var healthTbody = document.getElementById('integrated-health-list');
       healthTbody.innerHTML = toList(res.health).map(function (h) {
-        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-health-detail="' + h.id + '">详细信息</button></td></tr><tr class="integrated-health-detail-row hide" data-int-health-detail-row="' + h.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-health-detail-content="' + h.id + '">加载中...</div></td></tr>';
+        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-int-health-jump="1">跳转详情页</button></td></tr><tr class="integrated-health-detail-row hide" data-int-health-detail-row="' + h.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-health-detail-content="' + h.id + '">加载中...</div></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('health', res.health || {}, 'customerHealth');
 
@@ -572,6 +575,9 @@
         viewBusinessHistory('home_appointments', btn.dataset.intHomeHistory, '上门预约 - 业务历史日志');
       });
     });
+    document.querySelectorAll('[data-int-health-jump]').forEach(function (btn) {
+      btn.addEventListener('click', function () { showPage('health'); });
+    });
     document.querySelectorAll('[data-int-apt-jump]').forEach(function (btn) {
       btn.addEventListener('click', function () { showPage('appointments'); });
     });
@@ -666,7 +672,7 @@
     ];
   }
 
-  function renderHealthDetail(data) {
+  function renderHealthDetail(data, options) {
     var box = document.getElementById('health-detail');
     if (!box) return;
     if (!data || !data.id) {
@@ -681,7 +687,9 @@
       return '<div><strong>' + escapeHtml(row[0]) + '：</strong>' + escapeHtml(row[1] || '-') + '</div>';
     }).join('');
     box.style.display = 'block';
-    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (options && options.scrollToDetail) {
+      box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   function loadHealthPage() {
@@ -701,7 +709,7 @@
       tbody.querySelectorAll('[data-health-detail]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           get('/api/health-assessments/' + btn.dataset.healthDetail).then(function (data) {
-            renderHealthDetail(data || {});
+            renderHealthDetail(data || {}, { scrollToDetail: true });
           });
         });
       });
