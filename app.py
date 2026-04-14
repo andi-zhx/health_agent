@@ -1643,7 +1643,7 @@ def api_customers_list():
     c.execute(f'SELECT COUNT(*) as n FROM customers WHERE {where_sql}', params)
     total = c.fetchone()['n']
     c.execute(
-        f'SELECT * FROM customers WHERE {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?',
+        f"SELECT c.*, datetime(c.created_at, '+8 hours') as created_at FROM customers c WHERE {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?",
         params + [page_size, offset]
     )
     rows = row_list(c.fetchall())
@@ -1669,7 +1669,7 @@ def api_customers_history_view():
     total = c.fetchone()['n']
     c.execute(
         f'''
-        SELECT c.id, c.name, c.age, c.identity_type, c.phone, c.created_at
+        SELECT c.id, c.name, c.age, c.identity_type, c.phone, datetime(c.created_at, '+8 hours') as created_at
         FROM customers c
         WHERE {where_sql}
         ORDER BY c.created_at DESC, c.id DESC
@@ -1724,7 +1724,7 @@ def api_customer_create():
             INSERT INTO customers (name, id_card, phone, email, address, gender, age, birth_date, identity_type, military_rank, record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
-            d.get('name'), d.get('id_card'), d.get('phone'), d.get('email'), d.get('address'),
+            d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('email'), d.get('address'),
             d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
             d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
             d.get('health_status'), d.get('therapy_contraindications')
@@ -1759,7 +1759,7 @@ def api_customer_update(cid):
     c.execute('''
         UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?
     ''', (
-        d.get('name'), d.get('id_card'), d.get('phone'), d.get('email'), d.get('address'),
+        d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('email'), d.get('address'),
         d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
         d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
         d.get('health_status'), d.get('therapy_contraindications'), cid
@@ -3548,9 +3548,24 @@ def api_dashboard_stats():
     ''')
     max_day_row = c.fetchone()
     single_day_peak_service_count = max_day_row['max_day_total'] if max_day_row and max_day_row['max_day_total'] is not None else 0
+    c.execute('''
+        SELECT
+            SUM(CASE WHEN c.gender='男' THEN 1 ELSE 0 END) as male_service_count,
+            SUM(CASE WHEN c.gender='女' THEN 1 ELSE 0 END) as female_service_count
+        FROM (
+            SELECT customer_id FROM appointments WHERE status='completed'
+            UNION ALL
+            SELECT customer_id FROM home_appointments WHERE status='completed'
+        ) svc
+        JOIN customers c ON c.id = svc.customer_id
+        WHERE c.is_deleted=0
+    ''')
+    gender_row = c.fetchone()
     conn.close()
     return jsonify({
         'cumulative_service_count': cumulative_service_count,
+        'male_service_count': int((gender_row['male_service_count'] if gender_row else 0) or 0),
+        'female_service_count': int((gender_row['female_service_count'] if gender_row else 0) or 0),
         'monthly_avg_service_count': monthly_avg_service_count,
         'single_day_peak_service_count': single_day_peak_service_count,
     })
@@ -4016,7 +4031,7 @@ def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, p
         'basic': {
             'count_sql': f'SELECT COUNT(*) as n FROM customers c {where_sql}',
             'data_sql': f'''
-                SELECT c.*
+                SELECT c.*, datetime(c.created_at, '+8 hours') as created_at
                 FROM customers c
                 {where_sql}
                 ORDER BY c.created_at DESC, c.id DESC
