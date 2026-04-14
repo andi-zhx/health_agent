@@ -178,6 +178,7 @@
       <a href="#" data-page="home-appointments">上门预约</a>
       <a href="#" data-page="improvement-tracking">健康改善追踪</a>
       <a href="#" data-page="query-export">数据查询导出</a>
+      <a href="#" data-page="audit-logs">系统审计日志</a>
     </nav>
     <main class="main">
       <div id="page-home" class="page">
@@ -669,6 +670,39 @@
             <thead><tr><th>客户姓名</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>随访方式</th><th>随访结果</th><th>操作</th></tr></thead>
             <tbody id="improvement-list"></tbody>
           </table>
+        </div>
+      </div>
+      <div id="page-audit-logs" class="page hide">
+        <div class="card">
+          <h2>系统审计日志</h2>
+          <p style="color:#666; margin-bottom:16px">记录从登录开始的系统操作轨迹，可按时间、操作人、模块、操作类型、关键字筛选。</p>
+          <div class="search-bar">
+            <label>操作时间</label>
+            <input type="date" id="audit-start-time">
+            <span>至</span>
+            <input type="date" id="audit-end-time">
+            <input type="text" id="audit-operator" placeholder="操作人（如：admin）">
+            <input type="text" id="audit-module" placeholder="模块（如：appointments）">
+            <input type="text" id="audit-action" placeholder="操作类型（如：创建预约）">
+            <input type="text" id="audit-keyword" placeholder="关键字（对象/详情）">
+            <button class="btn btn-primary" id="btn-audit-search">查询</button>
+            <button class="btn btn-secondary" id="btn-audit-reset">重置</button>
+          </div>
+          <div id="audit-msg"></div>
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>用户</th>
+                <th>模块</th>
+                <th>操作类型</th>
+                <th>目标对象</th>
+                <th>详情</th>
+              </tr>
+            </thead>
+            <tbody id="audit-list"></tbody>
+          </table>
+          <div class="section-pagination" id="audit-pagination"></div>
         </div>
       </div>
     </main>

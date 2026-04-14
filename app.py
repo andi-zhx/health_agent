@@ -1732,6 +1732,7 @@ def api_customer_create():
         conn.commit()
         id = c.lastrowid
         conn.close()
+        audit_log('创建客户', 'customers', id, d.get('name') or '')
         return success_response({'id': id}, '客户创建成功', 201)
     except sqlite3.IntegrityError:
         conn.close()
@@ -1781,6 +1782,7 @@ def api_customer_delete(cid):
     c.execute("UPDATE customers SET is_deleted=1, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?", (cid,))
     conn.commit()
     conn.close()
+    audit_log('删除客户', 'customers', cid, '软删除客户')
     return success_response({'id': cid}, '已删除')
 
 
@@ -2082,6 +2084,7 @@ def api_health_assessment_create():
     conn.commit()
     rid = c.lastrowid
     conn.close()
+    audit_log('创建健康评估', 'health_assessments', rid, f"customer_id={d.get('customer_id')}")
     return jsonify({'id': rid, 'message': '健康评估已添加'}), 201
 
 
@@ -2125,6 +2128,7 @@ def api_health_assessment_update(hid):
     ))
     conn.commit()
     conn.close()
+    audit_log('修改健康评估', 'health_assessments', hid, f"customer_id={d.get('customer_id')}")
     return jsonify({'message': '健康评估更新成功'})
 
 
@@ -2132,9 +2136,13 @@ def api_health_assessment_update(hid):
 def api_health_assessment_delete(hid):
     conn = get_db()
     c = conn.cursor()
+    c.execute('SELECT customer_id FROM health_assessments WHERE id=?', (hid,))
+    row = c.fetchone()
     c.execute('DELETE FROM health_assessments WHERE id=?', (hid,))
     conn.commit()
     conn.close()
+    customer_id = row['customer_id'] if row else ''
+    audit_log('删除健康评估', 'health_assessments', hid, f"customer_id={customer_id}")
     return jsonify({'message': '已删除'})
 
 
@@ -2541,6 +2549,7 @@ def api_appointment_create():
     )
     conn.commit()
     conn.close()
+    audit_log('创建预约', 'appointments', rid, d.get('appointment_date'))
     return success_response({'id': rid}, '预约成功', 201)
 
 
@@ -2742,6 +2751,7 @@ def api_appointment_update(aid):
     )
     conn.commit()
     conn.close()
+    audit_log('修改预约', 'appointments', aid, d.get('appointment_date'))
     return success_response({'id': aid}, '预约修改成功')
 
 @app.route('/api/appointments/<int:aid>/cancel', methods=['POST'])
@@ -3129,6 +3139,7 @@ def api_home_appointments_create():
     )
     conn.commit()
     conn.close()
+    audit_log('创建上门预约', 'home_appointments', rid, d.get('appointment_date'))
     return success_response({'id': rid}, '上门预约成功', 201)
 
 
@@ -3277,6 +3288,7 @@ def api_home_appointments_update(hid):
     )
     conn.commit()
     conn.close()
+    audit_log('修改上门预约', 'home_appointments', hid, d.get('appointment_date'))
     return success_response({'id': hid}, '更新成功')
 
 
@@ -3384,8 +3396,61 @@ def api_auth_login():
 
 @app.route('/api/auth/logout', methods=['POST'])
 def api_auth_logout():
+    username = session.get('username', 'anonymous')
+    audit_log('退出登录', 'auth', username, 'logout')
     session.clear()
     return jsonify({'message': '已退出登录'})
+
+
+@app.route('/api/audit-logs', methods=['GET'])
+def api_audit_logs():
+    page, page_size, offset = parse_list_params(default_page_size=20, max_page_size=200)
+    start_time = (request.args.get('start_time') or '').strip()
+    end_time = (request.args.get('end_time') or '').strip()
+    operator = (request.args.get('operator') or '').strip()
+    module = (request.args.get('module') or '').strip()
+    action = (request.args.get('action') or '').strip()
+    keyword = (request.args.get('keyword') or '').strip()
+
+    conditions = ['1=1']
+    params = []
+    if start_time:
+        conditions.append('created_at >= ?')
+        params.append(start_time + ' 00:00:00')
+    if end_time:
+        conditions.append('created_at <= ?')
+        params.append(end_time + ' 23:59:59')
+    if operator:
+        conditions.append('username LIKE ?')
+        params.append(f'%{operator}%')
+    if module:
+        conditions.append('module LIKE ?')
+        params.append(f'%{module}%')
+    if action:
+        conditions.append('action LIKE ?')
+        params.append(f'%{action}%')
+    if keyword:
+        conditions.append('(target_id LIKE ? OR details LIKE ?)')
+        params.extend([f'%{keyword}%', f'%{keyword}%'])
+
+    where_sql = ' WHERE ' + ' AND '.join(conditions)
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(f'SELECT COUNT(*) AS n FROM audit_logs {where_sql}', params)
+    total = c.fetchone()['n']
+    c.execute(
+        f'''
+        SELECT id, created_at, username, module, action, target_id, details
+        FROM audit_logs
+        {where_sql}
+        ORDER BY created_at DESC, id DESC
+        LIMIT ? OFFSET ?
+        ''',
+        params + [page_size, offset],
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 # ========== 综合查询 ==========

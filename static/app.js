@@ -76,6 +76,7 @@
     if (name === 'home-appointments') loadHomeAppointmentsPage();
     if (name === 'improvement-tracking') loadImprovementTrackingPage();
     if (name === 'query-export') loadQueryExportPage();
+    if (name === 'audit-logs') loadAuditLogsPage();
   }
 
   function loadQueryExportPage() {
@@ -241,7 +242,8 @@
     customerImprovement: { page: 1, page_size: 5 },
     health: { page: 1, page_size: 20 },
     appointments: { page: 1, page_size: 20 },
-    homeAppointments: { page: 1, page_size: 20 }
+    homeAppointments: { page: 1, page_size: 20 },
+    auditLogs: { page: 1, page_size: 20 }
   };
   var APPOINTMENT_PROJECT_NAMES = ['听力测试', '艾灸', '高压氧仓', '磁疗', '红外理疗'];
 
@@ -288,6 +290,64 @@
       var label = (c.name || '') + (c.phone ? ('（' + c.phone + '）') : '');
       return '<option value="' + escapeHtml(label) + '"></option>';
     }).join('');
+  }
+
+  function loadAuditLogsPage() {
+    var state = listState.auditLogs || { page: 1, page_size: 20 };
+    var params = [
+      'page=' + encodeURIComponent(state.page || 1),
+      'page_size=' + encodeURIComponent(state.page_size || 20)
+    ];
+    var startTime = (document.getElementById('audit-start-time') || {}).value || '';
+    var endTime = (document.getElementById('audit-end-time') || {}).value || '';
+    var operator = (document.getElementById('audit-operator') || {}).value || '';
+    var module = (document.getElementById('audit-module') || {}).value || '';
+    var action = (document.getElementById('audit-action') || {}).value || '';
+    var keyword = (document.getElementById('audit-keyword') || {}).value || '';
+    if (startTime) params.push('start_time=' + encodeURIComponent(startTime));
+    if (endTime) params.push('end_time=' + encodeURIComponent(endTime));
+    if (operator) params.push('operator=' + encodeURIComponent(operator));
+    if (module) params.push('module=' + encodeURIComponent(module));
+    if (action) params.push('action=' + encodeURIComponent(action));
+    if (keyword) params.push('keyword=' + encodeURIComponent(keyword));
+    get('/api/audit-logs?' + params.join('&')).then(function (res) {
+      var rows = toList(res);
+      var tbody = document.getElementById('audit-list');
+      if (!tbody) return;
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6">暂无日志记录</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(function (row) {
+          return '<tr>'
+            + '<td>' + (row.created_at || '-') + '</td>'
+            + '<td>' + (row.username || '-') + '</td>'
+            + '<td>' + (row.module || '-') + '</td>'
+            + '<td>' + (row.action || '-') + '</td>'
+            + '<td>' + (row.target_id || '-') + '</td>'
+            + '<td>' + (row.details || '-') + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+      renderAuditPagination(getPagination(res));
+      showMsg('audit-msg', '');
+    });
+  }
+
+  function renderAuditPagination(meta) {
+    var box = document.getElementById('audit-pagination');
+    if (!box) return;
+    var page = meta.page || 1;
+    var totalPages = meta.total_pages || 1;
+    box.innerHTML = '<button ' + (page <= 1 ? 'disabled' : '') + ' data-page="prev">上一页</button>'
+      + '<span>第 ' + page + ' / ' + totalPages + ' 页</span>'
+      + '<button ' + (page >= totalPages ? 'disabled' : '') + ' data-page="next">下一页</button>';
+    box.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.dataset.page === 'prev' && listState.auditLogs.page > 1) listState.auditLogs.page -= 1;
+        if (btn.dataset.page === 'next' && listState.auditLogs.page < totalPages) listState.auditLogs.page += 1;
+        loadAuditLogsPage();
+      });
+    });
   }
 
   function applyImprovementCustomerByInput() {
@@ -2199,6 +2259,19 @@
       });
       document.getElementById('search-result').innerHTML = html || '<p style="color:#666">无结果</p>';
     });
+  });
+
+  document.getElementById('btn-audit-search').addEventListener('click', function () {
+    listState.auditLogs.page = 1;
+    loadAuditLogsPage();
+  });
+  document.getElementById('btn-audit-reset').addEventListener('click', function () {
+    ['audit-start-time', 'audit-end-time', 'audit-operator', 'audit-module', 'audit-action', 'audit-keyword'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    listState.auditLogs.page = 1;
+    loadAuditLogsPage();
   });
 
 
