@@ -146,6 +146,24 @@
     .section-pagination { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; font-size: 12px; }
     .section-pagination button { border: 1px solid #d1d5db; background: #fff; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
     .section-pagination button:disabled { color: #9ca3af; cursor: not-allowed; background: #f8fafc; }
+    .home-hero { background: linear-gradient(120deg, #edf4ff 0%, #f5fffb 100%); border: 1px solid #d6e6ff; }
+    .home-hero-title { margin: 0 0 10px; font-size: 24px; color: #103b67; }
+    .home-hero-desc { margin: 0; color: #3b5b79; font-size: 14px; line-height: 1.8; }
+    .home-highlight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 14px; }
+    .home-highlight-card { border: 1px solid #e4ebf4; background: #fafcff; border-radius: 10px; padding: 14px; }
+    .home-highlight-card h3 { margin: 0 0 8px; font-size: 16px; color: #1f2d3d; }
+    .home-highlight-card p { margin: 0; color: #4d6277; line-height: 1.75; font-size: 13px; }
+    .home-feature-section { margin-bottom: 20px; }
+    .home-feature-title { margin: 0 0 12px; font-size: 20px; color: #1f2d3d; }
+    .home-feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .home-team-card { border: 1px solid #e5ecf6; border-radius: 12px; padding: 16px; background: linear-gradient(180deg, #ffffff 0%, #f9fcff 100%); }
+    .home-team-card h3 { margin: 0 0 10px; font-size: 16px; color: #12395f; }
+    .home-team-card ul { margin: 0; padding-left: 18px; color: #3f566d; line-height: 1.9; }
+    .home-standard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .home-standard-item { border: 1px solid #e5ecf6; border-radius: 10px; padding: 14px; background: #fff; }
+    .home-standard-item .idx { display: inline-block; background: #1d4ed8; color: #fff; border-radius: 999px; font-size: 12px; padding: 3px 9px; margin-bottom: 8px; }
+    .home-standard-item h4 { margin: 0 0 8px; font-size: 15px; color: #1f2d3d; }
+    .home-standard-item p { margin: 0; color: #4b5563; line-height: 1.7; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -182,12 +200,35 @@
     </nav>
     <main class="main">
       <div id="page-home" class="page">
-        <div class="card">
-          <h2 id="current-date" class="home-page-title"></h2>
+        <div class="card home-hero">
+          <h2 id="current-date" class="home-hero-title"></h2>
+          <p class="home-hero-desc">聚焦军休所健康服务场景，全面展示服务体量、执行质量与标准化体系，提升运营管理效率与服务感知。</p>
         </div>
         <div class="card">
           <h2>核心概览</h2>
           <div class="stats" id="stats"></div>
+        </div>
+        <div class="card">
+          <h2>服务亮点</h2>
+          <div class="home-highlight-grid">
+            <div class="home-highlight-card">
+              <h3>累计服务人次</h3>
+              <p>系统自动统计已完成预约服务与已完成上门预约总量，实时反映服务规模。</p>
+              <p id="home-highlight-total" style="margin-top:8px;font-weight:700;color:#1d4ed8;">累计服务人次：--</p>
+            </div>
+            <div class="home-highlight-card">
+              <h3>服务覆盖与响应</h3>
+              <p>全年开展常态化军休所7项理疗服务，理疗服务响应度100%，支撑日常健康服务保障。</p>
+            </div>
+            <div class="home-highlight-card">
+              <h3>团队协同执行力</h3>
+              <p>军休所健康团队与上门智慧康养团队协同执行，配合完成多次对外上级接待任务。</p>
+            </div>
+            <div class="home-highlight-card">
+              <h3>专享服务体验</h3>
+              <p>面向行动不便客户提供上门服务，并为每位客户匹配专享健康专员1对1服务。</p>
+            </div>
+          </div>
         </div>
         <div class="analytics-grid">
           <div class="card">
@@ -204,6 +245,56 @@
               <button class="btn btn-secondary btn-small" id="btn-equipment-range-query">查询</button>
             </div>
             <table class="mini-table"><thead><tr><th>设备</th><th>使用次数</th><th>总时长(分钟)</th></tr></thead><tbody id="equipment-usage-top"></tbody></table>
+          </div>
+        </div>
+        <div class="card home-feature-section">
+          <h2 class="home-feature-title">人员配置</h2>
+          <div class="home-feature-grid">
+            <div class="home-team-card">
+              <h3>军休所健康服务团队</h3>
+              <ul>
+                <li>全年开展常态化军休所7项理疗服务。</li>
+                <li>理疗服务响应度100%。</li>
+                <li>配合完成多次对外上级接待任务。</li>
+              </ul>
+            </div>
+            <div class="home-team-card">
+              <h3>上门智慧康养服务团队</h3>
+              <ul>
+                <li>配备数位资深理疗师，面向行动不便的客户。</li>
+                <li>为各个客户匹配专享健康专员1对1服务。</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="card home-feature-section">
+          <h2 class="home-feature-title">上门服务体系标准化</h2>
+          <div class="home-standard-grid">
+            <div class="home-standard-item">
+              <span class="idx">01</span>
+              <h4>统一预约入口</h4>
+              <p>军休所现场/热线统一预约；健康专员完成信息登记与排班。</p>
+            </div>
+            <div class="home-standard-item">
+              <span class="idx">02</span>
+              <h4>任务确认与调度</h4>
+              <p>当日统一确认服务人员；取消/改期即时同步。</p>
+            </div>
+            <div class="home-standard-item">
+              <span class="idx">03</span>
+              <h4>上门前准备</h4>
+              <p>设备、表单、工服、消杀物料；服务项目禁忌症预核。</p>
+            </div>
+            <div class="home-standard-item">
+              <span class="idx">04</span>
+              <h4>上门服务执行</h4>
+              <p>工牌展示、卫生规范；健康评估 → 服务执行 → 过程记录。</p>
+            </div>
+            <div class="home-standard-item">
+              <span class="idx">05</span>
+              <h4>服务记录与反馈</h4>
+              <p>服务结果记录；改善情况与主管反馈同步收集。</p>
+            </div>
           </div>
         </div>
       </div>
