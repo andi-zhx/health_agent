@@ -3984,7 +3984,7 @@ def api_export_query_download():
 
         queries = {
             'customers': ('客户档案', 'SELECT * FROM customers {where_clause} ORDER BY created_at DESC'),
-            'health': ('健康档案', '''SELECT h.*, c.name as customer_name, c.phone
+            'health': ('健康档案', '''SELECT h.*, c.name as customer_name, c.phone as customer_phone
                 FROM health_assessments h JOIN customers c ON h.customer_id=c.id
                 {where_clause} ORDER BY h.assessment_date DESC'''),
             'appointments': ('预约记录', '''SELECT a.*, c.name as customer_name, c.phone as customer_phone, e.name as equipment_name
@@ -3998,6 +3998,7 @@ def api_export_query_download():
         fp = os.path.join(UPLOAD_FOLDER, fn)
 
         with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+            _init_export_workbook(writer)
             for key in target_keys:
                 sheet_name, sql_tpl = queries[key]
                 if scope == 'single':
@@ -4006,7 +4007,8 @@ def api_export_query_download():
                 else:
                     where_clause = 'WHERE is_deleted=0' if key == 'customers' else ''
                     df = pd.read_sql_query(sql_tpl.format(where_clause=where_clause), conn)
-                df.to_excel(writer, index=False, sheet_name=sheet_name[:31])
+                cols = EXPORT_COLUMNS_BY_KEY.get('customers' if key == 'customers' else key)
+                _write_bilingual_dataframe(writer, sheet_name, df, cols)
     finally:
         conn.close()
 
@@ -4023,6 +4025,131 @@ def _build_customer_integrated_filter(search_text):
         keyword_like = f'%{keyword}%'
         params.extend([keyword_like, keyword_like])
     return where_sql, params
+
+
+EXPORT_FIELD_ZH = {
+    'id': 'ID',
+    'name': '姓名',
+    'id_card': '身份证号',
+    'phone': '手机号',
+    'email': '邮箱',
+    'address': '地址',
+    'gender': '性别',
+    'birth_date': '出生日期',
+    'medical_history': '病史',
+    'allergies': '过敏史',
+    'created_at': '创建时间',
+    'updated_at': '更新时间',
+    'diet_habits': '饮食习惯',
+    'chronic_diseases': '慢性疾病',
+    'health_status': '健康状态',
+    'therapy_contraindications': '理疗禁忌',
+    'customer_id': '客户ID',
+    'assessment_date': '评估日期',
+    'assessor': '评估人',
+    'age': '年龄',
+    'height_cm': '身高(cm)',
+    'weight_kg': '体重(kg)',
+    'past_medical_history': '既往病史',
+    'family_history': '家族病史',
+    'allergy_history': '过敏历史',
+    'allergy_details': '过敏详情',
+    'smoking_status': '吸烟情况',
+    'smoking_years': '吸烟年限',
+    'cigarettes_per_day': '日均吸烟量',
+    'drinking_status': '饮酒情况',
+    'drinking_years': '饮酒年限',
+    'fatigue_last_month': '近一个月疲劳',
+    'sleep_quality': '睡眠质量',
+    'sleep_hours': '睡眠时长',
+    'blood_pressure_test': '血压检测',
+    'blood_lipid_test': '血脂检测',
+    'chronic_pain': '慢性疼痛',
+    'pain_details': '疼痛详情',
+    'exercise_methods': '锻炼方式',
+    'weekly_exercise_freq': '每周锻炼频次',
+    'health_needs': '健康需求',
+    'notes': '备注',
+    'customer_name': '客户姓名',
+    'customer_phone': '客户手机号',
+    'equipment_id': '设备ID',
+    'equipment_name': '设备名称',
+    'appointment_date': '预约日期',
+    'start_time': '开始时间',
+    'end_time': '结束时间',
+    'status': '状态',
+    'project_id': '项目ID',
+    'project_name': '项目名称',
+    'staff_id': '人员ID',
+    'home_time': '上门时间',
+    'home_address': '上门地址',
+    'service_project': '服务项目',
+    'staff_name': '服务人员',
+    'location': '地点',
+    'contact_person': '联系人',
+    'contact_phone': '联系人电话',
+    'service_time': '服务时间',
+    'improvement_summary': '改善情况',
+    'followup_time': '随访时间',
+    'followup_method': '随访方式',
+    'followup_result': '随访结果',
+}
+
+EXPORT_COLUMNS_BY_KEY = {
+    'basic': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
+    'health': ['id', 'customer_id', 'assessment_date', 'assessor', 'age', 'height_cm', 'weight_kg', 'address', 'past_medical_history', 'family_history', 'allergy_history', 'allergy_details', 'smoking_status', 'smoking_years', 'cigarettes_per_day', 'drinking_status', 'drinking_years', 'fatigue_last_month', 'sleep_quality', 'sleep_hours', 'blood_pressure_test', 'blood_lipid_test', 'chronic_pain', 'pain_details', 'exercise_methods', 'weekly_exercise_freq', 'health_needs', 'notes', 'created_at', 'customer_name', 'customer_phone'],
+    'appointments': ['id', 'customer_id', 'equipment_id', 'appointment_date', 'start_time', 'end_time', 'status', 'notes', 'created_at', 'project_id', 'staff_id', 'updated_at', 'customer_name', 'customer_phone', 'equipment_name', 'project_name'],
+    'home_appointments': ['id', 'customer_id', 'project_id', 'staff_id', 'customer_name', 'phone', 'home_time', 'home_address', 'service_project', 'staff_name', 'appointment_date', 'start_time', 'end_time', 'location', 'contact_person', 'contact_phone', 'notes', 'status', 'created_at', 'updated_at', 'project_name'],
+    'improvement': ['id', 'customer_id', 'service_project', 'service_time', 'improvement_summary', 'followup_time', 'followup_method', 'followup_result', 'notes', 'created_at', 'updated_at', 'customer_name', 'customer_phone'],
+    'customers': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
+}
+
+
+def _write_bilingual_sheet(writer, sheet_name, rows=None, columns=None):
+    data_rows = rows or []
+    if columns is None:
+        columns = list(data_rows[0].keys()) if data_rows else []
+    else:
+        merged_columns = list(columns)
+        seen = set(merged_columns)
+        for row in data_rows:
+            for key in row.keys():
+                if key not in seen:
+                    merged_columns.append(key)
+                    seen.add(key)
+        columns = merged_columns
+    ws = writer.book.create_sheet(title=sheet_name[:31])
+    if not columns:
+        return
+    ws.append(columns)
+    ws.append([EXPORT_FIELD_ZH.get(col, col) for col in columns])
+    for row in data_rows:
+        ws.append([row.get(col) for col in columns])
+
+
+def _write_bilingual_dataframe(writer, sheet_name, df, columns=None):
+    if columns:
+        output_columns = list(columns) + [col for col in df.columns if col not in set(columns)]
+    else:
+        output_columns = list(df.columns)
+    if output_columns:
+        missing_cols = [col for col in output_columns if col not in df.columns]
+        for col in missing_cols:
+            df[col] = None
+        df = df[output_columns]
+    _write_bilingual_sheet(
+        writer,
+        sheet_name,
+        rows=df.to_dict(orient='records'),
+        columns=output_columns,
+    )
+
+
+def _init_export_workbook(writer):
+    wb = writer.book
+    if len(wb.sheetnames) == 1 and wb.sheetnames[0] == 'Sheet':
+        std = wb['Sheet']
+        wb.remove(std)
 
 
 def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, page, page_size):
@@ -4155,7 +4282,9 @@ def api_export_customer_integrated_form():
     conn.close()
     fn = f'customer_{form_key}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     fp = os.path.join(UPLOAD_FOLDER, fn)
-    pd.DataFrame(rows).to_excel(fp, index=False, engine='openpyxl')
+    with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+        _init_export_workbook(writer)
+        _write_bilingual_sheet(writer, '数据导出', rows, EXPORT_COLUMNS_BY_KEY.get(form_key))
     return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
@@ -4183,6 +4312,7 @@ def api_export_customer_integrated_all():
     fn = f'customer_integrated_{scope}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
     fp = os.path.join(UPLOAD_FOLDER, fn)
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+        _init_export_workbook(writer)
         for key, sheet_name in [
             ('basic', '基础信息'),
             ('health', '健康档案'),
@@ -4191,7 +4321,7 @@ def api_export_customer_integrated_all():
             ('improvement', '健康改善记录'),
         ]:
             rows = _query_customer_integrated_dataset(c, key, where_sql, params, 1, 10000).get('items') or []
-            pd.DataFrame(rows).to_excel(writer, index=False, sheet_name=sheet_name[:31])
+            _write_bilingual_sheet(writer, sheet_name, rows, EXPORT_COLUMNS_BY_KEY.get(key))
     conn.close()
     return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
 
@@ -4203,7 +4333,9 @@ def api_export_customers():
     conn.close()
     fn = 'customers_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
-    df.to_excel(fp, index=False, engine='openpyxl')
+    with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+        _init_export_workbook(writer)
+        _write_bilingual_dataframe(writer, '客户列表', df, EXPORT_COLUMNS_BY_KEY.get('customers'))
     audit_log('导出数据', 'export', 'customers', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
@@ -4216,7 +4348,9 @@ def api_export_appointments():
     conn.close()
     fn = 'appointments_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
-    df.to_excel(fp, index=False, engine='openpyxl')
+    with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+        _init_export_workbook(writer)
+        _write_bilingual_dataframe(writer, '预约记录', df, list(df.columns))
     audit_log('导出数据', 'export', 'appointments', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
