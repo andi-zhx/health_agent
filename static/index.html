@@ -139,6 +139,13 @@
     .home-staff-card.full .name, .home-staff-card.full .meta { color: #9ca3af; }
     .home-staff-card.selected { background: #3b82f6; border-color: #2563eb; }
     .home-staff-card.selected .name, .home-staff-card.selected .meta { color: #fff; }
+    .integrated-download-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .integrated-section { border: 1px solid #dbe3ee; border-radius: 10px; padding: 14px; margin-bottom: 16px; background: #fff; }
+    .integrated-section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .integrated-section-head h3 { margin: 0; font-size: 15px; }
+    .section-pagination { display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-top: 10px; font-size: 12px; }
+    .section-pagination button { border: 1px solid #d1d5db; background: #fff; border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+    .section-pagination button:disabled { color: #9ca3af; cursor: not-allowed; background: #f8fafc; }
   </style>
 </head>
 <body>
@@ -201,17 +208,64 @@
       </div>
       <div id="page-customers" class="page hide">
         <div class="card">
-          <h2>客户列表</h2>
+          <h2>信息整合查询</h2>
           <div class="search-bar">
             <input type="text" id="customer-search" placeholder="请输入姓名或手机号">
             <button class="btn btn-primary" id="btn-customer-search">查询</button>
             <button class="btn btn-secondary" id="btn-customer-reset">显示全部</button>
           </div>
+          <div class="integrated-download-row">
+            <label>下载范围</label>
+            <select id="customer-download-scope">
+              <option value="all">全量</option>
+              <option value="personal">个人</option>
+            </select>
+            <button class="btn btn-primary" id="btn-customer-download-all">下载</button>
+          </div>
           <div id="customer-msg"></div>
-          <table>
-            <thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th></tr></thead>
-            <tbody id="customer-list"></tbody>
-          </table>
+          <div class="integrated-section">
+            <div class="integrated-section-head">
+              <h3>基础信息</h3>
+              <div>
+                <input type="number" id="export-limit-basic" min="1" placeholder="导出条数(默认全部)" style="width:150px">
+                <button class="btn btn-secondary btn-small" data-export-form="basic">下载</button>
+              </div>
+            </div>
+            <table><thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th></tr></thead><tbody id="customer-list"></tbody></table>
+            <div class="section-pagination" data-section-pagination="basic"></div>
+          </div>
+          <div class="integrated-section">
+            <div class="integrated-section-head">
+              <h3>健康档案</h3>
+              <div><input type="number" id="export-limit-health" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="health">下载</button></div>
+            </div>
+            <table><thead><tr><th>客户</th><th>评估日期</th><th>年龄</th><th>近期症状</th><th>睡眠</th><th>操作</th></tr></thead><tbody id="integrated-health-list"></tbody></table>
+            <div class="section-pagination" data-section-pagination="health"></div>
+          </div>
+          <div class="integrated-section">
+            <div class="integrated-section-head">
+              <h3>预约服务记录</h3>
+              <div><input type="number" id="export-limit-appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="appointments">下载</button></div>
+            </div>
+            <table><thead><tr><th>客户</th><th>项目</th><th>预约日期</th><th>时间</th><th>签到状态</th><th>操作</th></tr></thead><tbody id="integrated-appointments-list"></tbody></table>
+            <div class="section-pagination" data-section-pagination="appointments"></div>
+          </div>
+          <div class="integrated-section">
+            <div class="integrated-section-head">
+              <h3>上门预约记录</h3>
+              <div><input type="number" id="export-limit-home_appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="home_appointments">下载</button></div>
+            </div>
+            <table><thead><tr><th>客户</th><th>项目</th><th>预约日期</th><th>时间</th><th>签到状态</th><th>操作</th></tr></thead><tbody id="integrated-home-list"></tbody></table>
+            <div class="section-pagination" data-section-pagination="home_appointments"></div>
+          </div>
+          <div class="integrated-section">
+            <div class="integrated-section-head">
+              <h3>健康改善记录</h3>
+              <div><input type="number" id="export-limit-improvement" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="improvement">下载</button></div>
+            </div>
+            <table><thead><tr><th>客户</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>操作</th></tr></thead><tbody id="integrated-improvement-list"></tbody></table>
+            <div class="section-pagination" data-section-pagination="improvement"></div>
+          </div>
         </div>
       </div>
       <div id="page-health" class="page hide">

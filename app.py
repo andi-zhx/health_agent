@@ -3789,6 +3789,188 @@ def api_export_query_download():
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
+def _build_customer_integrated_filter(search_text):
+    keyword = (search_text or '').strip()
+    where_sql = 'WHERE c.is_deleted=0'
+    params = []
+    if keyword:
+        where_sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
+        keyword_like = f'%{keyword}%'
+        params.extend([keyword_like, keyword_like])
+    return where_sql, params
+
+
+def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, page, page_size):
+    offset = (page - 1) * page_size
+    query_map = {
+        'basic': {
+            'count_sql': f'SELECT COUNT(*) as n FROM customers c {where_sql}',
+            'data_sql': f'''
+                SELECT c.*
+                FROM customers c
+                {where_sql}
+                ORDER BY c.created_at DESC, c.id DESC
+                LIMIT ? OFFSET ?
+            ''',
+        },
+        'health': {
+            'count_sql': f'''
+                SELECT COUNT(*) as n
+                FROM health_assessments h
+                JOIN customers c ON h.customer_id=c.id
+                {where_sql}
+            ''',
+            'data_sql': f'''
+                SELECT h.*, c.name as customer_name, c.phone as customer_phone
+                FROM health_assessments h
+                JOIN customers c ON h.customer_id=c.id
+                {where_sql}
+                ORDER BY h.assessment_date DESC, h.id DESC
+                LIMIT ? OFFSET ?
+            ''',
+        },
+        'appointments': {
+            'count_sql': f'''
+                SELECT COUNT(*) as n
+                FROM appointments a
+                JOIN customers c ON a.customer_id=c.id
+                {where_sql}
+            ''',
+            'data_sql': f'''
+                SELECT a.*, c.name as customer_name, c.phone as customer_phone, e.name as equipment_name, p.name as project_name
+                FROM appointments a
+                JOIN customers c ON a.customer_id=c.id
+                LEFT JOIN equipment e ON a.equipment_id=e.id
+                LEFT JOIN therapy_projects p ON a.project_id=p.id
+                {where_sql}
+                ORDER BY a.appointment_date DESC, a.start_time DESC, a.id DESC
+                LIMIT ? OFFSET ?
+            ''',
+        },
+        'home_appointments': {
+            'count_sql': '''
+                SELECT COUNT(*) as n
+                FROM home_appointments h
+                LEFT JOIN customers c ON h.customer_id=c.id
+                WHERE c.is_deleted=0 {keyword_clause}
+            ''',
+            'data_sql': '''
+                SELECT
+                    h.*,
+                    COALESCE(h.customer_name, c.name) AS customer_name,
+                    COALESCE(h.service_project, p.name) AS project_name,
+                    COALESCE(h.staff_name, s.name) AS staff_name,
+                    COALESCE(h.phone, c.phone) AS phone,
+                    COALESCE(h.home_address, h.location) AS home_address
+                FROM home_appointments h
+                LEFT JOIN customers c ON h.customer_id=c.id
+                LEFT JOIN therapy_projects p ON h.project_id=p.id
+                LEFT JOIN staff s ON h.staff_id=s.id
+                WHERE c.is_deleted=0 {keyword_clause}
+                ORDER BY h.appointment_date DESC, h.start_time DESC, h.id DESC
+                LIMIT ? OFFSET ?
+            ''',
+        },
+        'improvement': {
+            'count_sql': f'''
+                SELECT COUNT(*) as n
+                FROM service_improvement_records r
+                JOIN customers c ON r.customer_id=c.id
+                {where_sql}
+            ''',
+            'data_sql': f'''
+                SELECT r.*, c.name as customer_name, c.phone as customer_phone
+                FROM service_improvement_records r
+                JOIN customers c ON r.customer_id=c.id
+                {where_sql}
+                ORDER BY r.service_time DESC, r.id DESC
+                LIMIT ? OFFSET ?
+            ''',
+        },
+    }
+    conf = query_map[dataset_key]
+    use_keyword = ' AND (c.name LIKE ? OR c.phone LIKE ?)' if params else ''
+    count_sql = conf['count_sql'].format(keyword_clause=use_keyword) if '{keyword_clause}' in conf['count_sql'] else conf['count_sql']
+    data_sql = conf['data_sql'].format(keyword_clause=use_keyword) if '{keyword_clause}' in conf['data_sql'] else conf['data_sql']
+    cursor.execute(count_sql, params)
+    total = int(cursor.fetchone()['n'])
+    cursor.execute(data_sql, params + [page_size, offset])
+    rows = row_list(cursor.fetchall())
+    return paginate_result(rows, total, page, page_size)
+
+
+@app.route('/api/customers/integrated-view', methods=['GET'])
+def api_customers_integrated_view():
+    keyword = (request.args.get('search') or '').strip()
+    section_keys = ['basic', 'health', 'appointments', 'home_appointments', 'improvement']
+    conn = get_db()
+    c = conn.cursor()
+    where_sql, params = _build_customer_integrated_filter(keyword)
+    data = {'search': keyword}
+    for key in section_keys:
+        page = max(1, int(request.args.get(f'{key}_page', 1) or 1))
+        page_size = min(max(int(request.args.get(f'{key}_page_size', 5) or 5), 1), 100)
+        data[key] = _query_customer_integrated_dataset(c, key, where_sql, params, page, page_size)
+    conn.close()
+    return success_response(data)
+
+
+@app.route('/api/export/customer-integrated-form', methods=['GET'])
+def api_export_customer_integrated_form():
+    form_key = (request.args.get('form') or 'basic').strip()
+    search = (request.args.get('search') or '').strip()
+    limit = request.args.get('limit', type=int)
+    if form_key not in {'basic', 'health', 'appointments', 'home_appointments', 'improvement'}:
+        return error_response('表单类型不合法')
+    conn = get_db()
+    c = conn.cursor()
+    where_sql, params = _build_customer_integrated_filter(search)
+    page_size = min(max(limit or 10000, 1), 10000)
+    rows = _query_customer_integrated_dataset(c, form_key, where_sql, params, 1, page_size).get('items') or []
+    conn.close()
+    fn = f'customer_{form_key}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    fp = os.path.join(UPLOAD_FOLDER, fn)
+    pd.DataFrame(rows).to_excel(fp, index=False, engine='openpyxl')
+    return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
+
+
+@app.route('/api/export/customer-integrated-all', methods=['GET'])
+def api_export_customer_integrated_all():
+    scope = (request.args.get('scope') or 'all').strip().lower()
+    search = (request.args.get('search') or '').strip()
+    if scope not in {'all', 'personal'}:
+        return error_response('下载范围不合法')
+    if scope == 'personal' and not search:
+        return error_response('个人下载时请输入姓名或手机号')
+
+    conn = get_db()
+    c = conn.cursor()
+    where_sql, params = _build_customer_integrated_filter(search)
+    if scope == 'personal':
+        c.execute(f'SELECT c.id FROM customers c {where_sql} ORDER BY c.id ASC LIMIT 1', params)
+        selected = c.fetchone()
+        if not selected:
+            conn.close()
+            return error_response('未找到对应客户')
+        where_sql = 'WHERE c.is_deleted=0 AND c.id=?'
+        params = [selected['id']]
+
+    fn = f'customer_integrated_{scope}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    fp = os.path.join(UPLOAD_FOLDER, fn)
+    with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+        for key, sheet_name in [
+            ('basic', '基础信息'),
+            ('health', '健康档案'),
+            ('appointments', '预约服务记录'),
+            ('home_appointments', '上门预约记录'),
+            ('improvement', '健康改善记录'),
+        ]:
+            rows = _query_customer_integrated_dataset(c, key, where_sql, params, 1, 10000).get('items') or []
+            pd.DataFrame(rows).to_excel(writer, index=False, sheet_name=sheet_name[:31])
+    conn.close()
+    return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
+
+
 @app.route('/api/export/customers', methods=['GET'])
 def api_export_customers():
     conn = get_db()
