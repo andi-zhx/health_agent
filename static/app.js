@@ -693,6 +693,19 @@
     return inputDate < todayDate;
   }
 
+  function calculateAgeByBirthYear(dateStr) {
+    if (!dateStr) return '';
+    var date = new Date(dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) return '';
+    var currentYear = new Date().getFullYear();
+    return String(currentYear - date.getFullYear());
+  }
+
+  function syncAgeFieldByBirthDate(birthDateId, ageId) {
+    var birthDateValue = (document.getElementById(birthDateId).value || '').trim();
+    document.getElementById(ageId).value = calculateAgeByBirthYear(birthDateValue);
+  }
+
   function openCustomerModal(id) {
     document.getElementById('modal-customer-id').value = id || '';
     document.getElementById('modal-customer-title').textContent = id ? '编辑客户' : '新增客户';
@@ -710,6 +723,7 @@
         document.getElementById('mc-phone').value = c.phone || '';
         document.getElementById('mc-address').value = c.address || '';
         document.getElementById('mc-record_creator').value = c.record_creator || '';
+        syncAgeFieldByBirthDate('mc-birth_date', 'mc-age');
       });
     } else {
       ['mc-name', 'mc-age', 'mc-gender', 'mc-birth_date', 'mc-id_card', 'mc-phone', 'mc-address', 'mc-military_rank', 'mc-record_creator'].forEach(function (k) {
@@ -2056,14 +2070,11 @@
       showMsg('customer-msg', '性别为必填项', true);
       return;
     }
-    if (!/^\d+$/.test(body.age) || parseInt(body.age, 10) <= 0) {
-      showMsg('customer-msg', '年龄为必填项，且必须为正整数', true);
-      return;
-    }
     if (!body.birth_date) {
       showMsg('customer-msg', '出生日期为必填项', true);
       return;
     }
+    body.age = calculateAgeByBirthYear(body.birth_date);
     if (!body.identity_type) {
       showMsg('customer-msg', '身份为必选项，请选择“本人”或“家属”', true);
       return;
@@ -2113,6 +2124,9 @@
       });
     });
   });
+  document.getElementById('mc-birth_date').addEventListener('change', function () {
+    syncAgeFieldByBirthDate('mc-birth_date', 'mc-age');
+  });
 
   document.getElementById('btn-health-save').addEventListener('click', function () {
     var cid = document.getElementById('health-customer').value;
@@ -2132,8 +2146,8 @@
     };
     if (!customerBody.name) { showMsg('health-msg', '姓名为必填项', true); return; }
     if (!customerBody.gender) { showMsg('health-msg', '性别为必填项', true); return; }
-    if (!/^\d+$/.test(customerBody.age) || parseInt(customerBody.age, 10) <= 0) { showMsg('health-msg', '年龄为必填项，且必须为正整数', true); return; }
     if (!customerBody.birth_date) { showMsg('health-msg', '出生日期为必填项', true); return; }
+    customerBody.age = calculateAgeByBirthYear(customerBody.birth_date);
     if (!customerBody.identity_type) { showMsg('health-msg', '身份为必选项，请选择“本人”或“家属”', true); return; }
     if (customerBody.id_card && !/^\d{17}[\dXx]$/.test(customerBody.id_card)) { showMsg('health-msg', '身份证号格式不正确，应为18位（最后一位可为X）', true); return; }
     if (!/^\d{11}$/.test(customerBody.phone)) { showMsg('health-msg', '手机号必须为11位数字', true); return; }
@@ -2257,6 +2271,9 @@
       if (!newCustomerId) { showMsg('health-msg', '客户创建失败，请重试', true); return; }
       saveCustomerThenAssessment(newCustomerId);
     });
+  });
+  document.getElementById('ha-birth-date').addEventListener('change', function () {
+    syncAgeFieldByBirthDate('ha-birth-date', 'ha-age');
   });
   document.querySelectorAll('input[name="ha-life-impact-issue"]').forEach(function (el) {
     el.addEventListener('change', function () {
@@ -2754,7 +2771,7 @@
     document.getElementById('ha-identity-self').checked = identityType === '本人';
     document.getElementById('ha-identity-family').checked = identityType === '家属';
     document.getElementById('health-date').value = (data.assessment_date || today || '').slice(0, 10);
-    document.getElementById('ha-age').value = data.age || '';
+    document.getElementById('ha-age').value = calculateAgeByBirthYear((data.birth_date || '').slice(0, 10)) || data.age || '';
     document.getElementById('ha-height-cm').value = data.height_cm || '';
     document.getElementById('ha-weight-kg').value = data.weight_kg || '';
     document.getElementById('ha-address').value = data.address || '';
