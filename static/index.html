@@ -78,6 +78,13 @@
     .hbar .bar-track { flex: 1; height: 12px; border-radius: 99px; background: #edf2f7; overflow: hidden; }
     .hbar .bar-fill { height: 100%; background: #3498db; }
     .hbar .value { width: 24px; text-align: right; color: #2c3e50; font-weight: 600; font-size: 12px; }
+    .no-show-chart-wrap { border: 1px solid #eef2f7; border-radius: 8px; padding: 14px; margin-bottom: 16px; background: #fbfdff; }
+    .no-show-chart-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+    .no-show-chart-head h3 { margin: 0; font-size: 15px; color: #1f2937; }
+    .no-show-chart-time { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .no-show-chart-time label { min-width: auto; color: #64748b; }
+    .no-show-chart.hbar .label { width: 160px; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .no-show-chart.hbar .value { width: 72px; font-size: 12px; color: #111827; }
     .vbar-compare { width: 100%; overflow-x: auto; }
     .vbar-chart { min-width: 420px; display: flex; align-items: flex-end; gap: 20px; height: 220px; padding: 12px 8px 0; border-bottom: 1px solid #dbe3ee; }
     .vbar-group { flex: 1; min-width: 80px; }
@@ -750,6 +757,19 @@
             <button class="btn btn-primary" id="btn-search">查询</button>
           </div>
           <div id="search-result"></div>
+          <div class="no-show-chart-wrap">
+            <div class="no-show-chart-head">
+              <h3>客户爽约次数统计（Top10）</h3>
+              <div class="no-show-chart-time">
+                <label>统计时间段</label>
+                <input type="date" id="qe-no-show-start">
+                <span>至</span>
+                <input type="date" id="qe-no-show-end">
+                <button class="btn btn-secondary btn-small" id="btn-qe-no-show-refresh">查询</button>
+              </div>
+            </div>
+            <div id="qe-no-show-chart" class="hbar no-show-chart"></div>
+          </div>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
           <h3 style="margin-top:0">数据下载</h3>
           <div class="form-row">

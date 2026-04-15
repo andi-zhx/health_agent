@@ -3773,6 +3773,56 @@ def api_search():
     return jsonify(result)
 
 
+@app.route('/api/query-export/no-show-top10', methods=['GET'])
+def api_query_export_no_show_top10():
+    start_date = (request.args.get('start_date') or '').strip()
+    end_date = (request.args.get('end_date') or '').strip()
+    if start_date and not is_valid_date(start_date):
+        return error_response('开始日期格式必须为 YYYY-MM-DD')
+    if end_date and not is_valid_date(end_date):
+        return error_response('结束日期格式必须为 YYYY-MM-DD')
+    if start_date and end_date and start_date > end_date:
+        return error_response('开始日期不能晚于结束日期')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT customer_name, SUM(no_show_count) AS no_show_count
+        FROM (
+            SELECT COALESCE(NULLIF(TRIM(c.name), ''), '未命名客户') AS customer_name,
+                   COUNT(*) AS no_show_count
+            FROM appointments a
+            LEFT JOIN customers c ON c.id = a.customer_id
+            WHERE LOWER(COALESCE(a.checkin_status, '')) = 'no_show'
+              AND (? = '' OR a.appointment_date >= ?)
+              AND (? = '' OR a.appointment_date <= ?)
+            GROUP BY customer_name
+            UNION ALL
+            SELECT COALESCE(NULLIF(TRIM(c.name), ''), NULLIF(TRIM(h.customer_name), ''), '未命名客户') AS customer_name,
+                   COUNT(*) AS no_show_count
+            FROM home_appointments h
+            LEFT JOIN customers c ON c.id = h.customer_id
+            WHERE LOWER(COALESCE(h.checkin_status, '')) = 'no_show'
+              AND (? = '' OR h.appointment_date >= ?)
+              AND (? = '' OR h.appointment_date <= ?)
+            GROUP BY customer_name
+        ) merged
+        GROUP BY customer_name
+        ORDER BY no_show_count DESC, customer_name COLLATE NOCASE ASC
+        LIMIT 10
+        ''',
+        (start_date, start_date, end_date, end_date, start_date, start_date, end_date, end_date),
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response({
+        'items': [{'name': row.get('customer_name') or '-', 'count': int((row.get('no_show_count') or 0))} for row in rows],
+        'start_date': start_date,
+        'end_date': end_date,
+    })
+
+
 # ========== 仪表盘 ==========
 @app.route('/api/dashboard/stats', methods=['GET'])
 def api_dashboard_stats():
