@@ -274,14 +274,15 @@
   }
   var listState = {
     customers: { page: 1, page_size: 5 },
-    customerHealth: { page: 1, page_size: 5 },
-    customerAppointments: { page: 1, page_size: 5 },
-    customerHomeAppointments: { page: 1, page_size: 5 },
-    customerImprovement: { page: 1, page_size: 5 },
-    health: { page: 1, page_size: 20 },
-    appointments: { page: 1, page_size: 20 },
-    homeAppointments: { page: 1, page_size: 20 },
-    auditLogs: { page: 1, page_size: 20 }
+    customerHealth: { page: 1, page_size: 10 },
+    customerAppointments: { page: 1, page_size: 10 },
+    customerHomeAppointments: { page: 1, page_size: 10 },
+    customerImprovement: { page: 1, page_size: 10 },
+    health: { page: 1, page_size: 10 },
+    appointments: { page: 1, page_size: 10 },
+    homeAppointments: { page: 1, page_size: 10 },
+    improvement: { page: 1, page_size: 10 },
+    auditLogs: { page: 1, page_size: 10 }
   };
   var APPOINTMENT_PROJECT_NAMES = ['高压氧仓', '毫米波理疗仪', '疼痛治疗仪', '听力检测仪', '太空针灸按摩仪', '艾灸机器人', 'AI健康检测机器人', '手持式干式荧光免疫分析仪', '健康随诊箱'];
 
@@ -331,10 +332,10 @@
   }
 
   function loadAuditLogsPage() {
-    var state = listState.auditLogs || { page: 1, page_size: 20 };
+    var state = listState.auditLogs || { page: 1, page_size: 10 };
     var params = [
       'page=' + encodeURIComponent(state.page || 1),
-      'page_size=' + encodeURIComponent(state.page_size || 20)
+      'page_size=' + encodeURIComponent(state.page_size || 10)
     ];
     var startTime = (document.getElementById('audit-start-time') || {}).value || '';
     var endTime = (document.getElementById('audit-end-time') || {}).value || '';
@@ -384,6 +385,30 @@
         if (btn.dataset.page === 'prev' && listState.auditLogs.page > 1) listState.auditLogs.page -= 1;
         if (btn.dataset.page === 'next' && listState.auditLogs.page < totalPages) listState.auditLogs.page += 1;
         loadAuditLogsPage();
+      });
+    });
+  }
+
+  function renderListPagination(containerId, meta, stateKey, onChange) {
+    var box = document.getElementById(containerId);
+    if (!box) return;
+    var page = meta.page || 1;
+    var totalPages = meta.total_pages || 1;
+    box.innerHTML = '<span>第 ' + page + ' / ' + totalPages + ' 页</span>'
+      + '<button data-page-op="first"' + (page <= 1 ? ' disabled' : '') + '>第一页</button>'
+      + '<button data-page-op="prev"' + (page <= 1 ? ' disabled' : '') + '>上一页</button>'
+      + '<button data-page-op="next"' + (page >= totalPages ? ' disabled' : '') + '>下一页</button>'
+      + '<button data-page-op="last"' + (page >= totalPages ? ' disabled' : '') + '>最后一页</button>';
+    box.querySelectorAll('button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var state = listState[stateKey];
+        if (!state) return;
+        var op = btn.getAttribute('data-page-op');
+        if (op === 'first') state.page = 1;
+        if (op === 'prev') state.page = Math.max(1, state.page - 1);
+        if (op === 'next') state.page = Math.min(totalPages, state.page + 1);
+        if (op === 'last') state.page = totalPages;
+        onChange();
       });
     });
   }
@@ -767,6 +792,7 @@
       });
       var p = getPagination(list);
       showMsg('health-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
+      renderListPagination('health-pagination', p, 'health', loadHealthPage);
       if (selectedHealthDetailId) {
         var exists = toList(list).some(function (item) { return String(item.id) === selectedHealthDetailId; });
         if (exists) {
@@ -1263,6 +1289,7 @@
       }).join('');
       var p = getPagination(list);
       showMsg('apt-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
+      renderListPagination('apt-pagination', p, 'appointments', loadAppointmentsPage);
       tbody.querySelectorAll('[data-apt-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var item = toList(list).find(function (x) { return String(x.id) === String(btn.dataset.aptEdit); });
@@ -1345,6 +1372,7 @@
       }).join('');
       var p = getPagination(list);
       showMsg('home-msg', '共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
+      renderListPagination('home-pagination', p, 'homeAppointments', loadHomeAppointmentsPage);
       tbody.querySelectorAll('[data-home-edit]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var item = rows.find(function (x) { return String(x.id) === String(btn.dataset.homeEdit); });
@@ -1500,6 +1528,8 @@
       if (status) qs.push('improvement_status=' + encodeURIComponent(status));
       if (serviceStart) qs.push('service_start=' + encodeURIComponent(serviceStart));
       if (serviceEnd) qs.push('service_end=' + encodeURIComponent(serviceEnd));
+      qs.push('page=' + encodeURIComponent(listState.improvement.page || 1));
+      qs.push('page_size=' + encodeURIComponent(listState.improvement.page_size || 10));
       get('/api/improvement-records/all' + (qs.length ? ('?' + qs.join('&')) : '')).then(function (res) {
         if (!res || res.error) {
           showMsg('improvement-msg', (res && res.error) || '加载失败', true);
@@ -1510,7 +1540,9 @@
         tbody.innerHTML = rows.map(function (row) {
           return '<tr><td>' + (row.customer_name || '-') + '</td><td>' + (row.service_project || '-') + '</td><td>' + (row.service_time || '-') + '</td><td>' + (row.improvement_status || '-') + '</td><td>' + (row.followup_date || row.followup_time || '-') + '</td><td>' + (row.followup_method || '-') + '</td><td><button class="btn btn-small btn-secondary" data-improvement-view="' + row.id + '">查看</button> <button class="btn btn-small btn-primary" data-improvement-edit="' + row.id + '">编辑</button> <button class="btn btn-small btn-danger" data-improvement-del="' + row.id + '">删除</button></td></tr>';
         }).join('');
-        showMsg('improvement-msg', '共 ' + rows.length + ' 条改善记录');
+        var p = getPagination(res);
+        showMsg('improvement-msg', '共 ' + (p.total || 0) + ' 条改善记录，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
+        renderListPagination('improvement-pagination', p, 'improvement', function () { loadImprovementTrackingPage(customerId); });
         tbody.querySelectorAll('[data-improvement-view]').forEach(function (btn) {
           btn.addEventListener('click', function () {
             get('/api/improvement-records/' + btn.dataset.improvementView).then(function (row) {
@@ -1553,6 +1585,8 @@
         return '<tr><td>' + (row.customer_name || '-') + '</td><td>' + (row.service_project || '-') + '</td><td>' + (row.service_time || '-') + '</td><td>待填写</td><td>-</td><td>-</td><td><button class="btn btn-small btn-primary" data-improvement-pending-fill="' + row.service_type + ':' + row.service_id + '">填写改善情况</button></td></tr>';
       }).join('');
       showMsg('improvement-msg', '待填写记录共 ' + rows.length + ' 条');
+      var improvementPagination = document.getElementById('improvement-pagination');
+      if (improvementPagination) improvementPagination.innerHTML = '';
       tbody.querySelectorAll('[data-improvement-pending-fill]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var val = btn.dataset.improvementPendingFill || '';
@@ -1937,9 +1971,13 @@
     });
   });
 
-  document.getElementById('btn-health-search').addEventListener('click', loadHealthPage);
+  document.getElementById('btn-health-search').addEventListener('click', function () {
+    listState.health.page = 1;
+    loadHealthPage();
+  });
   document.getElementById('btn-health-reset').addEventListener('click', function () {
     document.getElementById('health-search').value = '';
+    listState.health.page = 1;
     loadHealthPage();
   });
   document.getElementById('btn-health-cancel-edit').addEventListener('click', function () {
@@ -2209,7 +2247,10 @@
   document.getElementById('apt-customer-search').addEventListener('change', function () {
     applyAppointmentCustomerByInput();
   });
-  document.getElementById('apt-sort').addEventListener('change', loadAppointmentsPage);
+  document.getElementById('apt-sort').addEventListener('change', function () {
+    listState.appointments.page = 1;
+    loadAppointmentsPage();
+  });
   document.getElementById('btn-apt-cancel-edit').addEventListener('click', function () {
     setAppointmentEditMode(null);
     resetAppointmentSlotSelection();
@@ -2362,7 +2403,10 @@
     renderHomeStaffPanel();
     showMsg('home-msg', '已退出编辑');
   });
-  document.getElementById('home-sort').addEventListener('change', loadHomeAppointmentsPage);
+  document.getElementById('home-sort').addEventListener('change', function () {
+    listState.homeAppointments.page = 1;
+    loadHomeAppointmentsPage();
+  });
 
   document.getElementById('btn-home-mark-cancel').addEventListener('click', function () {
     if (!homeAppointmentEditId) return;
@@ -2377,6 +2421,7 @@
   });
 
   document.getElementById('btn-improvement-search').addEventListener('click', function () {
+    listState.improvement.page = 1;
     loadImprovementTrackingPage();
   });
   document.getElementById('btn-improvement-reset').addEventListener('click', function () {
@@ -2384,6 +2429,7 @@
       var el = document.getElementById(id);
       if (el) el.value = '';
     });
+    listState.improvement.page = 1;
     loadImprovementTrackingPage();
   });
   document.getElementById('btn-improvement-pending').addEventListener('click', function () {

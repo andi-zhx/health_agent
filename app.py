@@ -2277,6 +2277,7 @@ def api_improvement_records_by_customer():
 
 @app.route('/api/improvement-records/all', methods=['GET'])
 def api_improvement_records_all():
+    page, page_size, offset = parse_list_params(default_page_size=10, max_page_size=100)
     conn = get_db()
     c = conn.cursor()
     sql = '''
@@ -2311,18 +2312,21 @@ def api_improvement_records_all():
     if service_end:
         sql += ' AND date(substr(r.service_time, 1, 10)) <= date(?)'
         params.append(service_end)
+    c.execute(f'SELECT COUNT(1) as cnt {sql}', params)
+    total = int((c.fetchone() or {}).get('cnt') or 0)
     c.execute(
         f'''
         SELECT r.*, c.name as customer_name, c.phone as customer_phone
         {sql}
         ORDER BY r.service_time DESC, r.id DESC
+        LIMIT ? OFFSET ?
         '''
         ,
-        params,
+        params + [page_size, offset],
     )
     rows = row_list(c.fetchall())
     conn.close()
-    return success_response(rows)
+    return success_response(paginate_result(rows, total, page, page_size))
 
 
 @app.route('/api/improvement-records/pending-fill', methods=['GET'])
