@@ -85,11 +85,70 @@
 
   function loadQueryExportPage() {
     fillCustomerSelect('qe-customer');
+    initNoShowDateRange();
+    loadNoShowTop10Chart();
     get('/api/system/backup-path').then(function (res) {
       if (!res || res.error) return;
       document.getElementById('backup-path').value = res.backup_directory || '';
     });
     loadBackupList();
+  }
+
+  function formatDateInput(date) {
+    if (!date) return '';
+    var y = date.getFullYear();
+    var m = String(date.getMonth() + 1).padStart(2, '0');
+    var d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
+
+  function initNoShowDateRange() {
+    var startEl = document.getElementById('qe-no-show-start');
+    var endEl = document.getElementById('qe-no-show-end');
+    if (!startEl || !endEl) return;
+    if (!startEl.value && !endEl.value) {
+      var now = new Date();
+      var begin = new Date(now.getTime());
+      begin.setDate(begin.getDate() - 29);
+      startEl.value = formatDateInput(begin);
+      endEl.value = formatDateInput(now);
+    }
+  }
+
+  function loadNoShowTop10Chart() {
+    var chart = document.getElementById('qe-no-show-chart');
+    if (!chart) return;
+    var startDate = (document.getElementById('qe-no-show-start') || {}).value || '';
+    var endDate = (document.getElementById('qe-no-show-end') || {}).value || '';
+    if (startDate && endDate && startDate > endDate) {
+      chart.innerHTML = '<p style="color:#c0392b">开始日期不能晚于结束日期</p>';
+      return;
+    }
+    var params = [];
+    if (startDate) params.push('start_date=' + encodeURIComponent(startDate));
+    if (endDate) params.push('end_date=' + encodeURIComponent(endDate));
+    var url = '/api/query-export/no-show-top10' + (params.length ? ('?' + params.join('&')) : '');
+    get(url).then(function (res) {
+      if (!res || res.error) {
+        chart.innerHTML = '<p style="color:#c0392b">' + ((res && res.error) || '统计数据加载失败') + '</p>';
+        return;
+      }
+      renderNoShowHorizontalBars('qe-no-show-chart', toList(res), '#f59e0b');
+    });
+  }
+
+  function renderNoShowHorizontalBars(elId, list, color) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无爽约数据</p>';
+      return;
+    }
+    var max = Math.max.apply(null, list.map(function (x) { return x.count || 0; }).concat([1]));
+    box.innerHTML = list.map(function (x) {
+      var width = Math.round(((x.count || 0) * 100) / max);
+      return '<div class="bar-row"><div class="label" title="' + (x.name || '-') + '">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + ' 次</div></div>';
+    }).join('');
   }
 
   function loadBackupList() {
@@ -2588,6 +2647,9 @@
   }
 
   document.getElementById('qe-scope').addEventListener('change', refreshQueryExportScope);
+  document.getElementById('btn-qe-no-show-refresh').addEventListener('click', loadNoShowTop10Chart);
+  document.getElementById('qe-no-show-start').addEventListener('change', loadNoShowTop10Chart);
+  document.getElementById('qe-no-show-end').addEventListener('change', loadNoShowTop10Chart);
 
   document.getElementById('btn-query-export-download').addEventListener('click', function () {
     var scope = document.getElementById('qe-scope').value;
