@@ -1422,7 +1422,6 @@
         document.getElementById('improvement-followup-time').value = data.followup_time || '';
         document.getElementById('improvement-followup-date').value = data.followup_date || '';
         document.getElementById('improvement-followup-method').value = data.followup_method || '';
-        document.getElementById('improvement-followup-result').value = data.followup_result || '';
         document.getElementById('modal-improvement').classList.remove('hide');
       });
     });
@@ -1436,14 +1435,12 @@
       var status = (document.getElementById('improvement-filter-status').value || '').trim();
       var serviceStart = (document.getElementById('improvement-filter-start').value || '').trim();
       var serviceEnd = (document.getElementById('improvement-filter-end').value || '').trim();
-      var followupDone = (document.getElementById('improvement-filter-followup-done').value || '').trim();
       if (customerId) qs.push('customer_id=' + encodeURIComponent(customerId));
       if (customerName) qs.push('customer_keyword=' + encodeURIComponent(customerName));
       if (serviceProject) qs.push('service_project=' + encodeURIComponent(serviceProject));
       if (status) qs.push('improvement_status=' + encodeURIComponent(status));
       if (serviceStart) qs.push('service_start=' + encodeURIComponent(serviceStart));
       if (serviceEnd) qs.push('service_end=' + encodeURIComponent(serviceEnd));
-      if (followupDone) qs.push('followup_done=' + encodeURIComponent(followupDone));
       get('/api/improvement-records/all' + (qs.length ? ('?' + qs.join('&')) : '')).then(function (res) {
         if (!res || res.error) {
           showMsg('improvement-msg', (res && res.error) || '加载失败', true);
@@ -1452,7 +1449,7 @@
         var rows = toList(res);
         var tbody = document.getElementById('improvement-list');
         tbody.innerHTML = rows.map(function (row) {
-          return '<tr><td>' + (row.customer_name || '-') + '</td><td>' + (row.service_project || '-') + '</td><td>' + (row.service_time || '-') + '</td><td>' + (row.improvement_status || '-') + '</td><td>' + (row.followup_date || row.followup_time || '-') + '</td><td>' + (row.followup_method || '-') + '</td><td>' + (row.followup_result || '-') + '</td><td><button class="btn btn-small btn-secondary" data-improvement-view="' + row.id + '">查看</button> <button class="btn btn-small btn-primary" data-improvement-edit="' + row.id + '">编辑</button> <button class="btn btn-small btn-danger" data-improvement-del="' + row.id + '">删除</button></td></tr>';
+          return '<tr><td>' + (row.customer_name || '-') + '</td><td>' + (row.service_project || '-') + '</td><td>' + (row.service_time || '-') + '</td><td>' + (row.improvement_status || '-') + '</td><td>' + (row.followup_date || row.followup_time || '-') + '</td><td>' + (row.followup_method || '-') + '</td><td><button class="btn btn-small btn-secondary" data-improvement-view="' + row.id + '">查看</button> <button class="btn btn-small btn-primary" data-improvement-edit="' + row.id + '">编辑</button> <button class="btn btn-small btn-danger" data-improvement-del="' + row.id + '">删除</button></td></tr>';
         }).join('');
         showMsg('improvement-msg', '共 ' + rows.length + ' 条改善记录');
         tbody.querySelectorAll('[data-improvement-view]').forEach(function (btn) {
@@ -1479,6 +1476,35 @@
               showMsg('improvement-msg', '删除成功');
               loadImprovementTrackingPage();
             });
+          });
+        });
+      });
+    });
+  }
+
+  function loadImprovementPendingRecords() {
+    get('/api/improvement-records/pending-fill').then(function (res) {
+      if (!res || res.error) {
+        showMsg('improvement-msg', (res && res.error) || '待填写记录加载失败', true);
+        return;
+      }
+      var rows = toList(res);
+      var tbody = document.getElementById('improvement-list');
+      tbody.innerHTML = rows.map(function (row) {
+        return '<tr><td>' + (row.customer_name || '-') + '</td><td>' + (row.service_project || '-') + '</td><td>' + (row.service_time || '-') + '</td><td>待填写</td><td>-</td><td>-</td><td><button class="btn btn-small btn-primary" data-improvement-pending-fill="' + row.service_type + ':' + row.service_id + '">填写改善情况</button></td></tr>';
+      }).join('');
+      showMsg('improvement-msg', '待填写记录共 ' + rows.length + ' 条');
+      tbody.querySelectorAll('[data-improvement-pending-fill]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var val = btn.dataset.improvementPendingFill || '';
+          var parts = val.split(':');
+          if (parts.length !== 2) return;
+          var serviceType = (parts[0] || '').trim();
+          var serviceId = (parts[1] || '').trim();
+          if (!serviceType || !serviceId) return;
+          get('/api/improvement-records/from-appointment?service_id=' + encodeURIComponent(serviceId) + '&service_type=' + encodeURIComponent(serviceType)).then(function (draft) {
+            if (!draft || draft.error) { showMsg('improvement-msg', (draft && draft.error) || '初始化改善记录失败', true); return; }
+            openImprovementModal(draft, '填写改善情况');
           });
         });
       });
@@ -2295,14 +2321,14 @@
     loadImprovementTrackingPage();
   });
   document.getElementById('btn-improvement-reset').addEventListener('click', function () {
-    ['improvement-filter-customer-name', 'improvement-filter-service-project', 'improvement-filter-status', 'improvement-filter-start', 'improvement-filter-end', 'improvement-filter-followup-done'].forEach(function (id) {
+    ['improvement-filter-customer-name', 'improvement-filter-service-project', 'improvement-filter-status', 'improvement-filter-start', 'improvement-filter-end'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.value = '';
     });
     loadImprovementTrackingPage();
   });
-  document.getElementById('btn-improvement-add').addEventListener('click', function () {
-    openImprovementModal({}, '新增改善记录');
+  document.getElementById('btn-improvement-pending').addEventListener('click', function () {
+    loadImprovementPendingRecords();
   });
   document.getElementById('btn-improvement-cancel').addEventListener('click', function () {
     document.getElementById('modal-improvement').classList.add('hide');
@@ -2321,8 +2347,7 @@
       improvement_status: (document.getElementById('improvement-status').value || '').trim(),
       followup_time: (document.getElementById('improvement-followup-time').value || '').trim(),
       followup_date: (document.getElementById('improvement-followup-date').value || '').trim(),
-      followup_method: (document.getElementById('improvement-followup-method').value || '').trim(),
-      followup_result: document.getElementById('improvement-followup-result').value.trim()
+      followup_method: (document.getElementById('improvement-followup-method').value || '').trim()
     };
     if (!payload.customer_id || !payload.service_time || !payload.service_project || !payload.improvement_status) {
       showMsg('improvement-msg', '请填写改善记录必填项', true);

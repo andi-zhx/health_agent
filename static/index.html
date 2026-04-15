@@ -786,18 +786,13 @@
             <input type="date" id="improvement-filter-start">
             <span>至</span>
             <input type="date" id="improvement-filter-end">
-            <select id="improvement-filter-followup-done">
-              <option value="">随访结果(全部)</option>
-              <option value="yes">已填写随访结果</option>
-              <option value="no">未填写随访结果</option>
-            </select>
             <button class="btn btn-primary" id="btn-improvement-search">查询</button>
             <button class="btn btn-secondary" id="btn-improvement-reset">重置</button>
-            <button class="btn btn-primary" id="btn-improvement-add">新增改善记录</button>
+            <button class="btn btn-primary" id="btn-improvement-pending">待填写记录查询</button>
           </div>
           <div id="improvement-msg"></div>
           <table>
-            <thead><tr><th>客户姓名</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>随访方式</th><th>随访结果</th><th>操作</th></tr></thead>
+            <thead><tr><th>客户姓名</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>随访方式</th><th>操作</th></tr></thead>
             <tbody id="improvement-list"></tbody>
           </table>
         </div>
@@ -888,7 +883,7 @@
   </div>
   <div id="modal-improvement" class="modal-mask hide">
     <div class="modal" style="max-width:760px">
-      <h3 id="improvement-modal-title">新增改善记录</h3>
+      <h3 id="improvement-modal-title">填写改善记录</h3>
       <input type="hidden" id="improvement-id">
       <input type="hidden" id="improvement-service-type" value="appointments">
       <div class="form-row">
@@ -920,7 +915,6 @@
         <label>随访方式</label>
         <select id="improvement-followup-method"></select>
       </div>
-      <div class="form-row"><label>随访结果</label><textarea id="improvement-followup-result"></textarea></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-improvement-cancel">取消</button>
         <button class="btn btn-primary" id="btn-improvement-save">保存</button>

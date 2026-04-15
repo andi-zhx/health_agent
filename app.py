@@ -155,6 +155,54 @@ def ensure_columns(cursor, table_name, columns):
             cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {col} {col_type}')
 
 
+def migrate_service_improvement_records_drop_followup_result(cursor):
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='service_improvement_records'")
+    if not cursor.fetchone():
+        return
+    cursor.execute('PRAGMA table_info(service_improvement_records)')
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'followup_result' not in columns:
+        return
+    cursor.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS service_improvement_records_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service_id INTEGER,
+            service_type TEXT DEFAULT 'appointments',
+            customer_id INTEGER NOT NULL,
+            service_time TEXT NOT NULL,
+            service_project TEXT NOT NULL,
+            pre_service_status TEXT,
+            service_content TEXT,
+            post_service_evaluation TEXT,
+            improvement_status TEXT NOT NULL,
+            followup_time TEXT,
+            followup_date TEXT,
+            followup_method TEXT,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        )
+        '''
+    )
+    cursor.execute(
+        '''
+        INSERT INTO service_improvement_records_new (
+            id, service_id, service_type, customer_id, service_time, service_project,
+            pre_service_status, service_content, post_service_evaluation, improvement_status,
+            followup_time, followup_date, followup_method, created_at, updated_at
+        )
+        SELECT
+            id, service_id, service_type, customer_id, service_time, service_project,
+            pre_service_status, service_content, post_service_evaluation, improvement_status,
+            followup_time, followup_date, followup_method, created_at, updated_at
+        FROM service_improvement_records
+        '''
+    )
+    cursor.execute('DROP TABLE service_improvement_records')
+    cursor.execute('ALTER TABLE service_improvement_records_new RENAME TO service_improvement_records')
+
+
 def table_exists(cursor, table_name):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
     return cursor.fetchone() is not None
@@ -1413,7 +1461,6 @@ def init_db():
             followup_time TEXT,
             followup_date TEXT,
             followup_method TEXT,
-            followup_result TEXT,
             created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
             FOREIGN KEY (customer_id) REFERENCES customers(id)
@@ -1432,9 +1479,9 @@ def init_db():
         'followup_time': 'TEXT',
         'followup_date': 'TEXT',
         'followup_method': 'TEXT',
-        'followup_result': 'TEXT',
         'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
+    migrate_service_improvement_records_drop_followup_result(c)
 
     c.execute("SELECT COUNT(*) FROM equipment")
     if c.fetchone()[0] == 0:
@@ -2205,7 +2252,6 @@ def api_improvement_records_all():
     improvement_status = (request.args.get('improvement_status') or '').strip()
     service_start = (request.args.get('service_start') or '').strip()
     service_end = (request.args.get('service_end') or '').strip()
-    followup_done = (request.args.get('followup_done') or '').strip().lower()
     customer_id = request.args.get('customer_id', type=int)
 
     if customer_id:
@@ -2227,12 +2273,6 @@ def api_improvement_records_all():
     if service_end:
         sql += ' AND date(substr(r.service_time, 1, 10)) <= date(?)'
         params.append(service_end)
-    if followup_done in ('yes', 'no'):
-        if followup_done == 'yes':
-            sql += " AND TRIM(COALESCE(r.followup_result,'')) <> ''"
-        else:
-            sql += " AND TRIM(COALESCE(r.followup_result,'')) = ''"
-
     c.execute(
         f'''
         SELECT r.*, c.name as customer_name, c.phone as customer_phone
@@ -2241,6 +2281,61 @@ def api_improvement_records_all():
         '''
         ,
         params,
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(rows)
+
+
+@app.route('/api/improvement-records/pending-fill', methods=['GET'])
+def api_improvement_records_pending_fill():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT
+            'appointments' as service_type,
+            a.id as service_id,
+            c.name as customer_name,
+            c.phone as customer_phone,
+            COALESCE(p.name, '') as service_project,
+            (a.appointment_date || ' ' || a.start_time) as service_time,
+            a.appointment_date,
+            a.start_time
+        FROM appointments a
+        JOIN customers c ON a.customer_id=c.id
+        LEFT JOIN therapy_projects p ON a.project_id=p.id
+        WHERE LOWER(COALESCE(a.status, ''))='scheduled'
+          AND LOWER(COALESCE(a.checkin_status, ''))='checked_in'
+          AND NOT EXISTS (
+                SELECT 1
+                FROM service_improvement_records r
+                WHERE r.service_type='appointments'
+                  AND r.service_id=a.id
+          )
+        UNION ALL
+        SELECT
+            'home_appointments' as service_type,
+            h.id as service_id,
+            c.name as customer_name,
+            c.phone as customer_phone,
+            COALESCE(p.name, h.service_project, '') as service_project,
+            (h.appointment_date || ' ' || h.start_time) as service_time,
+            h.appointment_date,
+            h.start_time
+        FROM home_appointments h
+        JOIN customers c ON h.customer_id=c.id
+        LEFT JOIN therapy_projects p ON h.project_id=p.id
+        WHERE LOWER(COALESCE(h.status, ''))='scheduled'
+          AND LOWER(COALESCE(h.checkin_status, ''))='checked_in'
+          AND NOT EXISTS (
+                SELECT 1
+                FROM service_improvement_records r
+                WHERE r.service_type='home_appointments'
+                  AND r.service_id=h.id
+          )
+        ORDER BY appointment_date DESC, start_time DESC, service_id DESC
+        '''
     )
     rows = row_list(c.fetchall())
     conn.close()
@@ -2283,8 +2378,8 @@ def api_improvement_record_create():
         '''
         INSERT INTO service_improvement_records
         (service_id, service_type, customer_id, service_time, service_project, pre_service_status, service_content,
-         post_service_evaluation, improvement_status, followup_time, followup_date, followup_method, followup_result, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+         post_service_evaluation, improvement_status, followup_time, followup_date, followup_method, updated_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
         ''',
         (
             d.get('service_id'),
@@ -2299,7 +2394,6 @@ def api_improvement_record_create():
             d.get('followup_time'),
             d.get('followup_date'),
             d.get('followup_method'),
-            d.get('followup_result'),
         ),
     )
     rid = c.lastrowid
@@ -2325,7 +2419,7 @@ def api_improvement_record_update(rid):
         '''
         UPDATE service_improvement_records
         SET service_id=?, service_type=?, customer_id=?, service_time=?, service_project=?, pre_service_status=?, service_content=?,
-            post_service_evaluation=?, improvement_status=?, followup_time=?, followup_date=?, followup_method=?, followup_result=?,
+            post_service_evaluation=?, improvement_status=?, followup_time=?, followup_date=?, followup_method=?,
             updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
         WHERE id=?
         ''',
@@ -2342,7 +2436,6 @@ def api_improvement_record_update(rid):
             d.get('followup_time'),
             d.get('followup_date'),
             d.get('followup_method'),
-            d.get('followup_result'),
             rid,
         ),
     )
@@ -4104,7 +4197,6 @@ EXPORT_FIELD_ZH = {
     'improvement_summary': '改善情况',
     'followup_time': '随访时间',
     'followup_method': '随访方式',
-    'followup_result': '随访结果',
 }
 
 EXPORT_COLUMNS_BY_KEY = {
@@ -4112,7 +4204,7 @@ EXPORT_COLUMNS_BY_KEY = {
     'health': ['id', 'customer_id', 'assessment_date', 'assessor', 'age', 'height_cm', 'weight_kg', 'address', 'past_medical_history', 'family_history', 'allergy_history', 'allergy_details', 'smoking_status', 'smoking_years', 'cigarettes_per_day', 'drinking_status', 'drinking_years', 'fatigue_last_month', 'sleep_quality', 'sleep_hours', 'blood_pressure_test', 'blood_lipid_test', 'chronic_pain', 'pain_details', 'exercise_methods', 'weekly_exercise_freq', 'health_needs', 'notes', 'created_at', 'customer_name', 'customer_phone'],
     'appointments': ['id', 'customer_id', 'equipment_id', 'appointment_date', 'start_time', 'end_time', 'status', 'has_companion', 'notes', 'created_at', 'project_id', 'staff_id', 'updated_at', 'customer_name', 'customer_phone', 'equipment_name', 'project_name'],
     'home_appointments': ['id', 'customer_id', 'project_id', 'staff_id', 'customer_name', 'phone', 'home_time', 'home_address', 'service_project', 'staff_name', 'appointment_date', 'start_time', 'end_time', 'location', 'contact_person', 'contact_phone', 'has_companion', 'notes', 'status', 'created_at', 'updated_at', 'project_name'],
-    'improvement': ['id', 'customer_id', 'service_project', 'service_time', 'improvement_summary', 'followup_time', 'followup_method', 'followup_result', 'notes', 'created_at', 'updated_at', 'customer_name', 'customer_phone'],
+    'improvement': ['id', 'customer_id', 'service_project', 'service_time', 'improvement_summary', 'followup_time', 'followup_method', 'notes', 'created_at', 'updated_at', 'customer_name', 'customer_phone'],
     'customers': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
 }
 
