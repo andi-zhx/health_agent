@@ -2136,8 +2136,8 @@ def api_health_assessments_list():
         sql += ' AND h.customer_id=?'
         params.append(customer_id)
     if search:
-        sql += ' AND c.name LIKE ?'
-        params.append(f'%{search}%')
+        sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
+        params.extend([f'%{search}%', f'%{search}%'])
     if date_from:
         sql += ' AND date(h.assessment_date) >= date(?)'
         params.append(date_from)
@@ -2657,6 +2657,7 @@ def api_improvement_record_from_appointment():
 def api_appointments_list():
     sort_by = (request.args.get('sort_by') or 'time_desc').strip()
     status = (request.args.get('status', '') or '').strip().lower()
+    search = (request.args.get('search', '') or '').strip()
     date_from = (request.args.get('date_from', '') or '').strip()
     date_to = (request.args.get('date_to', '') or '').strip()
     page, page_size, offset = parse_list_params()
@@ -2679,6 +2680,10 @@ def api_appointments_list():
     if status:
         base_sql += ' AND LOWER(COALESCE(a.status, ""))=?'
         params.append(status)
+    if search:
+        like = f'%{search}%'
+        base_sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
+        params.extend([like, like])
     if date_from:
         base_sql += ' AND date(a.appointment_date) >= date(?)'
         params.append(date_from)
@@ -3073,6 +3078,7 @@ def api_appointment_checkin_status(aid):
 def api_home_appointments_list():
     sort_by = (request.args.get('sort_by') or 'time_desc').strip()
     status = (request.args.get('status', '') or '').strip().lower()
+    search = (request.args.get('search', '') or '').strip()
     date_from = (request.args.get('date_from', '') or '').strip()
     date_to = (request.args.get('date_to', '') or '').strip()
     page, page_size, offset = parse_list_params()
@@ -3095,6 +3101,10 @@ def api_home_appointments_list():
     if status:
         base_sql += ' AND LOWER(COALESCE(h.status, ""))=?'
         params.append(status)
+    if search:
+        like = f'%{search}%'
+        base_sql += ' AND (COALESCE(h.customer_name, c.name) LIKE ? OR COALESCE(h.phone, c.phone) LIKE ?)'
+        params.extend([like, like])
     if date_from:
         base_sql += ' AND date(h.appointment_date) >= date(?)'
         params.append(date_from)

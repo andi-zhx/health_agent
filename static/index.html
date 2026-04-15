@@ -566,7 +566,7 @@
           <div id="health-msg"></div>
           <h3>历史记录</h3>
           <div class="search-bar">
-            <input type="text" id="health-search" placeholder="按姓名查询历史档案">
+            <input type="text" id="health-search" placeholder="按姓名或手机号查询历史档案">
             <button class="btn btn-primary" id="btn-health-search">查询</button>
             <button class="btn btn-secondary" id="btn-health-reset">显示全部</button>
           </div>
@@ -661,11 +661,13 @@
           </div>
           <div id="apt-msg"></div>
           <div class="form-row">
-            <label>历史排序</label>
+            <label>排序</label>
             <select id="apt-sort">
               <option value="time_desc">按时间倒序</option>
               <option value="name_asc">按姓名排序</option>
             </select>
+            <input type="text" id="apt-history-search" placeholder="按姓名或手机号查询历史记录" style="margin-left:12px;min-width:240px">
+            <button class="btn btn-primary" id="btn-apt-history-search">查询</button>
           </div>
           <table><thead><tr><th>客户</th><th>项目</th><th>设备</th><th>日期</th><th>时间</th><th>预约状态</th><th>签到状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="apt-list"></tbody></table>
           <div class="section-pagination" id="apt-pagination"></div>
@@ -721,11 +723,13 @@
           </div>
           <div id="home-msg"></div>
           <div class="form-row">
-            <label>历史排序</label>
+            <label>排序</label>
             <select id="home-sort">
               <option value="time_desc">按时间倒序</option>
               <option value="name_asc">按姓名排序</option>
             </select>
+            <input type="text" id="home-history-search" placeholder="按姓名或手机号查询历史记录" style="margin-left:12px;min-width:240px">
+            <button class="btn btn-primary" id="btn-home-history-search">查询</button>
           </div>
           <table><thead><tr><th>客户</th><th>项目</th><th>日期</th><th>时间</th><th>地点</th><th>人员</th><th>预约状态</th><th>签到状态</th><th>操作</th><th>操作时间</th></tr></thead><tbody id="home-list"></tbody></table>
           <div class="section-pagination" id="home-pagination"></div>
