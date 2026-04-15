@@ -3733,6 +3733,7 @@ def api_search():
 def api_dashboard_stats():
     conn = get_db()
     c = conn.cursor()
+    today_str = datetime.now().strftime('%Y-%m-%d')
     c.execute("SELECT COUNT(*) as n FROM appointments WHERE status='completed'")
     completed_appointments = c.fetchone()['n']
     c.execute("SELECT COUNT(*) as n FROM home_appointments WHERE status='completed'")
@@ -3761,25 +3762,20 @@ def api_dashboard_stats():
     monthly_avg_service_count = month_avg_row['avg_count'] if month_avg_row and month_avg_row['avg_count'] is not None else 0
 
     c.execute('''
-        SELECT MAX(day_total) as max_day_total
-        FROM (
-            SELECT appointment_date, SUM(day_total) as day_total
-            FROM (
-                SELECT appointment_date, COUNT(*) as day_total
-                FROM appointments
-                WHERE status='completed'
-                GROUP BY appointment_date
-                UNION ALL
-                SELECT appointment_date, COUNT(*) as day_total
-                FROM home_appointments
-                WHERE status='completed'
-                GROUP BY appointment_date
-            ) raw_daily
-            GROUP BY appointment_date
-        ) daily
-    ''')
-    max_day_row = c.fetchone()
-    single_day_peak_service_count = max_day_row['max_day_total'] if max_day_row and max_day_row['max_day_total'] is not None else 0
+        SELECT COUNT(*) as n
+        FROM appointments
+        WHERE appointment_date=?
+          AND LOWER(COALESCE(checkin_status, ''))='checked_in'
+    ''', (today_str,))
+    today_checked_appointments = c.fetchone()['n']
+    c.execute('''
+        SELECT COUNT(*) as n
+        FROM home_appointments
+        WHERE appointment_date=?
+          AND LOWER(COALESCE(checkin_status, ''))='checked_in'
+    ''', (today_str,))
+    today_checked_home_appointments = c.fetchone()['n']
+    today_service_count = (today_checked_appointments or 0) + (today_checked_home_appointments or 0)
     c.execute('''
         SELECT
             SUM(CASE WHEN c.gender='男' THEN 1 ELSE 0 END) as male_service_count,
@@ -3799,7 +3795,7 @@ def api_dashboard_stats():
         'male_service_count': int((gender_row['male_service_count'] if gender_row else 0) or 0),
         'female_service_count': int((gender_row['female_service_count'] if gender_row else 0) or 0),
         'monthly_avg_service_count': monthly_avg_service_count,
-        'single_day_peak_service_count': single_day_peak_service_count,
+        'today_service_count': int(today_service_count),
     })
 
 
@@ -3861,11 +3857,18 @@ def api_dashboard_analytics():
     if equipment_join_sql:
         equipment_join_sql = ' AND ' + equipment_join_sql
     c.execute(f'''
-        SELECT equipment_name,
+        SELECT project_category as equipment_name,
                SUM(usage_count) as usage_count,
                SUM(total_duration_minutes) as total_duration_minutes
         FROM (
-            SELECT COALESCE(e.name, p.name, '未配置设备') as equipment_name,
+            SELECT
+                   CASE
+                       WHEN COALESCE(TRIM(p.name), '') <> '' THEN TRIM(p.name)
+                       WHEN COALESCE(TRIM(e.name), '') = '' THEN '未配置设备'
+                       WHEN TRIM(e.name) GLOB '*[0-9][0-9]' THEN SUBSTR(TRIM(e.name), 1, LENGTH(TRIM(e.name)) - 2)
+                       WHEN TRIM(e.name) GLOB '*[0-9]' THEN SUBSTR(TRIM(e.name), 1, LENGTH(TRIM(e.name)) - 1)
+                       ELSE TRIM(e.name)
+                   END as project_category,
                    COUNT(a.id) as usage_count,
                    COALESCE(SUM(
                        CASE
@@ -3879,9 +3882,9 @@ def api_dashboard_analytics():
             LEFT JOIN equipment e ON e.id = a.equipment_id
             LEFT JOIN therapy_projects p ON p.id = a.project_id
             WHERE 1=1{equipment_join_sql}
-            GROUP BY COALESCE(e.name, p.name, '未配置设备')
+            GROUP BY project_category
             UNION ALL
-            SELECT COALESCE(p.name, '未配置设备') as equipment_name,
+            SELECT COALESCE(NULLIF(TRIM(p.name), ''), NULLIF(TRIM(h.service_project), ''), '未配置设备') as project_category,
                    COUNT(h.id) as usage_count,
                    COALESCE(SUM(
                        CASE
@@ -3896,9 +3899,9 @@ def api_dashboard_analytics():
             WHERE h.status = 'completed'
               AND (? = '' OR h.appointment_date >= ?)
               AND (? = '' OR h.appointment_date <= ?)
-            GROUP BY COALESCE(p.name, '未配置设备')
+            GROUP BY project_category
         ) merged
-        GROUP BY equipment_name
+        GROUP BY project_category
         ORDER BY usage_count DESC, total_duration_minutes DESC
         LIMIT 10
     ''', equipment_params + [equipment_start_date, equipment_start_date, equipment_end_date, equipment_end_date])
