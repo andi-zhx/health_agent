@@ -634,8 +634,11 @@
     document.querySelectorAll('[data-int-apt-jump]').forEach(function (btn) {
       btn.addEventListener('click', function () { showPage('appointments'); });
     });
-    document.querySelectorAll('[data-int-home-jump], [data-int-imp-jump]').forEach(function (btn) {
-      btn.addEventListener('click', function () { showPage('appointments'); });
+    document.querySelectorAll('[data-int-home-jump]').forEach(function (btn) {
+      btn.addEventListener('click', function () { showPage('home-appointments'); });
+    });
+    document.querySelectorAll('[data-int-imp-jump]').forEach(function (btn) {
+      btn.addEventListener('click', function () { showPage('improvement-tracking'); });
     });
     document.querySelectorAll('[data-int-imp-view]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -714,14 +717,15 @@
 
   function buildHealthDetailRows(data) {
     return [
-      ['客户', data.customer_name], ['年龄', data.age],
+      ['客户', data.customer_name], ['手机号', data.phone], ['身份证号', data.id_card], ['性别', data.gender], ['出生日期', data.birth_date],
+      ['身份', data.identity_type], ['军衔', data.military_rank], ['建档人', data.record_creator], ['评估日期', data.assessment_date], ['年龄', data.age],
       ['身高(cm)', data.height_cm], ['体重(kg)', data.weight_kg], ['地址', data.address], ['既往病史', data.past_medical_history],
       ['家族慢性病史', data.family_history], ['过敏史', data.allergy_history], ['过敏详情', data.allergy_details], ['吸烟情况', data.smoking_status],
-      ['烟龄', data.smoking_years], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
+      ['烟龄', data.smoking_years], ['日均吸烟量', data.cigarettes_per_day], ['饮酒情况', data.drinking_status], ['饮酒年限', data.drinking_years],
       ['睡眠状况', data.sleep_quality], ['睡眠时长', data.sleep_hours], ['近半年症状', data.recent_symptoms], ['详细情况', data.recent_symptom_detail],
       ['最影响生活的问题', data.life_impact_issues], ['近半年血压', data.blood_pressure_test],
       ['近半年血脂', data.blood_lipid_test], ['近半年血糖', data.blood_sugar_test],
-      ['运动方式', (data.exercise_methods || []).join('、')], ['健康需求', (data.health_needs || []).join('、')], ['特殊情况', data.notes]
+      ['慢性疼痛', data.chronic_pain], ['疼痛详情', data.pain_details], ['运动方式', (data.exercise_methods || []).join('、')], ['健康需求', (data.health_needs || []).join('、')], ['特殊情况', data.notes]
     ];
   }
 
@@ -1953,6 +1957,7 @@
   document.getElementById('btn-customer-download-all').addEventListener('click', function () {
     var scope = document.getElementById('customer-download-scope').value;
     var search = (document.getElementById('customer-search').value || '').trim();
+    if (scope === 'all' && !window.confirm('下载所有客户档案信息')) return;
     get('/api/export/customer-integrated-all?scope=' + encodeURIComponent(scope) + '&search=' + encodeURIComponent(search)).then(function (res) {
       if (!res || res.error) { showMsg('customer-msg', (res && res.error) || '下载失败', true); return; }
       if (res.download_url) window.open(res.download_url, '_blank');
