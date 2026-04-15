@@ -244,7 +244,25 @@
   var healthCustomerList = [];
   var improvementCustomerList = [];
   var improvementEditingId = null;
+  var improvementViewOnly = false;
   var improvementMeta = null;
+
+  function setImprovementModalReadonly(isReadonly) {
+    improvementViewOnly = !!isReadonly;
+    var saveBtn = document.getElementById('btn-improvement-save');
+    var uploadBtn = document.getElementById('btn-improvement-upload-file');
+    var fieldSelectors = '#modal-improvement input, #modal-improvement select, #modal-improvement textarea';
+    document.querySelectorAll(fieldSelectors).forEach(function (el) {
+      if (!el || el.type === 'hidden' || el.id === 'improvement-service-id') return;
+      if (el.tagName === 'SELECT') {
+        el.disabled = improvementViewOnly;
+      } else {
+        el.readOnly = improvementViewOnly;
+      }
+    });
+    if (saveBtn) saveBtn.style.display = improvementViewOnly ? 'none' : '';
+    if (uploadBtn) uploadBtn.style.display = improvementViewOnly ? 'none' : '';
+  }
 
   function setImprovementUploadStatus(text, isError, isUploading) {
     var el = document.getElementById('improvement-upload-status');
@@ -599,7 +617,7 @@
         get('/api/improvement-records/' + btn.dataset.intImpView).then(function (data) {
           if (data && data.id) {
             showPage('improvement-tracking');
-            openImprovementModal(data, '查看改善记录');
+            openImprovementModal(data, '查看改善记录', { viewOnly: true });
           }
         });
       });
@@ -1404,10 +1422,12 @@
     if (followupMethodSel) followupMethodSel.innerHTML = '<option value="">请选择随访方式</option>' + toList(meta.followup_method_options).map(function (x) { return '<option value="' + x + '">' + x + '</option>'; }).join('');
   }
 
-  function openImprovementModal(record, modeText) {
+  function openImprovementModal(record, modeText, options) {
     ensureImprovementMeta().then(function () {
       initImprovementCustomerPicker().then(function () {
         fillImprovementFormOptions();
+        var opts = options || {};
+        var isViewOnly = !!opts.viewOnly;
         var data = record || {};
         improvementEditingId = data.id || null;
         document.getElementById('improvement-modal-title').textContent = modeText || (improvementEditingId ? '编辑改善记录' : '新增改善记录');
@@ -1433,6 +1453,7 @@
         document.getElementById('improvement-followup-date').value = data.followup_date || '';
         document.getElementById('improvement-followup-method').value = data.followup_method || '';
         setImprovementUploadStatus('', false, false);
+        setImprovementModalReadonly(isViewOnly);
         document.getElementById('modal-improvement').classList.remove('hide');
       });
     });
@@ -1494,7 +1515,7 @@
           btn.addEventListener('click', function () {
             get('/api/improvement-records/' + btn.dataset.improvementView).then(function (row) {
               if (!row || row.error) { showMsg('improvement-msg', (row && row.error) || '加载失败', true); return; }
-              openImprovementModal(row, '查看改善记录');
+              openImprovementModal(row, '查看改善记录', { viewOnly: true });
             });
           });
         });
@@ -2369,6 +2390,7 @@
     loadImprovementPendingRecords();
   });
   document.getElementById('btn-improvement-upload-file').addEventListener('click', function () {
+    if (improvementViewOnly) return;
     document.getElementById('modal-improvement-upload').classList.remove('hide');
   });
   document.getElementById('btn-improvement-upload-close').addEventListener('click', function () {
@@ -2409,6 +2431,10 @@
     document.getElementById('modal-improvement').classList.add('hide');
   });
   document.getElementById('btn-improvement-save').addEventListener('click', function () {
+    if (improvementViewOnly) {
+      showMsg('improvement-msg', '查看模式不支持修改，请点击“编辑”按钮进行操作', true);
+      return;
+    }
     applyImprovementCustomerByInput();
     var payload = {
       service_id: (document.getElementById('improvement-service-id').value || '').trim() || null,
