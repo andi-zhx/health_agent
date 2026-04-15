@@ -18,12 +18,13 @@
 
 ---
 
-## 2. 技术栈
+## 2. 技术栈与运行环境
 
-- **后端**：Python 3.8+、Flask
+- **后端**：Python 3.8+、Flask 3.x
 - **数据库**：SQLite（默认 `medical_system.db`）
 - **前端**：`static/index.html` + `static/app.js`（无前端构建流程）
 - **数据导出**：pandas + openpyxl
+- **时区语义**：默认 `Asia/Shanghai`（可通过环境变量 `APP_TIMEZONE` 覆盖）
 
 依赖见 `requirements.txt`：
 
@@ -85,7 +86,7 @@ python app.py
 
 ---
 
-## 5. 核心功能模块
+## 5. 核心功能模块（按现有代码）
 
 根据当前代码与前端页面结构，主要模块如下：
 
@@ -120,7 +121,12 @@ python app.py
 8. **满意度（surveys）**
    - 服务/设备/环境/人员/综合维度评分与反馈
 
-9. **数据查询导出（query-export）**
+9. **服务改进追踪（service-improvement）**
+   - 服务前状态、服务内容、服务后评价
+   - 改善状态与回访计划
+   - 关联附件上传记录
+
+10. **数据查询导出（query-export）**
    - 多维数据查询
    - Excel 导出
    - 数据库备份路径设置、备份列表、恢复
@@ -133,11 +139,14 @@ python app.py
 health_agent/
 ├─ app.py                              # Flask 主程序（路由、数据库初始化、业务逻辑）
 ├─ launch.py                           # 桌面启动器（自动打开浏览器 + GUI 提示）
+├─ seed_sample_data.py                 # 清理旧业务数据并生成 50 位客户全链路样本
 ├─ requirements.txt                    # Python 依赖
 ├─ README.md                           # 项目说明（本文件）
 ├─ medical_system.db                   # SQLite 主库文件（运行后生成/更新）
 ├─ database_backups/                   # 数据库备份目录
+├─ exports/                            # Excel 导出目录（运行时自动创建）
 ├─ logs/                               # 运行日志目录（app.log / startup.log）
+├─ uploads/                            # 服务改进记录附件目录（运行时自动创建）
 ├─ error_log.txt                       # 启动异常日志
 ├─ static/
 │  ├─ index.html                       # 单页应用页面结构
@@ -157,6 +166,7 @@ health_agent/
 - 默认数据库文件：`medical_system.db`
 - 导出目录：`exports/`（程序启动时自动创建）
 - 备份目录：默认 `database_backups/`，可在系统中修改备份路径
+- 上传目录：`uploads/`（按客户与记录自动分目录保存）
 - 日志目录：`logs/`
   - `app.log`：应用日志
   - `startup.log`：启动流程日志
@@ -165,9 +175,33 @@ health_agent/
 
 ---
 
-## 8. 常见问题
+## 8. 生成测试样本数据（50位客户，全表单覆盖）
 
-### 8.1 启动失败 / 页面打不开
+为便于联调和功能测试，项目内置脚本 `seed_sample_data.py`，可执行以下动作：
+
+1. 清理历史业务数据（客户、健康评估、健康记录、到访签到、门店预约、上门预约、服务改进、改进附件等）；
+2. 重新生成 **50 位客户** 的完整测试样本；
+3. 确保每位客户均具备以下业务数据：
+   - 预约服务记录（`appointments`）
+   - 上门服务记录（`home_appointments`）
+   - 理疗/服务改进记录（`service_improvement_records`）
+   - 健康评估、健康记录、签到及附件记录等。
+
+执行命令：
+
+```bash
+python seed_sample_data.py
+```
+
+脚本会输出各业务表最终记录数，便于快速校验。
+
+> 说明：为避免代码评审平台对二进制文件的限制，建议仅提交脚本与文档，不提交 `medical_system.db` 的二进制差异；开发/测试环境请本地执行上述命令生成样本数据。
+
+---
+
+## 9. 常见问题
+
+### 9.1 启动失败 / 页面打不开
 
 请按顺序排查：
 
@@ -179,7 +213,7 @@ health_agent/
    - `logs/startup.log`
    - `logs/app.log`
 
-### 8.2 自动安装依赖失败
+### 9.2 自动安装依赖失败
 
 `launch.py` 会尝试自动安装依赖；若失败，请手动执行：
 
@@ -189,11 +223,10 @@ python -m pip install -r requirements.txt
 
 ---
 
-## 9. 开发建议
+## 10. 开发建议
 
 - 当前为单机 SQLite 架构，适合中小规模本地部署。
 - 若需多用户并发或跨机器访问，建议演进：
   - 数据库切换至 MySQL/PostgreSQL
   - 服务端部署至 Linux + Gunicorn/uWSGI + Nginx
   - 增加更细粒度权限与审计策略
-
