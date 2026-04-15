@@ -6,6 +6,7 @@
 
 from flask import Flask, request, jsonify, send_from_directory, session
 from werkzeug.exceptions import HTTPException
+from werkzeug.utils import secure_filename
 import sqlite3
 import os
 import pandas as pd
@@ -38,9 +39,11 @@ app.secret_key = os.environ.get('FLASK_SECRET_KEY') or 'health-agent-secret-key-
 
 DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
+LOCAL_FILE_UPLOAD_ROOT = os.path.join(BASE_DIR, 'uploads')
 BACKUP_FOLDER = os.path.join(BASE_DIR, 'database_backups')
 LOG_FOLDER = os.path.join(BASE_DIR, 'logs')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(LOCAL_FILE_UPLOAD_ROOT, exist_ok=True)
 os.makedirs(BACKUP_FOLDER, exist_ok=True)
 os.makedirs(LOG_FOLDER, exist_ok=True)
 
@@ -416,6 +419,17 @@ IMPROVEMENT_SERVICE_PROJECTS = [
 IMPROVEMENT_STATUS_OPTIONS = ['明显改善', '部分改善', '无改善', '加重']
 FOLLOWUP_METHOD_OPTIONS = ['电话', '到店']
 FOLLOWUP_PRESET_OPTIONS = ['1个月', '3个月', '半年', '1年']
+ALLOWED_IMPROVEMENT_FILE_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+
+
+def sanitize_folder_part(value, fallback):
+    text = str(value or '').strip()
+    if not text:
+        return fallback
+    text = re.sub(r'[\\/:*?"<>|]+', '_', text)
+    text = re.sub(r'\s+', '_', text)
+    text = text.strip('._')
+    return text[:80] or fallback
 
 
 def generate_time_slots(start='08:30', end='16:00', interval_minutes=30):
@@ -1483,6 +1497,30 @@ def init_db():
     })
     migrate_service_improvement_records_drop_followup_result(c)
 
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS improvement_record_files (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            improvement_record_id INTEGER NOT NULL,
+            file_name TEXT NOT NULL,
+            file_ext TEXT NOT NULL,
+            file_path TEXT NOT NULL,
+            file_size INTEGER DEFAULT 0,
+            uploaded_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            FOREIGN KEY (customer_id) REFERENCES customers(id),
+            FOREIGN KEY (improvement_record_id) REFERENCES service_improvement_records(id)
+        )
+    ''')
+    ensure_columns(c, 'improvement_record_files', {
+        'customer_id': 'INTEGER',
+        'improvement_record_id': 'INTEGER',
+        'file_name': 'TEXT',
+        'file_ext': 'TEXT',
+        'file_path': 'TEXT',
+        'file_size': 'INTEGER DEFAULT 0',
+        'uploaded_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
+    })
+
     c.execute("SELECT COUNT(*) FROM equipment")
     if c.fetchone()[0] == 0:
         for row in [
@@ -2454,6 +2492,81 @@ def api_improvement_record_delete(rid):
     conn.close()
     audit_log('删除改善记录', 'service_improvement_records', rid, '')
     return success_response({}, '已删除')
+
+
+@app.route('/api/improvement-records/<int:rid>/files', methods=['POST'])
+def api_improvement_record_file_upload(rid):
+    uploaded_file = request.files.get('file')
+    if uploaded_file is None:
+        return error_response('请先选择要上传的文件')
+    original_name = str(uploaded_file.filename or '').strip()
+    if not original_name:
+        return error_response('文件名不能为空')
+    ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
+    if ext not in ALLOWED_IMPROVEMENT_FILE_EXTENSIONS:
+        return error_response('仅支持上传 pdf/png/jpg/jpeg 文件')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id, customer_id FROM service_improvement_records WHERE id=?', (rid,))
+    record = c.fetchone()
+    if not record:
+        conn.close()
+        return error_response('理疗记录不存在，请先保存理疗记录', 404, 'NOT_FOUND')
+    customer_id = int(record['customer_id'])
+
+    c.execute('SELECT name, phone FROM customers WHERE id=? AND is_deleted=0', (customer_id,))
+    customer = c.fetchone()
+    if not customer:
+        conn.close()
+        return error_response('关联客户不存在', 404, 'NOT_FOUND')
+
+    customer_folder = sanitize_folder_part(customer['name'], f'user_{customer_id}')
+    phone_folder = sanitize_folder_part(customer['phone'], 'no_phone')
+    folder_name = f'{customer_folder}_{phone_folder}'
+    target_dir = os.path.join(LOCAL_FILE_UPLOAD_ROOT, folder_name)
+    os.makedirs(target_dir, exist_ok=True)
+
+    safe_base_name = secure_filename(os.path.splitext(original_name)[0]) or 'record_file'
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    save_filename = f'{timestamp}_{safe_base_name}.{ext}'
+    absolute_path = os.path.join(target_dir, save_filename)
+    uploaded_file.save(absolute_path)
+    file_size = os.path.getsize(absolute_path)
+    relative_path = os.path.relpath(absolute_path, BASE_DIR).replace('\\', '/')
+
+    c.execute(
+        '''
+        INSERT INTO improvement_record_files
+        (customer_id, improvement_record_id, file_name, file_ext, file_path, file_size)
+        VALUES (?,?,?,?,?,?)
+        ''',
+        (
+            customer_id,
+            rid,
+            original_name,
+            ext,
+            relative_path,
+            file_size,
+        ),
+    )
+    file_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    audit_log('上传理疗附件', 'improvement_record_files', file_id, f'improvement_record_id={rid}')
+    return success_response(
+        {
+            'id': file_id,
+            'improvement_record_id': rid,
+            'customer_id': customer_id,
+            'file_name': original_name,
+            'file_ext': ext,
+            'file_path': relative_path,
+            'file_size': file_size,
+        },
+        '文件上传成功',
+        201,
+    )
 
 
 @app.route('/api/improvement-records/latest', methods=['GET'])
