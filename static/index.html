@@ -191,6 +191,12 @@
     .home-standard-item .idx { display: inline-block; background: #1d4ed8; color: #fff; border-radius: 999px; font-size: 12px; padding: 3px 9px; margin-bottom: 8px; }
     .home-standard-item h4 { margin: 0 0 8px; font-size: 15px; color: #1f2d3d; }
     .home-standard-item p { margin: 0; color: #4b5563; line-height: 1.7; font-size: 13px; }
+    .upload-action-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+    .upload-status-text { color: #16a34a; font-size: 13px; }
+    .upload-status-text.uploading { color: #2563eb; }
+    .upload-dropzone { border: 2px dashed #cbd5e1; border-radius: 10px; padding: 28px 16px; text-align: center; color: #475569; background: #f8fafc; }
+    .upload-dropzone.dragover { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
+    .upload-dropzone .tip { margin-top: 8px; font-size: 12px; color: #64748b; }
   </style>
 </head>
 <body>
@@ -915,9 +921,27 @@
         <label>随访方式</label>
         <select id="improvement-followup-method"></select>
       </div>
+      <div class="upload-action-row">
+        <button class="btn btn-secondary" id="btn-improvement-upload-file" type="button">上传文件</button>
+        <span id="improvement-upload-status" class="upload-status-text"></span>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-improvement-cancel">取消</button>
         <button class="btn btn-primary" id="btn-improvement-save">保存</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-improvement-upload" class="modal-mask hide">
+    <div class="modal" style="max-width:560px">
+      <h3>上传理疗记录文件</h3>
+      <div id="improvement-upload-dropzone" class="upload-dropzone">
+        <div>将文件拖拽到此处上传</div>
+        <div class="tip">或点击下方按钮从电脑选择文件（仅支持 PDF / PNG / JPG）</div>
+      </div>
+      <input type="file" id="improvement-upload-input" accept=".pdf,.png,.jpg,.jpeg" style="display:none">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-improvement-select-file" type="button">选择本地文件</button>
+        <button class="btn btn-secondary" id="btn-improvement-upload-close" type="button">关闭</button>
       </div>
     </div>
   </div>

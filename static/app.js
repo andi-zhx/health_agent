@@ -49,6 +49,7 @@
 
   function get(url) { return requestJson(url); }
   function post(url, body) { return requestJson(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+  function postForm(url, formData) { return requestJson(url, { method: 'POST', body: formData }); }
   function put(url, body) { return requestJson(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
   function del(url) { return requestJson(url, { method: 'DELETE' }); }
 
@@ -244,6 +245,15 @@
   var improvementCustomerList = [];
   var improvementEditingId = null;
   var improvementMeta = null;
+
+  function setImprovementUploadStatus(text, isError, isUploading) {
+    var el = document.getElementById('improvement-upload-status');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.remove('uploading');
+    el.style.color = isError ? '#dc2626' : '';
+    if (isUploading) el.classList.add('uploading');
+  }
   var listState = {
     customers: { page: 1, page_size: 5 },
     customerHealth: { page: 1, page_size: 5 },
@@ -1422,8 +1432,36 @@
         document.getElementById('improvement-followup-time').value = data.followup_time || '';
         document.getElementById('improvement-followup-date').value = data.followup_date || '';
         document.getElementById('improvement-followup-method').value = data.followup_method || '';
+        setImprovementUploadStatus('', false, false);
         document.getElementById('modal-improvement').classList.remove('hide');
       });
+    });
+  }
+
+  function closeImprovementUploadModal() {
+    var uploadInput = document.getElementById('improvement-upload-input');
+    if (uploadInput) uploadInput.value = '';
+    document.getElementById('modal-improvement-upload').classList.add('hide');
+  }
+
+  function uploadImprovementFile(file) {
+    if (!file) return;
+    var rid = (document.getElementById('improvement-id').value || '').trim();
+    if (!rid) {
+      setImprovementUploadStatus('请先保存理疗记录后再上传文件', true, false);
+      closeImprovementUploadModal();
+      return;
+    }
+    var formData = new FormData();
+    formData.append('file', file);
+    setImprovementUploadStatus('正在上传中...', false, true);
+    postForm('/api/improvement-records/' + encodeURIComponent(rid) + '/files', formData).then(function (res) {
+      if (!res || res.error) {
+        setImprovementUploadStatus((res && res.error) || '文件上传失败', true, false);
+        return;
+      }
+      setImprovementUploadStatus('上传成功：' + (res.file_name || file.name || ''), false, false);
+      closeImprovementUploadModal();
     });
   }
 
@@ -2330,6 +2368,43 @@
   document.getElementById('btn-improvement-pending').addEventListener('click', function () {
     loadImprovementPendingRecords();
   });
+  document.getElementById('btn-improvement-upload-file').addEventListener('click', function () {
+    document.getElementById('modal-improvement-upload').classList.remove('hide');
+  });
+  document.getElementById('btn-improvement-upload-close').addEventListener('click', function () {
+    closeImprovementUploadModal();
+  });
+  document.getElementById('btn-improvement-select-file').addEventListener('click', function () {
+    document.getElementById('improvement-upload-input').click();
+  });
+  document.getElementById('improvement-upload-input').addEventListener('change', function () {
+    var file = this.files && this.files[0];
+    if (!file) return;
+    uploadImprovementFile(file);
+  });
+  (function initImprovementUploadDropzone() {
+    var dropzone = document.getElementById('improvement-upload-dropzone');
+    if (!dropzone) return;
+    ['dragenter', 'dragover'].forEach(function (evtName) {
+      dropzone.addEventListener(evtName, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.add('dragover');
+      });
+    });
+    ['dragleave', 'drop'].forEach(function (evtName) {
+      dropzone.addEventListener(evtName, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropzone.classList.remove('dragover');
+      });
+    });
+    dropzone.addEventListener('drop', function (e) {
+      var file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file) return;
+      uploadImprovementFile(file);
+    });
+  })();
   document.getElementById('btn-improvement-cancel').addEventListener('click', function () {
     document.getElementById('modal-improvement').classList.add('hide');
   });
