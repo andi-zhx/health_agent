@@ -117,7 +117,7 @@
           extra: '<div class="stat-extra"><div>男性人次：' + (data.male_service_count || 0) + '</div><div>女性人次：' + (data.female_service_count || 0) + '</div></div>'
         },
         { num: data.monthly_avg_service_count || 0, label: '月均服务人次' },
-        { num: data.single_day_peak_service_count || 0, label: '单日最高服务量' }
+        { num: data.today_service_count || 0, label: '今日服务人次' }
       ].map(function (s) {
         return '<div class="stat-box"><div class="num">' + s.num + '</div><div class="label">' + s.label + '</div>' + (s.extra || '') + '</div>';
       }).join('');
