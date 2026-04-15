@@ -1273,11 +1273,13 @@
     if (aptCustomerInput) aptCustomerInput.value = '';
     fillProjectSelect('apt-project', true);
     var sortBy = (document.getElementById('apt-sort') || {}).value || 'time_desc';
+    var historySearch = (document.getElementById('apt-history-search') || {}).value || '';
     var qs = [
       'sort_by=' + encodeURIComponent(sortBy),
       'page=' + listState.appointments.page,
       'page_size=' + listState.appointments.page_size
     ];
+    if (historySearch.trim()) qs.push('search=' + encodeURIComponent(historySearch.trim()));
     get('/api/appointments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('apt-list');
       tbody.innerHTML = toList(list).map(function (a) {
@@ -1355,11 +1357,13 @@
     renderHomeSlotPanel();
     renderHomeStaffPanel();
     var sortBy = (document.getElementById('home-sort') || {}).value || 'time_desc';
+    var historySearch = (document.getElementById('home-history-search') || {}).value || '';
     var qs = [
       'sort_by=' + encodeURIComponent(sortBy),
       'page=' + listState.homeAppointments.page,
       'page_size=' + listState.homeAppointments.page_size
     ];
+    if (historySearch.trim()) qs.push('search=' + encodeURIComponent(historySearch.trim()));
     get('/api/home-appointments?' + qs.join('&')).then(function (list) {
       var rows = toList(list);
       var tbody = document.getElementById('home-list');
@@ -2251,6 +2255,10 @@
     listState.appointments.page = 1;
     loadAppointmentsPage();
   });
+  document.getElementById('btn-apt-history-search').addEventListener('click', function () {
+    listState.appointments.page = 1;
+    loadAppointmentsPage();
+  });
   document.getElementById('btn-apt-cancel-edit').addEventListener('click', function () {
     setAppointmentEditMode(null);
     resetAppointmentSlotSelection();
@@ -2404,6 +2412,10 @@
     showMsg('home-msg', '已退出编辑');
   });
   document.getElementById('home-sort').addEventListener('change', function () {
+    listState.homeAppointments.page = 1;
+    loadHomeAppointmentsPage();
+  });
+  document.getElementById('btn-home-history-search').addEventListener('click', function () {
     listState.homeAppointments.page = 1;
     loadHomeAppointmentsPage();
   });
