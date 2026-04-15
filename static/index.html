@@ -408,8 +408,8 @@
                 </select>
               </div>
               <div class="base-info-item">
-                <label>年龄<span class="required-mark">*</span></label>
-                <input type="text" inputmode="numeric" id="ha-age" placeholder="请输入年龄">
+                <label>年龄（按出生年份自动计算）<span class="required-mark">*</span></label>
+                <input type="text" inputmode="numeric" id="ha-age" placeholder="根据出生日期自动计算" readonly>
               </div>
               <div class="base-info-item">
                 <label>出生日期<span class="required-mark">*</span></label>
@@ -852,7 +852,7 @@
       <input type="hidden" id="modal-customer-id">
       <div class="form-row"><label>姓名<span class="required-mark">*</span></label><input type="text" id="mc-name" required></div>
       <div class="form-row"><label>性别<span class="required-mark">*</span></label><select id="mc-gender" required><option value="">请选择</option><option value="男">男</option><option value="女">女</option></select></div>
-      <div class="form-row"><label>年龄<span class="required-mark">*</span></label><input type="text" id="mc-age" inputmode="numeric" required></div>
+      <div class="form-row"><label>年龄（按出生年份自动计算）<span class="required-mark">*</span></label><input type="text" id="mc-age" inputmode="numeric" required readonly placeholder="根据出生日期自动计算"></div>
       <div class="form-row"><label>出生日期<span class="required-mark">*</span></label><input type="date" id="mc-birth_date" required></div>
       <div class="form-row">
         <label>身份<span class="required-mark">*</span></label>

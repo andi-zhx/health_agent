@@ -17,6 +17,7 @@ from collections import Counter
 from datetime import datetime
 from datetime import timedelta
 import time
+from zoneinfo import ZoneInfo
 
 try:
     import tkinter as tk
@@ -33,6 +34,34 @@ APP_TIMEZONE = os.environ.get('APP_TIMEZONE', 'Asia/Shanghai')
 os.environ['TZ'] = APP_TIMEZONE
 if hasattr(time, 'tzset'):
     time.tzset()
+
+
+def now_local():
+    return datetime.now(ZoneInfo(APP_TIMEZONE))
+
+
+def now_local_str():
+    return now_local().strftime('%Y-%m-%d %H:%M:%S')
+
+
+def calculate_age_by_birth_year(birth_date):
+    text = str(birth_date or '').strip()
+    if not text:
+        return None
+    try:
+        birth = datetime.strptime(text[:10], '%Y-%m-%d')
+    except ValueError:
+        return None
+    return now_local().year - birth.year
+
+
+def hydrate_customer_age(record):
+    if not record:
+        return record
+    derived_age = calculate_age_by_birth_year(record.get('birth_date'))
+    if derived_age is not None:
+        record['age'] = derived_age
+    return record
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
 app.secret_key = os.environ.get('FLASK_SECRET_KEY') or 'health-agent-secret-key-change-me'
@@ -257,7 +286,7 @@ def create_db_backup(backup_type='manual', notes=''):
     backup_dir = get_backup_directory()
     os.makedirs(backup_dir, exist_ok=True)
 
-    ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+    ts = now_local().strftime('%Y%m%d_%H%M%S')
     fn = f'medical_system_{ts}.db'
     fp = os.path.join(backup_dir, fn)
     src = None
@@ -276,7 +305,7 @@ def create_db_backup(backup_type='manual', notes=''):
         conn = get_db()
         c = conn.cursor()
         c.execute('INSERT INTO db_backups (backup_file, backup_time, backup_type, status, notes) VALUES (?,?,?,?,?)',
-                  (fp, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), backup_type, status, notes or msg))
+                  (fp, now_local_str(), backup_type, status, notes or msg))
         conn.commit()
         conn.close()
         return {'filename': fn, 'backup_file': fp, 'status': status, 'message': msg}
@@ -475,7 +504,6 @@ def validate_customer_payload(d):
     address = str(d.get('address') or '').strip()
     gender = str(d.get('gender') or '').strip()
     birth_date = str(d.get('birth_date') or '').strip()
-    age = str(d.get('age') or '').strip()
     identity_type = d.get('identity_type')
     record_creator = str(d.get('record_creator') or '').strip()
 
@@ -489,8 +517,6 @@ def validate_customer_payload(d):
         return '性别为必填项'
     if gender not in {'男', '女'}:
         return '性别仅支持：男/女'
-    if not age or not age.isdigit() or int(age) <= 0:
-        return '年龄必须为正整数'
     if birth_date:
         try:
             datetime.strptime(birth_date, '%Y-%m-%d')
@@ -1738,11 +1764,9 @@ def api_customers_list():
     where_sql = ' AND '.join(conditions)
     c.execute(f'SELECT COUNT(*) as n FROM customers WHERE {where_sql}', params)
     total = c.fetchone()['n']
-    c.execute(
-        f"SELECT c.*, datetime(c.created_at, '+8 hours') as created_at FROM customers c WHERE {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?",
-        params + [page_size, offset]
-    )
+    c.execute(f"SELECT c.* FROM customers c WHERE {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?", params + [page_size, offset])
     rows = row_list(c.fetchall())
+    rows = [hydrate_customer_age(row) for row in rows]
     conn.close()
     return success_response(paginate_result(rows, total, page, page_size))
 
@@ -1765,7 +1789,7 @@ def api_customers_history_view():
     total = c.fetchone()['n']
     c.execute(
         f'''
-        SELECT c.id, c.name, c.age, c.identity_type, c.phone, datetime(c.created_at, '+8 hours') as created_at
+        SELECT c.id, c.name, c.age, c.birth_date, c.identity_type, c.phone, c.created_at
         FROM customers c
         WHERE {where_sql}
         ORDER BY c.created_at DESC, c.id DESC
@@ -1774,6 +1798,7 @@ def api_customers_history_view():
         params + [page_size, offset]
     )
     rows = row_list(c.fetchall())
+    rows = [hydrate_customer_age(row) for row in rows]
     conn.close()
     return success_response(paginate_result(rows, total, page, page_size))
 
@@ -1788,6 +1813,7 @@ def api_customer_get(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
     cust = dict(row)
+    hydrate_customer_age(cust)
     c.execute(
         'SELECT a.*, e.name as equipment_name FROM appointments a LEFT JOIN equipment e ON a.equipment_id=e.id WHERE a.customer_id=? ORDER BY a.appointment_date DESC, a.start_time DESC',
         (cid,)
@@ -1816,14 +1842,16 @@ def api_customer_create():
     conn = get_db()
     c = conn.cursor()
     try:
+        age = calculate_age_by_birth_year(d.get('birth_date'))
+        ts = now_local_str()
         c.execute('''
-            INSERT INTO customers (name, id_card, phone, email, address, gender, age, birth_date, identity_type, military_rank, record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO customers (name, id_card, phone, email, address, gender, age, birth_date, identity_type, military_rank, record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('email'), d.get('address'),
-            d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
+            d.get('gender'), age, d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
             d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
-            d.get('health_status'), d.get('therapy_contraindications')
+            d.get('health_status'), d.get('therapy_contraindications'), ts, ts
         ))
         conn.commit()
         id = c.lastrowid
@@ -1853,12 +1881,12 @@ def api_customer_update(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
     c.execute('''
-        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?
+        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=? WHERE id=?
     ''', (
         d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('email'), d.get('address'),
-        d.get('gender'), d.get('age'), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
+        d.get('gender'), calculate_age_by_birth_year(d.get('birth_date')), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
         d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
-        d.get('health_status'), d.get('therapy_contraindications'), cid
+        d.get('health_status'), d.get('therapy_contraindications'), now_local_str(), cid
     ))
     conn.commit()
     conn.close()
@@ -1875,7 +1903,7 @@ def api_customer_delete(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
 
-    c.execute("UPDATE customers SET is_deleted=1, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?", (cid,))
+    c.execute("UPDATE customers SET is_deleted=1, updated_at=? WHERE id=?", (now_local_str(), cid))
     conn.commit()
     conn.close()
     audit_log('删除客户', 'customers', cid, '软删除客户')
@@ -4410,7 +4438,7 @@ def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, p
         'basic': {
             'count_sql': f'SELECT COUNT(*) as n FROM customers c {where_sql}',
             'data_sql': f'''
-                SELECT c.*, datetime(c.created_at, '+8 hours') as created_at
+                SELECT c.*
                 FROM customers c
                 {where_sql}
                 ORDER BY c.created_at DESC, c.id DESC
@@ -4516,6 +4544,8 @@ def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, p
     total = int(cursor.fetchone()['n'])
     cursor.execute(data_sql, params + [page_size, offset])
     rows = row_list(cursor.fetchall())
+    if dataset_key == 'basic':
+        rows = [hydrate_customer_age(row) for row in rows]
     return paginate_result(rows, total, page, page_size)
 
 
