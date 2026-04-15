@@ -2313,7 +2313,8 @@ def api_improvement_records_all():
         sql += ' AND date(substr(r.service_time, 1, 10)) <= date(?)'
         params.append(service_end)
     c.execute(f'SELECT COUNT(1) as cnt {sql}', params)
-    total = int((c.fetchone() or {}).get('cnt') or 0)
+    count_row = c.fetchone()
+    total = int(count_row['cnt']) if count_row and count_row['cnt'] is not None else 0
     c.execute(
         f'''
         SELECT r.*, c.name as customer_name, c.phone as customer_phone
