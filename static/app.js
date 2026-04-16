@@ -452,6 +452,7 @@
     improvement: { page: 1, page_size: 10 },
     auditLogs: { page: 1, page_size: 10 }
   };
+  var activeIntegratedTab = 'basic';
   function escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -721,8 +722,19 @@
       renderIntegratedSectionPagination('improvement', res.improvement || {}, 'customerImprovement');
 
       bindIntegratedSectionActions();
+      renderIntegratedTabPanels();
       var p = getPagination(basicData);
       showMsg('customer-msg', '基础信息共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
+    });
+  }
+
+  function renderIntegratedTabPanels() {
+    document.querySelectorAll('[data-integrated-tab-btn]').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-integrated-tab-btn') === activeIntegratedTab);
+    });
+    document.querySelectorAll('[data-integrated-tab-panel]').forEach(function (panel) {
+      var key = panel.getAttribute('data-integrated-tab-panel');
+      panel.classList.toggle('hide', key !== activeIntegratedTab);
     });
   }
 
@@ -2143,6 +2155,13 @@
   document.querySelectorAll('.sidebar a').forEach(function (a) {
     a.addEventListener('click', function (e) { e.preventDefault(); showPage(a.dataset.page); });
   });
+  document.querySelectorAll('[data-integrated-tab-btn]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      activeIntegratedTab = btn.getAttribute('data-integrated-tab-btn') || 'basic';
+      renderIntegratedTabPanels();
+    });
+  });
+  renderIntegratedTabPanels();
   var btnEquipmentRangeQuery = document.getElementById('btn-equipment-range-query');
   if (btnEquipmentRangeQuery) {
     btnEquipmentRangeQuery.addEventListener('click', function () {
