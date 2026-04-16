@@ -726,7 +726,7 @@
 
       var improveTbody = document.getElementById('integrated-improvement-list');
       improveTbody.innerHTML = toList(res.improvement).map(function (r) {
-        return '<tr><td>' + (r.customer_name || '-') + '</td><td>' + (r.service_project || '-') + '</td><td>' + (r.service_time || '-') + '</td><td>' + (r.improvement_status || '-') + '</td><td>' + (r.followup_date || r.followup_time || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-imp-view="' + r.id + '">详细信息</button></td></tr><tr class="integrated-improvement-detail-row hide" data-int-imp-detail-row="' + r.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-imp-detail-content="' + r.id + '">加载中...</div></td></tr>';
+        return '<tr><td>' + (r.customer_name || '-') + '</td><td>' + (r.service_project || '-') + '</td><td>' + (r.service_time || '-') + '</td><td>' + (r.improvement_status || '-') + '</td><td>' + (r.followup_date || r.followup_time || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-imp-view="' + r.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-int-imp-jump="1">跳转详情页</button></td></tr><tr class="integrated-improvement-detail-row hide" data-int-imp-detail-row="' + r.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-imp-detail-content="' + r.id + '">加载中...</div></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('improvement', res.improvement || {}, 'customerImprovement');
 
@@ -848,6 +848,9 @@
           }).join('');
         });
       });
+    });
+    document.querySelectorAll('[data-int-imp-jump]').forEach(function (btn) {
+      btn.addEventListener('click', function () { showPage('improvement-tracking'); });
     });
   }
 
