@@ -127,7 +127,37 @@
     .checkin-btn-noshow { background: #95a5a6; }
     .checkin-cell-actions { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
 
-    .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(rgba(25,68,102,0.45), rgba(24,125,116,0.35)), url("images/login-bg-house.svg") center/cover no-repeat; padding: 20px; }
+    @keyframes healthFlow {
+      0% { transform: translate3d(-8%, -4%, 0) scale(1); opacity: .7; }
+      50% { transform: translate3d(6%, 5%, 0) scale(1.05); opacity: 1; }
+      100% { transform: translate3d(-8%, -4%, 0) scale(1); opacity: .7; }
+    }
+    .login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background:
+        radial-gradient(circle at 12% 20%, rgba(22,163,74,.28), rgba(22,163,74,0) 34%),
+        radial-gradient(circle at 88% 16%, rgba(20,184,166,.3), rgba(20,184,166,0) 36%),
+        radial-gradient(circle at 78% 82%, rgba(14,165,233,.26), rgba(14,165,233,0) 34%),
+        linear-gradient(140deg, #0f766e 0%, #164e63 45%, #1e3a8a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .login-screen::before, .login-screen::after {
+      content: "";
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      border-radius: 999px;
+      filter: blur(4px);
+      animation: healthFlow 16s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .login-screen::before { background: radial-gradient(circle, rgba(110,231,183,.3), rgba(110,231,183,0)); top: -180px; left: -120px; }
+    .login-screen::after { background: radial-gradient(circle, rgba(125,211,252,.35), rgba(125,211,252,0)); bottom: -220px; right: -100px; animation-delay: -8s; }
     .login-card { width: 100%; max-width: 420px; background: rgba(255,255,255,0.95); border-radius: 14px; padding: 26px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
     .login-card h2 { margin: 0 0 8px; color: #1d4d4f; }
     .login-card p { margin: 0 0 16px; color: #4f6b6d; }
@@ -236,6 +266,7 @@
       <a href="#" data-page="home-appointments">上门预约</a>
       <a href="#" data-page="improvement-tracking">理疗记录</a>
       <a href="#" data-page="query-export">数据查询导出</a>
+      <a href="#" data-page="device-management">设备管理</a>
       <a href="#" data-page="audit-logs">系统审计日志</a>
     </nav>
     <main class="main">
@@ -829,6 +860,37 @@
             <tbody id="improvement-list"></tbody>
           </table>
           <div class="section-pagination" id="improvement-pagination"></div>
+        </div>
+      </div>
+      <div id="page-device-management" class="page hide">
+        <div class="card">
+          <h2>设备管理</h2>
+          <p style="color:#666; margin-bottom:14px;">预约服务与上门预约项目分开展示；支持新增/编辑服务项目、上门项目及设备状态管理。</p>
+          <h3>预约服务项目（需选择设备）</h3>
+          <div class="form-row">
+            <label>项目名称</label><input type="text" id="dm-apt-project-name" style="min-width:220px">
+            <label>设备名称</label><input type="text" id="dm-apt-equipment-name" style="min-width:220px">
+            <label>设备状态</label>
+            <select id="dm-apt-equipment-status" style="width:140px">
+              <option value="available">可用</option>
+              <option value="maintenance">维修</option>
+            </select>
+            <button class="btn btn-primary" id="btn-dm-apt-save">保存预约服务项目</button>
+            <button class="btn btn-secondary" id="btn-dm-apt-reset">清空</button>
+          </div>
+          <input type="hidden" id="dm-apt-edit-id">
+          <table><thead><tr><th>项目名称</th><th>设备名称</th><th>设备状态</th><th>添加时间</th><th>操作</th></tr></thead><tbody id="dm-apt-list"></tbody></table>
+          <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
+          <h3>上门预约项目（无需设备）</h3>
+          <div class="form-row">
+            <label>项目名称</label><input type="text" id="dm-home-project-name" style="min-width:220px">
+            <label>项目服务人员</label><input type="text" id="dm-home-staff-name" style="min-width:220px">
+            <button class="btn btn-primary" id="btn-dm-home-save">保存上门项目</button>
+            <button class="btn btn-secondary" id="btn-dm-home-reset">清空</button>
+          </div>
+          <input type="hidden" id="dm-home-edit-id">
+          <table><thead><tr><th>项目名称</th><th>项目服务人员</th><th>添加时间</th><th>操作</th></tr></thead><tbody id="dm-home-list"></tbody></table>
+          <div id="dm-msg"></div>
         </div>
       </div>
       <div id="page-audit-logs" class="page hide">

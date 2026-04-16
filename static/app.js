@@ -80,6 +80,7 @@
     if (name === 'home-appointments') loadHomeAppointmentsPage();
     if (name === 'improvement-tracking') loadImprovementTrackingPage();
     if (name === 'query-export') loadQueryExportPage();
+    if (name === 'device-management') loadDeviceManagementPage();
     if (name === 'audit-logs') loadAuditLogsPage();
   }
 
@@ -262,9 +263,6 @@
       if (!sel) return;
       var old = sel.value;
       var projects = toList(list);
-      if (selId === 'apt-project') {
-        projects = projects.filter(function (p) { return APPOINTMENT_PROJECT_NAMES.indexOf(p.name) !== -1; });
-      }
       if (selId === 'apt-project') appointmentProjects = projects;
       sel.innerHTML = '<option value="">请选择项目</option>' + projects.map(function (p) { return '<option value="' + p.id + '">' + p.name + '</option>'; }).join('');
       if (old) sel.value = old;
@@ -305,6 +303,73 @@
   var improvementEditingId = null;
   var improvementViewOnly = false;
   var improvementMeta = null;
+  var deviceManagementEdit = { appointmentId: '', homeId: '' };
+
+  function equipmentStatusLabel(status) {
+    return status === 'maintenance' ? '维修' : '可用';
+  }
+
+  function loadDeviceManagementPage() {
+    get('/api/device-management/appointment-items').then(function (res) {
+      var rows = toList(res);
+      var tbody = document.getElementById('dm-apt-list');
+      if (!tbody) return;
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5">暂无记录</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(function (row) {
+          return '<tr>'
+            + '<td>' + escapeHtml(row.project_name || '-') + '</td>'
+            + '<td>' + escapeHtml(row.equipment_name || '-') + '</td>'
+            + '<td>' + equipmentStatusLabel(row.equipment_status) + '</td>'
+            + '<td>' + escapeHtml(row.created_at || '-') + '</td>'
+            + '<td><button class="btn btn-secondary btn-small" data-dm-apt-edit="' + row.id + '">编辑</button></td>'
+            + '</tr>';
+        }).join('');
+        tbody.querySelectorAll('[data-dm-apt-edit]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = this.getAttribute('data-dm-apt-edit');
+            var picked = rows.find(function (x) { return String(x.id) === String(id); });
+            if (!picked) return;
+            deviceManagementEdit.appointmentId = String(picked.id);
+            document.getElementById('dm-apt-edit-id').value = picked.id;
+            document.getElementById('dm-apt-project-name').value = picked.project_name || '';
+            document.getElementById('dm-apt-equipment-name').value = picked.equipment_name || '';
+            document.getElementById('dm-apt-equipment-status').value = picked.equipment_status || 'available';
+          });
+        });
+      }
+    });
+
+    get('/api/device-management/home-items').then(function (res) {
+      var rows = toList(res);
+      var tbody = document.getElementById('dm-home-list');
+      if (!tbody) return;
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="4">暂无记录</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(function (row) {
+          return '<tr>'
+            + '<td>' + escapeHtml(row.project_name || '-') + '</td>'
+            + '<td>' + escapeHtml(row.staff_name || '-') + '</td>'
+            + '<td>' + escapeHtml(row.created_at || '-') + '</td>'
+            + '<td><button class="btn btn-secondary btn-small" data-dm-home-edit="' + row.id + '">编辑</button></td>'
+            + '</tr>';
+        }).join('');
+        tbody.querySelectorAll('[data-dm-home-edit]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = this.getAttribute('data-dm-home-edit');
+            var picked = rows.find(function (x) { return String(x.id) === String(id); });
+            if (!picked) return;
+            deviceManagementEdit.homeId = String(picked.id);
+            document.getElementById('dm-home-edit-id').value = picked.id;
+            document.getElementById('dm-home-project-name').value = picked.project_name || '';
+            document.getElementById('dm-home-staff-name').value = picked.staff_name || '';
+          });
+        });
+      }
+    });
+  }
 
   function setImprovementModalReadonly(isReadonly) {
     improvementViewOnly = !!isReadonly;
@@ -343,8 +408,6 @@
     improvement: { page: 1, page_size: 10 },
     auditLogs: { page: 1, page_size: 10 }
   };
-  var APPOINTMENT_PROJECT_NAMES = ['高压氧仓', '毫米波理疗仪', '疼痛治疗仪', '听力检测仪', '太空针灸按摩仪', '艾灸机器人', 'AI健康检测机器人', '手持式干式荧光免疫分析仪', '健康随诊箱'];
-
   function escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -995,17 +1058,19 @@
       box.innerHTML = '<div class="appointment-tip">请点击已选中的时间段后选择设备</div>';
       return;
     }
-    var equipmentList = selectedAppointmentSlot.available_equipment || [];
+    var equipmentList = (selectedAppointmentSlot.available_equipment || []).concat(selectedAppointmentSlot.maintenance_equipment || []);
     if (!equipmentList.length) {
       box.innerHTML = '<div class="appointment-tip">该时间段暂无可选设备</div>';
       return;
     }
     box.innerHTML = equipmentList.map(function (item) {
-      var active = String(selectedAppointmentEquipmentId) === String(item.id);
+      var active = String(selectedAppointmentEquipmentId) === String(item.id) && item.status === 'available';
+      var disabled = item.status === 'maintenance';
       var model = String(item.model || '').trim() || String(item.name || '').slice(-2);
-      return '<label class="equipment-item ' + (active ? 'active' : '') + '">' +
-        '<input type="radio" name="apt-equipment-radio" value="' + item.id + '" ' + (active ? 'checked' : '') + '>' +
-        '<div><div class="name">' + escapeHtml(item.name || '-') + '</div><div class="detail">设备' + escapeHtml(model) + '</div></div>' +
+      var statusText = disabled ? '正在维修，不可预约' : '可预约';
+      return '<label class="equipment-item ' + (active ? 'active' : '') + '" style="' + (disabled ? 'opacity:.55;cursor:not-allowed' : '') + '">' +
+        '<input type="radio" name="apt-equipment-radio" value="' + item.id + '" ' + (active ? 'checked' : '') + ' ' + (disabled ? 'disabled' : '') + '>' +
+        '<div><div class="name">' + escapeHtml(item.name || '-') + '</div><div class="detail">设备' + escapeHtml(model) + '｜' + statusText + '</div></div>' +
         '</label>';
     }).join('');
     box.querySelectorAll('input[name="apt-equipment-radio"]').forEach(function (radio, idx) {
@@ -1042,7 +1107,7 @@
       var isAvailable = slot.status === 'available';
       var isSelected = selectedAppointmentSlots.some(function (x) { return x.start_time === slot.start_time && x.end_time === slot.end_time; });
       var cls = ['slot-card', isAvailable ? '' : 'full', isSelected ? 'selected' : ''].join(' ').trim();
-      var meta = isAvailable ? ('可预约｜剩余设备 ' + (slot.available_equipment_count || 0) + ' 台') : '已约满';
+      var meta = isAvailable ? ('可预约｜剩余设备 ' + (slot.available_equipment_count || 0) + ' 台') : (slot.status === 'maintenance' ? '正在维修，不可预约' : '已约满');
       return '<div class="' + cls + '" data-slot-index="' + idx + '">' +
         '<div class="time">' + slot.start_time + ' - ' + slot.end_time + '</div>' +
         '<div class="meta">' + meta + '</div>' +
@@ -1072,6 +1137,7 @@
             start_time: picked.start_time,
             end_time: picked.end_time,
             available_equipment: picked.available_equipment || [],
+            maintenance_equipment: picked.maintenance_equipment || [],
             equipment_id: '',
             equipment_name: '',
             equipment_label: '',
@@ -2774,6 +2840,64 @@
     });
     listState.auditLogs.page = 1;
     loadAuditLogsPage();
+  });
+
+  document.getElementById('btn-dm-apt-save').addEventListener('click', function () {
+    var payload = {
+      project_name: (document.getElementById('dm-apt-project-name').value || '').trim(),
+      equipment_name: (document.getElementById('dm-apt-equipment-name').value || '').trim(),
+      equipment_status: document.getElementById('dm-apt-equipment-status').value || 'available'
+    };
+    if (!payload.project_name || !payload.equipment_name) {
+      showMsg('dm-msg', '请填写预约服务项目名称和设备名称', true);
+      return;
+    }
+    var editId = document.getElementById('dm-apt-edit-id').value;
+    var req = editId ? put('/api/device-management/appointment-items/' + editId, payload) : post('/api/device-management/appointment-items', payload);
+    req.then(function (res) {
+      if (res.error) { showMsg('dm-msg', res.error, true); return; }
+      showMsg('dm-msg', editId ? '预约服务项目已更新' : '预约服务项目已新增');
+      document.getElementById('btn-dm-apt-reset').click();
+      fillProjectSelect('apt-project', true, '');
+      loadAppointmentSlotPanel(false);
+      loadDeviceManagementPage();
+    });
+  });
+
+  document.getElementById('btn-dm-apt-reset').addEventListener('click', function () {
+    deviceManagementEdit.appointmentId = '';
+    document.getElementById('dm-apt-edit-id').value = '';
+    document.getElementById('dm-apt-project-name').value = '';
+    document.getElementById('dm-apt-equipment-name').value = '';
+    document.getElementById('dm-apt-equipment-status').value = 'available';
+  });
+
+  document.getElementById('btn-dm-home-save').addEventListener('click', function () {
+    var payload = {
+      project_name: (document.getElementById('dm-home-project-name').value || '').trim(),
+      staff_name: (document.getElementById('dm-home-staff-name').value || '').trim()
+    };
+    if (!payload.project_name || !payload.staff_name) {
+      showMsg('dm-msg', '请填写上门项目名称和服务人员', true);
+      return;
+    }
+    var editId = document.getElementById('dm-home-edit-id').value;
+    var req = editId ? put('/api/device-management/home-items/' + editId, payload) : post('/api/device-management/home-items', payload);
+    req.then(function (res) {
+      if (res.error) { showMsg('dm-msg', res.error, true); return; }
+      showMsg('dm-msg', editId ? '上门项目已更新' : '上门项目已新增');
+      document.getElementById('btn-dm-home-reset').click();
+      fillProjectSelect('home-project', true, 'home');
+      loadHomeSlotPanel(false);
+      loadDeviceManagementPage();
+    });
+  });
+
+  document.getElementById('btn-dm-home-reset').addEventListener('click', function () {
+    deviceManagementEdit.homeId = '';
+    document.getElementById('dm-home-edit-id').value = '';
+    document.getElementById('dm-home-project-name').value = '';
+    document.getElementById('dm-home-staff-name').value = '';
   });
 
 
