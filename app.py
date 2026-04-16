@@ -255,6 +255,18 @@ LEGACY_EQUIPMENT_MODELS_TO_PURGE = (
 
 
 def purge_legacy_equipment_and_store_massage(cursor):
+    cursor.execute(
+        f"SELECT id FROM equipment WHERE model IN ({','.join('?' * len(LEGACY_EQUIPMENT_MODELS_TO_PURGE))})",
+        LEGACY_EQUIPMENT_MODELS_TO_PURGE,
+    )
+    legacy_equipment_ids = [row['id'] for row in cursor.fetchall()]
+    if legacy_equipment_ids:
+        id_placeholders = ','.join('?' * len(legacy_equipment_ids))
+        cursor.execute(
+            f"UPDATE appointments SET equipment_id=NULL WHERE equipment_id IN ({id_placeholders})",
+            legacy_equipment_ids,
+        )
+
     placeholders = ','.join('?' * len(LEGACY_EQUIPMENT_MODELS_TO_PURGE))
     cursor.execute(
         f"DELETE FROM equipment WHERE model IN ({placeholders})",
