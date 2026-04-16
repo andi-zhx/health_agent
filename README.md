@@ -51,6 +51,34 @@ pip install -r requirements.txt
 
 ### 3.2 启动方式
 
+> ⚠️ 安全要求：启动前必须设置环境变量 `SECRET_KEY`。  
+> 若未设置，`app.py` 会在启动时直接报错并退出（不提供默认值）。
+
+#### 先设置 SECRET_KEY（必做）
+
+`SECRET_KEY` 用于 Flask 会话签名，建议使用足够随机的长字符串（至少 32 字符）。
+
+- Linux/macOS（临时生效）：
+
+```bash
+export SECRET_KEY='请替换为高强度随机字符串'
+python app.py
+```
+
+- Windows PowerShell（当前会话生效）：
+
+```powershell
+$env:SECRET_KEY='请替换为高强度随机字符串'
+python app.py
+```
+
+- Windows CMD（当前窗口生效）：
+
+```cmd
+set SECRET_KEY=请替换为高强度随机字符串
+python app.py
+```
+
 #### 方式 A（推荐，桌面体验）
 
 - 双击 `启动医疗系统.bat`
