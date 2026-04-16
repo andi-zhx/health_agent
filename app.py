@@ -6,6 +6,7 @@
 
 from flask import Flask, request, jsonify, send_from_directory, session
 from werkzeug.exceptions import HTTPException
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
 import os
@@ -13,6 +14,7 @@ import pandas as pd
 import json
 import logging
 import re
+import hmac
 from collections import Counter
 from datetime import datetime
 from datetime import timedelta
@@ -465,6 +467,33 @@ def set_setting_value(key, value):
     ''', (key, value))
     conn.commit()
     conn.close()
+
+
+def verify_legacy_plaintext_and_migrate(username, password):
+    """
+    兼容历史库中的明文密码配置：
+    - 支持 legacy key：admin_password / login_password
+    - 首次登录成功后立刻升级为 password_hash
+    - 升级后清空旧明文配置，避免后续继续走明文校验
+    """
+    config_user = get_setting_value('login_username', 'admin')
+    legacy_plaintext = get_setting_value('admin_password', '')
+    if not legacy_plaintext:
+        legacy_plaintext = get_setting_value('login_password', '')
+    if not legacy_plaintext:
+        return False
+    if username != config_user:
+        return False
+
+    # 仅用于迁移阶段的兼容校验，避免直接使用 `password == stored_password` 写法。
+    if not hmac.compare_digest(password, legacy_plaintext):
+        return False
+
+    set_setting_value('password_hash', generate_password_hash(password))
+    # 明文密码字段置空，阻断继续明文存储/校验。
+    set_setting_value('admin_password', '')
+    set_setting_value('login_password', '')
+    return True
 
 
 def get_backup_directory():
@@ -1444,7 +1473,57 @@ def init_db():
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
               ('login_username', 'admin'))
     c.execute('INSERT OR IGNORE INTO system_settings (setting_key, setting_value) VALUES (?, ?)',
-              ('login_password', '123456'))
+              ('password_hash', generate_password_hash('123456')))
+
+    # 启动时兼容迁移：
+    # 1) 若存在旧版明文 admin_password/login_password，则转为 password_hash
+    # 2) 迁移后清空明文字段，确保不再明文存储
+    c.execute(
+        '''
+        SELECT setting_key, setting_value
+        FROM system_settings
+        WHERE setting_key IN ('admin_password', 'login_password')
+        ORDER BY CASE WHEN setting_key='admin_password' THEN 0 ELSE 1 END
+        '''
+    )
+    legacy_rows = c.fetchall()
+    legacy_plaintext = ''
+    for item in legacy_rows:
+        value = str(item['setting_value'] or '').strip()
+        if value:
+            legacy_plaintext = value
+            break
+    if legacy_plaintext:
+        c.execute(
+            '''
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+            ON CONFLICT(setting_key) DO UPDATE SET
+                setting_value=excluded.setting_value,
+                updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            ''',
+            ('password_hash', generate_password_hash(legacy_plaintext)),
+        )
+        c.execute(
+            '''
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+            ON CONFLICT(setting_key) DO UPDATE SET
+                setting_value=excluded.setting_value,
+                updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            ''',
+            ('admin_password', ''),
+        )
+        c.execute(
+            '''
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+            ON CONFLICT(setting_key) DO UPDATE SET
+                setting_value=excluded.setting_value,
+                updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            ''',
+            ('login_password', ''),
+        )
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS project_rules (
@@ -4090,8 +4169,16 @@ def api_auth_login():
     username = str(data.get('username') or '').strip()
     password = str(data.get('password') or '').strip()
     config_user = get_setting_value('login_username', 'admin')
-    config_pwd = get_setting_value('login_password', '123456')
-    if username == config_user and password == config_pwd:
+    password_hash = get_setting_value('password_hash', '')
+
+    login_ok = False
+    if username == config_user and password_hash:
+        login_ok = check_password_hash(password_hash, password)
+    elif verify_legacy_plaintext_and_migrate(username, password):
+        # 兼容旧库明文配置：首次成功后自动转为 hash，后续统一走 hash 校验。
+        login_ok = True
+
+    if login_ok:
         session['logged_in'] = True
         session['username'] = username
         audit_log('登录', 'auth', username, '登录成功')
