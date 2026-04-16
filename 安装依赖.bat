@@ -1,26 +1,33 @@
 @echo off
-chcp 65001 >nul
+setlocal
 cd /d "%~dp0"
 
-echo 正在安装医疗系统所需依赖...
+REM Keep this file ASCII-only to avoid cmd encoding issues.
+echo Installing required packages...
 echo.
 
-python -m pip install -r requirements.txt
-if errorlevel 1 (
-    echo 使用 python -m pip 失败，尝试 py -m pip ...
-    py -m pip install -r requirements.txt
+where python >nul 2>nul
+if %errorlevel%==0 (
+    python -m pip install -r requirements.txt
+) else (
+    where py >nul 2>nul
+    if %errorlevel%==0 (
+        py -m pip install -r requirements.txt
+    ) else (
+        echo Python was not found in PATH.
+        echo Please install Python 3.8+ and enable "Add Python to PATH".
+        pause
+        exit /b 1
+    )
 )
 
-echo.
 if errorlevel 1 (
-    echo 安装失败，请检查：
-    echo 1) 是否已安装 Python（建议 3.8+）
-    echo 2) 安装 Python 时是否勾选 Add Python to PATH
-    echo 3) 网络是否可访问 pip 源
+    echo.
+    echo Install failed. Please check network and pip configuration.
     pause
     exit /b 1
 )
 
-echo 依赖安装完成。现在可双击「启动医疗系统.bat」或「启动医疗系统.pyw」启动程序。
 echo.
+echo Done. You can now run "启动医疗系统.bat" or "启动医疗系统.pyw".
 pause
