@@ -1096,6 +1096,86 @@ def classify_bmi(height_cm, weight_kg):
     return bmi, level
 
 
+def is_indicator_abnormal(value):
+    text = str(value or '')
+    return ('偏高' in text) or ('偏低' in text)
+
+
+def calculate_lightweight_risk(row):
+    reasons = []
+
+    age = safe_int(row.get('age'))
+    if age is None and row.get('birth_date'):
+        try:
+            birth = datetime.strptime(str(row.get('birth_date'))[:10], '%Y-%m-%d').date()
+            today = now_local().date()
+            age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+        except Exception:
+            age = None
+    if age is not None and age >= 70:
+        reasons.append('年龄≥70')
+
+    bmi_value, bmi_level = classify_bmi(row.get('height_cm'), row.get('weight_kg'))
+    if bmi_level and bmi_level != '正常':
+        reasons.append(f'BMI异常（{bmi_level}）')
+
+    blood_pressure_test = str(row.get('blood_pressure_test') or '')
+    if is_indicator_abnormal(blood_pressure_test):
+        reasons.append('血压异常')
+
+    blood_sugar_test = str(row.get('blood_sugar_test') or '')
+    if is_indicator_abnormal(blood_sugar_test):
+        reasons.append('血糖异常')
+
+    blood_lipid_test = str(row.get('blood_lipid_test') or '')
+    if '偏高' in blood_lipid_test:
+        reasons.append('血脂异常')
+
+    family_history_items = normalize_multi_text(row.get('family_history'))
+    if family_history_items:
+        reasons.append('家族史阳性')
+
+    if str(row.get('sleep_quality') or '') in ('很差', '差'):
+        reasons.append('睡眠差')
+
+    recent_symptom_items = normalize_multi_text(row.get('recent_symptoms'))
+    if len(recent_symptom_items) >= 2:
+        reasons.append('近期症状≥2项')
+
+    score = len(reasons)
+    if score >= 4:
+        level = '高风险'
+    elif score >= 2:
+        level = '中风险'
+    else:
+        level = '低风险'
+
+    intervention_suggestions = []
+    if any(item in ('血压异常', '血糖异常', '血脂异常') for item in reasons):
+        intervention_suggestions.append('优先慢病指标复测与医生随访')
+    if any(item.startswith('BMI异常') for item in reasons):
+        intervention_suggestions.append('营养+运动联合体重管理')
+    if '睡眠差' in reasons:
+        intervention_suggestions.append('开展睡眠评估与作息干预')
+    if '近期症状≥2项' in reasons:
+        intervention_suggestions.append('安排综合评估与重点症状排查')
+    if '家族史阳性' in reasons:
+        intervention_suggestions.append('强化家族史相关专项筛查')
+    if '年龄≥70' in reasons:
+        intervention_suggestions.append('提升老年综合健康管理频次')
+    if not intervention_suggestions:
+        intervention_suggestions.append('保持常规健康随访')
+
+    return {
+        'risk_score': score,
+        'risk_level': level,
+        'risk_reasons': reasons,
+        'recommended_intervention': '；'.join(intervention_suggestions[:3]),
+        'age': age,
+        'bmi': bmi_value,
+    }
+
+
 def classify_age_segment(age):
     if age is None:
         return None
@@ -4582,7 +4662,7 @@ def api_dashboard_health_portrait():
     conn = get_db()
     c = conn.cursor()
     c.execute('''
-        SELECT h.*, c.gender, c.birth_date, c.chronic_diseases, c.medical_history
+        SELECT h.*, c.name as customer_name, c.gender, c.birth_date, c.chronic_diseases, c.medical_history
         FROM health_assessments h
         JOIN customers c ON h.customer_id = c.id
         JOIN (
@@ -4612,6 +4692,7 @@ def api_dashboard_health_portrait():
     }
     bmi_levels = {'偏瘦': 0, '正常': 0, '超重': 0, '肥胖': 0}
     risks = {'低风险': 0, '中风险': 0, '高风险': 0}
+    high_risk_customers = []
 
     past_disease_counter = Counter()
     family_disease_counter = Counter()
@@ -4693,9 +4774,19 @@ def api_dashboard_health_portrait():
         if sleep_abnormal:
             sleep_issue_people += 1
 
-        portrait = extract_health_portrait(row)
-        risk_level = portrait['risk_level']
+        risk_info = calculate_lightweight_risk(row)
+        risk_level = risk_info['risk_level']
         risks[risk_level] += 1
+        if risk_level == '高风险':
+            high_risk_customers.append({
+                'customer_id': row.get('customer_id'),
+                'customer_name': row.get('name') or row.get('customer_name') or '-',
+                'age': risk_info.get('age'),
+                'risk_level': risk_level,
+                'risk_score': risk_info.get('risk_score', 0),
+                'risk_reasons': risk_info.get('risk_reasons', []),
+                'recommended_intervention': risk_info.get('recommended_intervention', ''),
+            })
 
         past_history_items = normalize_multi_text(row.get('past_medical_history'))
         family_history_items = normalize_multi_text(row.get('family_history'))
@@ -4758,6 +4849,15 @@ def api_dashboard_health_portrait():
             behavior_tag_counter['老年肥胖人群'] += 1
         if age and 50 <= age <= 60 and row.get('blood_pressure_test') == '监测：偏高':
             behavior_tag_counter['中年高血压风险人群'] += 1
+
+    high_risk_customers.sort(
+        key=lambda item: (
+            -safe_int(item.get('risk_score') or 0),
+            -safe_int(item.get('age') or 0),
+            str(item.get('customer_name') or '')
+        )
+    )
+    high_risk_top = high_risk_customers[:10]
 
     total = len(records)
     senior_count = age_distribution['66-70岁'] + age_distribution['71-75岁'] + age_distribution['76-80岁'] + age_distribution['>80岁']
@@ -4864,6 +4964,12 @@ def api_dashboard_health_portrait():
             'dual_history_high_risk_people': dual_history_high_risk_people,
             'history_plus_bp_abnormal_people': history_plus_bp_abnormal_people,
         },
+        'high_risk_summary': {
+            'low': risks.get('低风险', 0),
+            'medium': risks.get('中风险', 0),
+            'high': risks.get('高风险', 0),
+        },
+        'high_risk_customers_top': high_risk_top,
         'dimension3': {
             'smoking_ratio': round((smoking_people * 100.0 / total), 1) if total else 0,
             'drinking_ratio': round((drinking_people * 100.0 / total), 1) if total else 0,

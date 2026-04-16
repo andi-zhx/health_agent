@@ -104,6 +104,12 @@
     .compare-legend .female::before { background: #ffb6c1; }
     .portrait-risk-bars.hbar .label { width: 130px; color: #334155; }
     .portrait-risk-bars.hbar .value { width: 52px; color: #111827; }
+    .portrait-high-risk-table { margin-top: 10px; border: 1px solid #eef2f7; border-radius: 8px; overflow: hidden; }
+    .portrait-high-risk-table .risk-reason-cell { color: #475569; line-height: 1.6; }
+    .risk-level-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .risk-level-high { background: #fee2e2; color: #b91c1c; }
+    .risk-level-medium { background: #fef3c7; color: #92400e; }
+    .risk-level-low { background: #dcfce7; color: #166534; }
     .heatmap-wrap { overflow-x: auto; }
     .heatmap-table { border-collapse: collapse; min-width: 720px; width: 100%; }
     .heatmap-table th, .heatmap-table td { border: 1px solid #e2e8f0; padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; }
@@ -680,6 +686,23 @@
               <div id="portrait-family-top10" class="hbar"></div>
               <h4>近期症状（近半年）</h4>
               <div id="portrait-recent-symptom-bars" class="hbar"></div>
+              <h4>风险分层人数</h4>
+              <div id="portrait-high-risk-kpi" class="kpi-row"></div>
+              <h4>高风险客户清单（Top10）</h4>
+              <div class="portrait-high-risk-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>客户姓名</th>
+                      <th>年龄</th>
+                      <th>风险等级</th>
+                      <th>风险标签/风险原因</th>
+                      <th>推荐干预方向</th>
+                    </tr>
+                  </thead>
+                  <tbody id="portrait-high-risk-list"></tbody>
+                </table>
+              </div>
             </div>
             <div class="portrait-panel">
               <h3>维度3：生活方式行为画像（可干预）</h3>
