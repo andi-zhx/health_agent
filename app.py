@@ -241,44 +241,20 @@ def table_exists(cursor, table_name):
 
 
 def load_projects_with_parallel_strategy(cursor, enabled_only=False, scene=None):
-    if scene != 'home' or not table_exists(cursor, 'service_projects'):
-        if enabled_only:
-            cursor.execute("SELECT * FROM therapy_projects WHERE status='enabled' ORDER BY name")
-        else:
-            cursor.execute('SELECT * FROM therapy_projects ORDER BY id DESC')
-        return row_list(cursor.fetchall())
-
-    therapy_sql = 'SELECT id, name, category, status, description, created_at FROM therapy_projects'
+    sql = 'SELECT * FROM therapy_projects'
+    clauses = []
     if enabled_only:
-        therapy_sql += " WHERE status='enabled'"
-    therapy_sql += ' ORDER BY id DESC'
-    cursor.execute(therapy_sql)
+        clauses.append("status='enabled'")
+    if scene == 'home' and table_exists(cursor, 'project_rules'):
+        clauses.append(
+            "name IN (SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled')"
+        )
+    if clauses:
+        sql += ' WHERE ' + ' AND '.join(clauses)
+    sql += ' ORDER BY id DESC'
+    cursor.execute(sql)
     projects = row_list(cursor.fetchall())
 
-    service_sql = 'SELECT id, name, category, status, description, created_at FROM service_projects'
-    if enabled_only:
-        service_sql += " WHERE status='enabled'"
-    service_sql += ' ORDER BY id DESC'
-    cursor.execute(service_sql)
-    service_projects = row_list(cursor.fetchall())
-
-    by_name = {p['name']: p for p in projects}
-    for sp in service_projects:
-        if sp['name'] in by_name:
-            by_name[sp['name']].update({
-                'category': sp.get('category') or by_name[sp['name']].get('category'),
-                'status': sp.get('status') or by_name[sp['name']].get('status'),
-                'description': sp.get('description') or by_name[sp['name']].get('description'),
-            })
-        else:
-            projects.append(sp)
-            by_name[sp['name']] = sp
-
-    projects.sort(key=lambda x: x.get('id') or 0, reverse=True)
-    if scene == 'home' and table_exists(cursor, 'project_rules'):
-        cursor.execute("SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled'")
-        allowed_names = {r['project_name'] for r in cursor.fetchall()}
-        projects = [p for p in projects if p.get('name') in allowed_names]
     return projects
 
 
@@ -728,19 +704,14 @@ def get_project_available_equipment(project_name, cursor):
                         f'{project_name}预约设备',
                     ),
                 )
-            elif existing_equipment['status'] != 'available':
-                cursor.execute(
-                    "UPDATE equipment SET status='available' WHERE id=?",
-                    (existing_equipment['id'],),
-                )
         ph = ','.join('?' * len(names))
         cursor.execute(
-            f"SELECT id, name, location, model FROM equipment WHERE status='available' AND name IN ({ph}) ORDER BY name ASC, id ASC",
+            f"SELECT id, name, location, model, status FROM equipment WHERE name IN ({ph}) ORDER BY name ASC, id ASC",
             tuple(names),
         )
     else:
         cursor.execute(
-            "SELECT id, name, location, model FROM equipment WHERE status='available' ORDER BY name ASC, id ASC"
+            "SELECT id, name, location, model, status FROM equipment ORDER BY name ASC, id ASC"
         )
     return row_list(cursor.fetchall())
 
@@ -1209,24 +1180,7 @@ def init_db():
         'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS service_projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            category TEXT,
-            status TEXT DEFAULT 'enabled',
-            description TEXT,
-            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
-        )
-    ''')
-
-    ensure_columns(c, 'service_projects', {
-        'name': 'TEXT',
-        'category': 'TEXT',
-        'status': "TEXT DEFAULT 'enabled'",
-        'description': 'TEXT',
-        'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
-    })
+    c.execute('DROP TABLE IF EXISTS service_projects')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS staff (
@@ -1579,24 +1533,6 @@ def init_db():
                 INSERT INTO therapy_projects (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
                 VALUES (?,?,?,?,?,?,?,?)
             ''', row)
-
-    service_project_seeds = [
-        ('高压氧仓', '上门', 'enabled', '高压氧仓服务项目'),
-        ('艾灸', '上门', 'enabled', '艾灸服务项目'),
-        ('读书室', '上门', 'enabled', '读书室服务项目'),
-        ('棋牌室', '上门', 'enabled', '棋牌室服务项目'),
-        ('听力测试', '上门', 'enabled', '听力测试服务项目'),
-        ('乒乓球', '上门', 'enabled', '乒乓球服务项目'),
-        ('台球', '上门', 'enabled', '台球服务项目'),
-    ]
-    for row in service_project_seeds:
-        c.execute('SELECT id FROM service_projects WHERE name=?', (row[0],))
-        if not c.fetchone():
-            c.execute(
-                'INSERT INTO service_projects (name, category, status, description) VALUES (?,?,?,?)',
-                row,
-            )
-
 
     required_equipment_seeds = [
         ('按摩机', '专用设备', 'MASS-001', 'D区104室', 'available', '按摩服务设备'),
@@ -1984,6 +1920,73 @@ def api_equipment_list():
     return jsonify(row_list(rows))
 
 
+@app.route('/api/equipment', methods=['POST'])
+def api_equipment_create():
+    d = request.json or {}
+    name = str(d.get('name') or '').strip()
+    if not name:
+        return error_response('设备名称为必填项')
+    status = str(d.get('status') or 'available').strip()
+    if status not in {'available', 'maintenance'}:
+        return error_response('设备状态不合法')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        INSERT INTO equipment (name, type, model, location, status, description)
+        VALUES (?,?,?,?,?,?)
+        ''',
+        (
+            name,
+            d.get('type') or '专用设备',
+            d.get('model'),
+            d.get('location'),
+            status,
+            d.get('description'),
+        ),
+    )
+    conn.commit()
+    equipment_id = c.lastrowid
+    conn.close()
+    return success_response({'id': equipment_id}, '设备创建成功', 201)
+
+
+@app.route('/api/equipment/<int:eid>', methods=['PUT'])
+def api_equipment_update(eid):
+    d = request.json or {}
+    name = str(d.get('name') or '').strip()
+    if not name:
+        return error_response('设备名称为必填项')
+    status = str(d.get('status') or 'available').strip()
+    if status not in {'available', 'maintenance'}:
+        return error_response('设备状态不合法')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT id FROM equipment WHERE id=?', (eid,))
+    if not c.fetchone():
+        conn.close()
+        return error_response('设备不存在', 404, 'NOT_FOUND')
+    c.execute(
+        '''
+        UPDATE equipment
+        SET name=?, type=?, model=?, location=?, status=?, description=?
+        WHERE id=?
+        ''',
+        (
+            name,
+            d.get('type') or '专用设备',
+            d.get('model'),
+            d.get('location'),
+            status,
+            d.get('description'),
+            eid,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    return success_response({'id': eid}, '设备更新成功')
+
+
 @app.route('/api/equipment/available', methods=['GET'])
 def api_equipment_available():
     date = request.args.get('date')
@@ -2139,6 +2142,284 @@ def api_staff_update(sid):
     conn.commit()
     conn.close()
     return jsonify({'message': '服务人员更新成功'})
+
+
+@app.route('/api/device-management/appointment-items', methods=['GET'])
+def api_device_management_appointment_items():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT pem.id,
+               pem.project_name,
+               pem.equipment_name,
+               COALESCE(e.status, 'available') AS equipment_status,
+               COALESCE(pem.created_at, e.created_at) AS created_at
+          FROM project_equipment_mapping pem
+          LEFT JOIN equipment e ON e.name = pem.equipment_name
+         WHERE pem.status='enabled'
+         ORDER BY pem.id DESC
+        '''
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(rows)
+
+
+@app.route('/api/device-management/appointment-items', methods=['POST'])
+def api_device_management_appointment_items_create():
+    d = request.json or {}
+    project_name = str(d.get('project_name') or '').strip()
+    equipment_name = str(d.get('equipment_name') or '').strip()
+    equipment_status = str(d.get('equipment_status') or 'available').strip()
+    if not project_name or not equipment_name:
+        return error_response('项目名称和设备名称为必填项')
+    if equipment_status not in {'available', 'maintenance'}:
+        return error_response('设备状态不合法')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id FROM therapy_projects WHERE name=?", (project_name,))
+    project_row = c.fetchone()
+    if not project_row:
+        c.execute(
+            '''
+            INSERT INTO therapy_projects
+            (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
+            VALUES (?,?,?,?,?,?,?,?)
+            ''',
+            (project_name, '理疗', 30, 1, '专用设备', 0, 'enabled', f'{project_name}服务项目'),
+        )
+        project_id = c.lastrowid
+    else:
+        project_id = project_row['id']
+        c.execute(
+            '''
+            UPDATE therapy_projects
+               SET need_equipment=1, equipment_type='专用设备', status='enabled'
+             WHERE id=?
+            ''',
+            (project_id,),
+        )
+    c.execute('''
+        INSERT OR IGNORE INTO project_rules (project_name, allow_home, project_category, status)
+        VALUES (?,?,?,?)
+    ''', (project_name, 0, '理疗', 'enabled'))
+
+    c.execute("SELECT id FROM equipment WHERE name=?", (equipment_name,))
+    equipment_row = c.fetchone()
+    if equipment_row:
+        c.execute(
+            "UPDATE equipment SET status=?, type='专用设备' WHERE id=?",
+            (equipment_status, equipment_row['id']),
+        )
+    else:
+        c.execute(
+            '''
+            INSERT INTO equipment (name, type, model, location, status, description)
+            VALUES (?,?,?,?,?,?)
+            ''',
+            (equipment_name, '专用设备', '', '', equipment_status, f'{project_name}预约设备'),
+        )
+    c.execute(
+        '''
+        INSERT OR IGNORE INTO project_equipment_mapping (project_name, equipment_name, status)
+        VALUES (?,?,?)
+        ''',
+        (project_name, equipment_name, 'enabled'),
+    )
+    conn.commit()
+    conn.close()
+    return success_response({'project_id': project_id}, '预约服务项目已保存', 201)
+
+
+@app.route('/api/device-management/appointment-items/<int:item_id>', methods=['PUT'])
+def api_device_management_appointment_items_update(item_id):
+    d = request.json or {}
+    project_name = str(d.get('project_name') or '').strip()
+    equipment_name = str(d.get('equipment_name') or '').strip()
+    equipment_status = str(d.get('equipment_status') or 'available').strip()
+    if not project_name or not equipment_name:
+        return error_response('项目名称和设备名称为必填项')
+    if equipment_status not in {'available', 'maintenance'}:
+        return error_response('设备状态不合法')
+
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM project_equipment_mapping WHERE id=?', (item_id,))
+    old_mapping = c.fetchone()
+    if not old_mapping:
+        conn.close()
+        return error_response('记录不存在', 404, 'NOT_FOUND')
+
+    c.execute("SELECT id FROM therapy_projects WHERE name=?", (project_name,))
+    if not c.fetchone():
+        c.execute(
+            '''
+            INSERT INTO therapy_projects
+            (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
+            VALUES (?,?,?,?,?,?,?,?)
+            ''',
+            (project_name, '理疗', 30, 1, '专用设备', 0, 'enabled', f'{project_name}服务项目'),
+        )
+    c.execute(
+        '''
+        UPDATE therapy_projects
+           SET need_equipment=1, equipment_type='专用设备', status='enabled'
+         WHERE name=?
+        ''',
+        (project_name,),
+    )
+    c.execute('''
+        INSERT OR IGNORE INTO project_rules (project_name, allow_home, project_category, status)
+        VALUES (?,?,?,?)
+    ''', (project_name, 0, '理疗', 'enabled'))
+
+    c.execute("SELECT id FROM equipment WHERE name=?", (old_mapping['equipment_name'],))
+    old_equipment = c.fetchone()
+    if old_equipment:
+        c.execute(
+            "UPDATE equipment SET name=?, status=?, type='专用设备' WHERE id=?",
+            (equipment_name, equipment_status, old_equipment['id']),
+        )
+    else:
+        c.execute(
+            '''
+            INSERT INTO equipment (name, type, model, location, status, description)
+            VALUES (?,?,?,?,?,?)
+            ''',
+            (equipment_name, '专用设备', '', '', equipment_status, f'{project_name}预约设备'),
+        )
+
+    c.execute(
+        '''
+        UPDATE project_equipment_mapping
+           SET project_name=?, equipment_name=?, status='enabled', updated_at=?
+         WHERE id=?
+        ''',
+        (project_name, equipment_name, now_local_str(), item_id),
+    )
+    conn.commit()
+    conn.close()
+    return success_response({'id': item_id}, '预约服务项目已更新')
+
+
+@app.route('/api/device-management/home-items', methods=['GET'])
+def api_device_management_home_items():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''
+        SELECT psm.id,
+               psm.project_name,
+               s.name AS staff_name,
+               psm.created_at
+          FROM project_staff_mapping psm
+          LEFT JOIN staff s ON s.id = psm.staff_id
+         WHERE psm.status='enabled'
+         ORDER BY psm.id DESC
+        '''
+    )
+    rows = row_list(c.fetchall())
+    conn.close()
+    return success_response(rows)
+
+
+@app.route('/api/device-management/home-items', methods=['POST'])
+def api_device_management_home_items_create():
+    d = request.json or {}
+    project_name = str(d.get('project_name') or '').strip()
+    staff_name = str(d.get('staff_name') or '').strip()
+    if not project_name or not staff_name:
+        return error_response('项目名称和项目服务人员为必填项')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute("SELECT id FROM therapy_projects WHERE name=?", (project_name,))
+    if not c.fetchone():
+        c.execute(
+            '''
+            INSERT INTO therapy_projects
+            (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
+            VALUES (?,?,?,?,?,?,?,?)
+            ''',
+            (project_name, '上门', 30, 0, None, 0, 'enabled', f'{project_name}上门项目'),
+        )
+    c.execute('''
+        INSERT OR REPLACE INTO project_rules (project_name, allow_home, project_category, status, updated_at)
+        VALUES (?,?,?,?,?)
+    ''', (project_name, 1, '上门', 'enabled', now_local_str()))
+
+    c.execute("SELECT id FROM staff WHERE name=?", (staff_name,))
+    staff = c.fetchone()
+    if staff:
+        staff_id = staff['id']
+        c.execute("UPDATE staff SET status='available' WHERE id=?", (staff_id,))
+    else:
+        c.execute(
+            "INSERT INTO staff (name, role, phone, status, notes) VALUES (?,?,?,?,?)",
+            (staff_name, '上门服务人员', '', 'available', ''),
+        )
+        staff_id = c.lastrowid
+    c.execute(
+        '''
+        INSERT OR IGNORE INTO project_staff_mapping (project_name, staff_id, status)
+        VALUES (?,?,?)
+        ''',
+        (project_name, staff_id, 'enabled'),
+    )
+    conn.commit()
+    conn.close()
+    return success_response({'staff_id': staff_id}, '上门项目已保存', 201)
+
+
+@app.route('/api/device-management/home-items/<int:item_id>', methods=['PUT'])
+def api_device_management_home_items_update(item_id):
+    d = request.json or {}
+    project_name = str(d.get('project_name') or '').strip()
+    staff_name = str(d.get('staff_name') or '').strip()
+    if not project_name or not staff_name:
+        return error_response('项目名称和项目服务人员为必填项')
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM project_staff_mapping WHERE id=?', (item_id,))
+    old = c.fetchone()
+    if not old:
+        conn.close()
+        return error_response('记录不存在', 404, 'NOT_FOUND')
+    c.execute("SELECT id FROM staff WHERE name=?", (staff_name,))
+    staff = c.fetchone()
+    if staff:
+        staff_id = staff['id']
+    else:
+        c.execute(
+            "INSERT INTO staff (name, role, phone, status, notes) VALUES (?,?,?,?,?)",
+            (staff_name, '上门服务人员', '', 'available', ''),
+        )
+        staff_id = c.lastrowid
+
+    c.execute(
+        '''
+        UPDATE project_staff_mapping
+           SET project_name=?, staff_id=?, status='enabled', updated_at=?
+         WHERE id=?
+        ''',
+        (project_name, staff_id, now_local_str(), item_id),
+    )
+    c.execute(
+        '''
+        INSERT OR IGNORE INTO therapy_projects
+        (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
+        VALUES (?,?,?,?,?,?,?,?)
+        ''',
+        (project_name, '上门', 30, 0, None, 0, 'enabled', f'{project_name}上门项目'),
+    )
+    c.execute('''
+        INSERT OR REPLACE INTO project_rules (project_name, allow_home, project_category, status, updated_at)
+        VALUES (?,?,?,?,?)
+    ''', (project_name, 1, '上门', 'enabled', now_local_str()))
+    conn.commit()
+    conn.close()
+    return success_response({'id': item_id}, '上门项目已更新')
 
 
 # ========== 健康评估 ==========
@@ -2773,7 +3054,13 @@ def api_appointment_create():
     if d.get('equipment_id'):
         c.execute('SELECT id, name, status FROM equipment WHERE id=?', (d.get('equipment_id'),))
         equipment = c.fetchone()
-        if not equipment or equipment['status'] != 'available':
+        if not equipment:
+            conn.close()
+            return error_response('设备不存在')
+        if equipment['status'] == 'maintenance':
+            conn.close()
+            return error_response('正在维修，不可预约')
+        if equipment['status'] != 'available':
             conn.close()
             return error_response('设备不可用')
         if required_equipment_names and equipment['name'] not in required_equipment_names:
@@ -2849,8 +3136,19 @@ def api_appointments_slot_panel():
     slot_items = []
     for st, et in slots:
         free_equipment = []
+        maintenance_equipment = []
         if available_equipment:
             for equipment in available_equipment:
+                equipment_status = str(equipment.get('status') or 'available')
+                if equipment_status != 'available':
+                    maintenance_equipment.append({
+                        'id': equipment['id'],
+                        'name': equipment['name'],
+                        'location': equipment.get('location'),
+                        'model': equipment.get('model'),
+                        'status': equipment_status,
+                    })
+                    continue
                 c.execute(
                     f"SELECT COUNT(*) as n FROM appointments WHERE appointment_date=? AND status='scheduled' AND equipment_id=? "
                     f"AND (? IS NULL OR id<>?) AND {overlap_condition()}",
@@ -2862,14 +3160,16 @@ def api_appointments_slot_panel():
                         'name': equipment['name'],
                         'location': equipment.get('location'),
                         'model': equipment.get('model'),
+                        'status': equipment_status,
                     })
 
         slot_items.append({
             'start_time': st,
             'end_time': et,
-            'status': 'available' if free_equipment else 'full',
+            'status': 'available' if free_equipment else ('maintenance' if maintenance_equipment else 'full'),
             'available_equipment_count': len(free_equipment),
             'available_equipment': free_equipment,
+            'maintenance_equipment': maintenance_equipment,
         })
 
     conn.close()
@@ -2960,7 +3260,13 @@ def api_appointment_update(aid):
     if d.get('equipment_id'):
         c.execute('SELECT id, name, status FROM equipment WHERE id=?', (d.get('equipment_id'),))
         equipment = c.fetchone()
-        if not equipment or equipment['status'] != 'available':
+        if not equipment:
+            conn.close()
+            return error_response('设备不存在')
+        if equipment['status'] == 'maintenance':
+            conn.close()
+            return error_response('正在维修，不可预约')
+        if equipment['status'] != 'available':
             conn.close()
             return error_response('设备不可用')
         if required_equipment_names and equipment['name'] not in required_equipment_names:
