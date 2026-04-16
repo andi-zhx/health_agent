@@ -1441,7 +1441,7 @@
     fillCustomerSelect('apt-customer');
     var aptCustomerInput = document.getElementById('apt-customer-search');
     if (aptCustomerInput) aptCustomerInput.value = '';
-    fillProjectSelect('apt-project', true);
+    fillProjectSelect('apt-project', true, 'store');
     var sortBy = (document.getElementById('apt-sort') || {}).value || 'time_desc';
     var historySearch = (document.getElementById('apt-history-search') || {}).value || '';
     var qs = [
