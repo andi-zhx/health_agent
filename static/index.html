@@ -866,29 +866,13 @@
         <div class="card">
           <h2>设备管理</h2>
           <p style="color:#666; margin-bottom:14px;">预约服务与上门预约项目分开展示；支持新增/编辑服务项目、上门项目及设备状态管理。</p>
-          <h3>预约服务项目（需选择设备）</h3>
-          <div class="form-row">
-            <label>项目名称</label><input type="text" id="dm-apt-project-name" style="min-width:220px">
-            <label>设备名称</label><input type="text" id="dm-apt-equipment-name" style="min-width:220px">
-            <label>设备状态</label>
-            <select id="dm-apt-equipment-status" style="width:140px">
-              <option value="available">可用</option>
-              <option value="maintenance">维修</option>
-            </select>
-            <button class="btn btn-primary" id="btn-dm-apt-save">保存预约服务项目</button>
-            <button class="btn btn-secondary" id="btn-dm-apt-reset">清空</button>
+          <div class="form-row" style="margin-bottom:16px">
+            <button class="btn btn-primary" id="btn-dm-add">新增服务项目</button>
           </div>
-          <input type="hidden" id="dm-apt-edit-id">
+          <h3>预约服务项目</h3>
           <table><thead><tr><th>项目名称</th><th>设备名称</th><th>设备状态</th><th>添加时间</th><th>操作</th></tr></thead><tbody id="dm-apt-list"></tbody></table>
           <hr style="border:none;border-top:1px solid #eee;margin:20px 0">
-          <h3>上门预约项目（无需设备）</h3>
-          <div class="form-row">
-            <label>项目名称</label><input type="text" id="dm-home-project-name" style="min-width:220px">
-            <label>项目服务人员</label><input type="text" id="dm-home-staff-name" style="min-width:220px">
-            <button class="btn btn-primary" id="btn-dm-home-save">保存上门项目</button>
-            <button class="btn btn-secondary" id="btn-dm-home-reset">清空</button>
-          </div>
-          <input type="hidden" id="dm-home-edit-id">
+          <h3>上门预约设备</h3>
           <table><thead><tr><th>项目名称</th><th>项目服务人员</th><th>添加时间</th><th>操作</th></tr></thead><tbody id="dm-home-list"></tbody></table>
           <div id="dm-msg"></div>
         </div>
@@ -1032,6 +1016,54 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-improvement-select-file" type="button">选择本地文件</button>
         <button class="btn btn-secondary" id="btn-improvement-upload-close" type="button">关闭</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-device-management" class="modal-mask hide">
+    <div class="modal">
+      <h3 id="modal-dm-title">新增服务项目</h3>
+      <input type="hidden" id="modal-dm-edit-id">
+      <div class="form-row">
+        <label>项目类型<span class="required-mark">*</span></label>
+        <select id="modal-dm-type" style="min-width:220px">
+          <option value="appointment">预约服务项目</option>
+          <option value="home">上门预约设备</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>项目名称<span class="required-mark">*</span></label>
+        <input type="text" id="modal-dm-project-name" style="min-width:260px">
+      </div>
+      <div id="modal-dm-equipment-fields">
+        <div class="form-row">
+          <label>设备名称<span class="required-mark">*</span></label>
+          <input type="text" id="modal-dm-equipment-name" style="min-width:260px">
+        </div>
+        <div class="form-row">
+          <label>设备状态</label>
+          <select id="modal-dm-equipment-status" style="min-width:180px">
+            <option value="available">可用</option>
+            <option value="maintenance">维修</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>设备位置</label>
+          <input type="text" id="modal-dm-equipment-location" style="min-width:260px" placeholder="可选输入">
+        </div>
+        <div class="form-row">
+          <label>设备描述</label>
+          <textarea id="modal-dm-equipment-description" placeholder="可选输入"></textarea>
+        </div>
+      </div>
+      <div id="modal-dm-home-fields" class="hide">
+        <div class="form-row">
+          <label>项目服务人员<span class="required-mark">*</span></label>
+          <input type="text" id="modal-dm-staff-name" style="min-width:260px">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-dm-modal-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-dm-modal-save">保存</button>
       </div>
     </div>
   </div>

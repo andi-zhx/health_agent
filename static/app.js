@@ -303,10 +303,61 @@
   var improvementEditingId = null;
   var improvementViewOnly = false;
   var improvementMeta = null;
-  var deviceManagementEdit = { appointmentId: '', homeId: '' };
+  var deviceManagementModalState = { mode: 'appointment', editId: '' };
 
   function equipmentStatusLabel(status) {
     return status === 'maintenance' ? '维修' : '可用';
+  }
+
+  function resetDeviceManagementModal() {
+    deviceManagementModalState.mode = 'appointment';
+    deviceManagementModalState.editId = '';
+    document.getElementById('modal-dm-title').textContent = '新增服务项目';
+    document.getElementById('modal-dm-edit-id').value = '';
+    document.getElementById('modal-dm-type').value = 'appointment';
+    document.getElementById('modal-dm-project-name').value = '';
+    document.getElementById('modal-dm-equipment-name').value = '';
+    document.getElementById('modal-dm-equipment-status').value = 'available';
+    document.getElementById('modal-dm-equipment-location').value = '';
+    document.getElementById('modal-dm-equipment-description').value = '';
+    document.getElementById('modal-dm-staff-name').value = '';
+    switchDeviceManagementModalType('appointment');
+  }
+
+  function switchDeviceManagementModalType(type) {
+    var isAppointment = type !== 'home';
+    document.getElementById('modal-dm-equipment-fields').classList.toggle('hide', !isAppointment);
+    document.getElementById('modal-dm-home-fields').classList.toggle('hide', isAppointment);
+  }
+
+  function openDeviceManagementModal(mode, data) {
+    resetDeviceManagementModal();
+    var isEdit = !!data;
+    var finalMode = mode === 'home' ? 'home' : 'appointment';
+    deviceManagementModalState.mode = finalMode;
+    deviceManagementModalState.editId = isEdit ? String(data.id || '') : '';
+    document.getElementById('modal-dm-title').textContent = isEdit ? '编辑服务项目' : '新增服务项目';
+    document.getElementById('modal-dm-edit-id').value = deviceManagementModalState.editId;
+    document.getElementById('modal-dm-type').value = finalMode;
+    document.getElementById('modal-dm-type').disabled = isEdit;
+    switchDeviceManagementModalType(finalMode);
+    if (isEdit) {
+      document.getElementById('modal-dm-project-name').value = data.project_name || '';
+      if (finalMode === 'appointment') {
+        document.getElementById('modal-dm-equipment-name').value = data.equipment_name || '';
+        document.getElementById('modal-dm-equipment-status').value = data.equipment_status || 'available';
+        document.getElementById('modal-dm-equipment-location').value = data.equipment_location || '';
+        document.getElementById('modal-dm-equipment-description').value = data.equipment_description || '';
+      } else {
+        document.getElementById('modal-dm-staff-name').value = data.staff_name || '';
+      }
+    }
+    document.getElementById('modal-device-management').classList.remove('hide');
+  }
+
+  function closeDeviceManagementModal() {
+    document.getElementById('modal-device-management').classList.add('hide');
+    document.getElementById('modal-dm-type').disabled = false;
   }
 
   function loadDeviceManagementPage() {
@@ -331,11 +382,7 @@
             var id = this.getAttribute('data-dm-apt-edit');
             var picked = rows.find(function (x) { return String(x.id) === String(id); });
             if (!picked) return;
-            deviceManagementEdit.appointmentId = String(picked.id);
-            document.getElementById('dm-apt-edit-id').value = picked.id;
-            document.getElementById('dm-apt-project-name').value = picked.project_name || '';
-            document.getElementById('dm-apt-equipment-name').value = picked.equipment_name || '';
-            document.getElementById('dm-apt-equipment-status').value = picked.equipment_status || 'available';
+            openDeviceManagementModal('appointment', picked);
           });
         });
       }
@@ -361,10 +408,7 @@
             var id = this.getAttribute('data-dm-home-edit');
             var picked = rows.find(function (x) { return String(x.id) === String(id); });
             if (!picked) return;
-            deviceManagementEdit.homeId = String(picked.id);
-            document.getElementById('dm-home-edit-id').value = picked.id;
-            document.getElementById('dm-home-project-name').value = picked.project_name || '';
-            document.getElementById('dm-home-staff-name').value = picked.staff_name || '';
+            openDeviceManagementModal('home', picked);
           });
         });
       }
@@ -2842,62 +2886,61 @@
     loadAuditLogsPage();
   });
 
-  document.getElementById('btn-dm-apt-save').addEventListener('click', function () {
-    var payload = {
-      project_name: (document.getElementById('dm-apt-project-name').value || '').trim(),
-      equipment_name: (document.getElementById('dm-apt-equipment-name').value || '').trim(),
-      equipment_status: document.getElementById('dm-apt-equipment-status').value || 'available'
-    };
-    if (!payload.project_name || !payload.equipment_name) {
-      showMsg('dm-msg', '请填写预约服务项目名称和设备名称', true);
+  document.getElementById('btn-dm-add').addEventListener('click', function () {
+    openDeviceManagementModal('appointment');
+  });
+  document.getElementById('modal-dm-type').addEventListener('change', function () {
+    switchDeviceManagementModalType(this.value);
+  });
+  document.getElementById('btn-dm-modal-cancel').addEventListener('click', closeDeviceManagementModal);
+  document.getElementById('btn-dm-modal-save').addEventListener('click', function () {
+    var mode = document.getElementById('modal-dm-type').value === 'home' ? 'home' : 'appointment';
+    var projectName = (document.getElementById('modal-dm-project-name').value || '').trim();
+    var editId = (document.getElementById('modal-dm-edit-id').value || '').trim();
+    if (!projectName) {
+      showMsg('dm-msg', '请填写项目名称', true);
       return;
     }
-    var editId = document.getElementById('dm-apt-edit-id').value;
-    var req = editId ? put('/api/device-management/appointment-items/' + editId, payload) : post('/api/device-management/appointment-items', payload);
-    req.then(function (res) {
-      if (res.error) { showMsg('dm-msg', res.error, true); return; }
-      showMsg('dm-msg', editId ? '预约服务项目已更新' : '预约服务项目已新增');
-      document.getElementById('btn-dm-apt-reset').click();
-      fillProjectSelect('apt-project', true, '');
-      loadAppointmentSlotPanel(false);
-      loadDeviceManagementPage();
-    });
-  });
-
-  document.getElementById('btn-dm-apt-reset').addEventListener('click', function () {
-    deviceManagementEdit.appointmentId = '';
-    document.getElementById('dm-apt-edit-id').value = '';
-    document.getElementById('dm-apt-project-name').value = '';
-    document.getElementById('dm-apt-equipment-name').value = '';
-    document.getElementById('dm-apt-equipment-status').value = 'available';
-  });
-
-  document.getElementById('btn-dm-home-save').addEventListener('click', function () {
-    var payload = {
-      project_name: (document.getElementById('dm-home-project-name').value || '').trim(),
-      staff_name: (document.getElementById('dm-home-staff-name').value || '').trim()
-    };
-    if (!payload.project_name || !payload.staff_name) {
-      showMsg('dm-msg', '请填写上门项目名称和服务人员', true);
+    if (mode === 'appointment') {
+      var payload = {
+        project_name: projectName,
+        equipment_name: (document.getElementById('modal-dm-equipment-name').value || '').trim(),
+        equipment_status: document.getElementById('modal-dm-equipment-status').value || 'available',
+        equipment_location: (document.getElementById('modal-dm-equipment-location').value || '').trim(),
+        equipment_description: (document.getElementById('modal-dm-equipment-description').value || '').trim()
+      };
+      if (!payload.equipment_name) {
+        showMsg('dm-msg', '预约服务项目必须绑定设备，请填写设备名称', true);
+        return;
+      }
+      var req = editId ? put('/api/device-management/appointment-items/' + editId, payload) : post('/api/device-management/appointment-items', payload);
+      req.then(function (res) {
+        if (res.error) { showMsg('dm-msg', res.error, true); return; }
+        showMsg('dm-msg', editId ? '预约服务项目已更新' : '预约服务项目已新增');
+        closeDeviceManagementModal();
+        fillProjectSelect('apt-project', true, '');
+        loadAppointmentSlotPanel(false);
+        loadDeviceManagementPage();
+      });
       return;
     }
-    var editId = document.getElementById('dm-home-edit-id').value;
-    var req = editId ? put('/api/device-management/home-items/' + editId, payload) : post('/api/device-management/home-items', payload);
-    req.then(function (res) {
+    var homePayload = {
+      project_name: projectName,
+      staff_name: (document.getElementById('modal-dm-staff-name').value || '').trim()
+    };
+    if (!homePayload.staff_name) {
+      showMsg('dm-msg', '请填写项目服务人员', true);
+      return;
+    }
+    var homeReq = editId ? put('/api/device-management/home-items/' + editId, homePayload) : post('/api/device-management/home-items', homePayload);
+    homeReq.then(function (res) {
       if (res.error) { showMsg('dm-msg', res.error, true); return; }
       showMsg('dm-msg', editId ? '上门项目已更新' : '上门项目已新增');
-      document.getElementById('btn-dm-home-reset').click();
+      closeDeviceManagementModal();
       fillProjectSelect('home-project', true, 'home');
       loadHomeSlotPanel(false);
       loadDeviceManagementPage();
     });
-  });
-
-  document.getElementById('btn-dm-home-reset').addEventListener('click', function () {
-    deviceManagementEdit.homeId = '';
-    document.getElementById('dm-home-edit-id').value = '';
-    document.getElementById('dm-home-project-name').value = '';
-    document.getElementById('dm-home-staff-name').value = '';
   });
 
 
