@@ -4875,6 +4875,7 @@ def api_dashboard_health_portrait():
     conn.close()
 
     heatmap = {}
+    improvement_project_stats = {}
     status_order = ['无改善', '部分改善', '明显改善', '加重']
     for row in improvement_rows:
         appt_status = (row.get('appointment_status') or '').strip().lower()
@@ -4887,6 +4888,12 @@ def api_dashboard_health_portrait():
         status = (row.get('improvement_status') or '').strip()
         if status not in status_order:
             status = '无改善'
+        project_bucket = improvement_project_stats.setdefault(
+            project,
+            {'total_services': 0, '明显改善': 0, '部分改善': 0, '无改善': 0, '加重': 0}
+        )
+        project_bucket['total_services'] += 1
+        project_bucket[status] += 1
         project_bucket = heatmap.setdefault(project, {})
         for part in parts:
             part_name = part.strip() or '未标注部位'
@@ -4904,6 +4911,32 @@ def api_dashboard_health_portrait():
                 'count': cell['count'],
                 'status_summary': status_summary or '无改善0',
             })
+
+    improvement_project_ranking = []
+    for project, stat in improvement_project_stats.items():
+        total_services = safe_int(stat.get('total_services')) or 0
+        obvious_improved_count = safe_int(stat.get('明显改善')) or 0
+        partial_improved_count = safe_int(stat.get('部分改善')) or 0
+        no_improved_count = safe_int(stat.get('无改善')) or 0
+        worsen_count = safe_int(stat.get('加重')) or 0
+        improvement_rate = ((obvious_improved_count + partial_improved_count) / total_services) if total_services else 0
+        improvement_project_ranking.append({
+            'service_project': project,
+            'total_services': total_services,
+            'obvious_improved_count': obvious_improved_count,
+            'partial_improved_count': partial_improved_count,
+            'no_improved_count': no_improved_count,
+            'worsen_count': worsen_count,
+            'improvement_rate': round(improvement_rate, 4),
+            'improvement_rate_percent': round(improvement_rate * 100, 1),
+        })
+    improvement_project_ranking.sort(
+        key=lambda item: (
+            -float(item.get('improvement_rate') or 0),
+            -safe_int(item.get('total_services') or 0),
+            str(item.get('service_project') or '')
+        )
+    )
 
     archived_customer_ids = {safe_int(row.get('customer_id')) for row in records if safe_int(row.get('customer_id')) is not None}
     health_need_customer_ids = set()
@@ -5049,6 +5082,7 @@ def api_dashboard_health_portrait():
         },
         'dimension4': {
             'improvement_matrix': heatmap_rows,
+            'improvement_project_ranking': improvement_project_ranking,
             'service_funnel': [
                 {'key': 'archived', 'label': '已建档人数', 'count': len(archived_customer_ids)},
                 {'key': 'health_needs', 'label': '有健康需求人数', 'count': len(health_need_customer_ids)},
