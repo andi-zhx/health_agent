@@ -240,6 +240,30 @@ def table_exists(cursor, table_name):
     return cursor.fetchone() is not None
 
 
+LEGACY_EQUIPMENT_MODELS_TO_PURGE = (
+    'IR-2024-A',
+    'US-2024-B',
+    'ES-2024-C',
+    'MT-2024-D',
+    'TB-2024-E',
+    'HC-2024-F',
+    'HT-001',
+    'HBOT-001',
+    'MOXA-001',
+    'MASS-001',
+)
+
+
+def purge_legacy_equipment_and_store_massage(cursor):
+    placeholders = ','.join('?' * len(LEGACY_EQUIPMENT_MODELS_TO_PURGE))
+    cursor.execute(
+        f"DELETE FROM equipment WHERE model IN ({placeholders})",
+        LEGACY_EQUIPMENT_MODELS_TO_PURGE,
+    )
+    if table_exists(cursor, 'project_equipment_mapping'):
+        cursor.execute("DELETE FROM project_equipment_mapping WHERE project_name='按摩'")
+
+
 def load_projects_with_parallel_strategy(cursor, enabled_only=False, scene=None):
     sql = 'SELECT * FROM therapy_projects'
     clauses = []
@@ -248,6 +272,10 @@ def load_projects_with_parallel_strategy(cursor, enabled_only=False, scene=None)
     if scene == 'home' and table_exists(cursor, 'project_rules'):
         clauses.append(
             "name IN (SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled')"
+        )
+    if scene == 'store' and table_exists(cursor, 'project_rules'):
+        clauses.append(
+            "name NOT IN (SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled')"
         )
     if clauses:
         sql += ' WHERE ' + ' AND '.join(clauses)
@@ -390,9 +418,7 @@ def require_login():
 
 
 
-DEFAULT_PROJECT_EQUIPMENT_MAP = {
-    '按摩': '按摩机',
-}
+DEFAULT_PROJECT_EQUIPMENT_MAP = {}
 
 APPOINTMENT_PROJECT_DEVICE_CONFIG = {
     '高压氧仓': ['高压氧仓01', '高压氧仓02'],
@@ -404,7 +430,6 @@ APPOINTMENT_PROJECT_DEVICE_CONFIG = {
     'AI健康检测机器人': ['AI健康检测机器人01', 'AI健康检测机器人02'],
     '手持式干式荧光免疫分析仪': ['手持式干式荧光免疫分析仪01', '手持式干式荧光免疫分析仪02'],
     '健康随诊箱': ['健康随诊箱01', '健康随诊箱02'],
-    '按摩': ['按摩01', '按摩02'],
 }
 
 DEFAULT_ALLOWED_HOME_PROJECTS = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
@@ -1503,18 +1528,7 @@ def init_db():
 
     c.execute("SELECT COUNT(*) FROM equipment")
     if c.fetchone()[0] == 0:
-        for row in [
-            ('红外理疗仪', '理疗设备', 'IR-2024-A', 'A区101室', 'available', '用于肌肉放松'),
-            ('超声波治疗仪', '理疗设备', 'US-2024-B', 'A区102室', 'available', '深层组织治疗'),
-            ('电刺激治疗仪', '康复设备', 'ES-2024-C', 'B区201室', 'available', '神经肌肉电刺激'),
-            ('磁疗仪', '理疗设备', 'MT-2024-D', 'B区202室', 'available', '磁场疗法'),
-            ('牵引床', '康复设备', 'TB-2024-E', 'C区301室', 'available', '颈椎腰椎牵引'),
-            ('中药熏蒸舱', '中医设备', 'HC-2024-F', 'C区302室', 'available', '中药熏蒸'),
-        ]:
-            c.execute(
-                'INSERT INTO equipment (name, type, model, location, status, description) VALUES (?,?,?,?,?,?)',
-                row
-            )
+        pass
 
     c.execute("SELECT COUNT(*) FROM therapy_projects")
     if c.fetchone()[0] == 0:
@@ -1534,9 +1548,7 @@ def init_db():
                 VALUES (?,?,?,?,?,?,?,?)
             ''', row)
 
-    required_equipment_seeds = [
-        ('按摩机', '专用设备', 'MASS-001', 'D区104室', 'available', '按摩服务设备'),
-    ]
+    required_equipment_seeds = []
     for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
         for idx, equipment_name in enumerate(equipment_names, start=1):
             required_equipment_seeds.append(
@@ -1554,7 +1566,6 @@ def init_db():
         ('听力测试', '理疗', 30, 1, '专用设备', 0, 'enabled', '听力测试服务项目'),
         ('高压氧仓', '理疗', 60, 1, '专用设备', 0, 'enabled', '高压氧仓服务项目'),
         ('艾灸', '中医', 45, 1, '专用设备', 0, 'enabled', '艾灸服务项目'),
-        ('按摩', '理疗', 45, 1, '专用设备', 0, 'enabled', '按摩服务项目'),
     ]
     for row in required_project_seeds:
         c.execute('SELECT id FROM therapy_projects WHERE name=?', (row[0],))
@@ -1647,6 +1658,8 @@ def init_db():
                 ''',
                 (project_name, staff_row['id'], 'enabled'),
             )
+
+    purge_legacy_equipment_and_store_massage(c)
 
     conn.commit()
     conn.close()
