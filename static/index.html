@@ -61,6 +61,12 @@
     .health-group-title { width: 100%; margin: 0 0 10px; font-size: 15px; font-weight: 700; color: #111; }
     .health-section { border: 1px solid #000; border-radius: 6px; padding: 12px; margin-bottom: 14px; background: #fff; }
     .health-section .form-row:last-child { margin-bottom: 0; }
+    .health-fold { border: 1px solid #000; border-radius: 6px; margin-bottom: 14px; background: #fff; overflow: hidden; }
+    .health-fold summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 12px; font-size: 15px; font-weight: 700; color: #111; }
+    .health-fold summary::-webkit-details-marker { display: none; }
+    .health-fold summary::after { content: '▸'; font-size: 12px; color: #666; transition: transform .2s ease; }
+    .health-fold[open] summary::after { transform: rotate(90deg); }
+    .health-fold-content { padding: 0 12px 12px; }
     .health-items { display: flex; flex-wrap: wrap; gap: 10px; }
     .health-item { border: 1px solid #000; border-radius: 4px; padding: 8px 10px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap; background: #fff; }
     .health-item.full { width: 100%; overflow-x: auto; }
@@ -499,10 +505,10 @@
               </div>
             </div>
           </div>
-          <div class="health-section">
-            <div class="form-row">
+          <details class="health-fold" open>
+            <summary>既往病史与家族史</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%">
-                <div class="health-group-title" style="margin-bottom:8px;">既往病史与家族史</div>
                 <div class="health-item full"><span class="item-title">是否确诊过疾病（多选）</span>
                   <div id="ha-diagnosed-diseases" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
                     <label><input type="checkbox" name="ha-diagnosed-disease" value="无">无</label>
@@ -526,8 +532,12 @@
                 <div class="health-item full"><span class="item-title">过敏史</span><label><input type="radio" name="ha-allergy-history" value="无">无</label><label><input type="radio" name="ha-allergy-history" value="有">有</label><span>过敏史：</span><input type="text" id="ha-allergy-details" style="flex:1;min-width:180px"></div>
                 <div class="health-item full"><span class="item-title">是否植入过心脏器械或存在相关心脏问题（多选）</span><label><input type="checkbox" name="ha-special-condition" value="无">无</label><label><input type="checkbox" name="ha-special-condition" value="心脏支架">心脏支架</label><label><input type="checkbox" name="ha-special-condition" value="起搏器">起搏器</label><label><input type="checkbox" name="ha-special-condition" value="其他">其他</label><span>其他</span><input type="text" id="ha-special-condition-other" style="min-width:180px" placeholder="请输入其他情况"></div>
               </div>
+            </div>
+          </details>
+          <details class="health-fold">
+            <summary>近期症状</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
-                <div class="health-group-title" style="margin-bottom:8px;">近期症状</div>
                 <div class="health-item full"><span class="item-title">近半年症状（多选）</span>
                   <div id="ha-recent-symptoms" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
                     <label><input type="checkbox" name="ha-recent-symptom" value="无">无</label>
@@ -552,8 +562,12 @@
                 <div class="health-item full"><span class="item-title">近半年血糖检测情况</span><label><input type="radio" name="ha-blood-sugar-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：偏低">监测：偏低</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：偏高">监测：偏高</label></div>
                 <div class="health-item full"><span class="item-title">详细情况</span><input type="text" id="ha-recent-symptom-detail" style="flex:1;min-width:220px" placeholder="请输入近期症状详细情况"></div>
               </div>
+            </div>
+          </details>
+          <details class="health-fold">
+            <summary>生活方式</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
-                <div class="health-group-title" style="margin-bottom:8px;">生活方式</div>
                 <div class="health-item full"><span class="item-title">吸烟情况</span><label><input type="radio" name="ha-smoking-status" value="无">无</label><label><input type="radio" name="ha-smoking-status" value="有">有</label><span>烟龄</span><input type="text" inputmode="numeric" id="ha-smoking-years" style="width:90px"><span>年</span></div>
                 <div class="health-item full"><span class="item-title">饮酒</span><label><input type="radio" name="ha-drinking-status" value="无">无</label><label><input type="radio" name="ha-drinking-status" value="有">有</label><span>饮酒</span><input type="text" inputmode="numeric" id="ha-drinking-years" style="width:90px"><span>年</span></div>
                 <div class="health-item full"><span class="item-title">目前的睡眠状况</span><label><input type="radio" name="ha-sleep-quality" value="很差">很差</label><label><input type="radio" name="ha-sleep-quality" value="差">差</label><label><input type="radio" name="ha-sleep-quality" value="一般">一般</label><label><input type="radio" name="ha-sleep-quality" value="良好">良好</label></div>
@@ -576,8 +590,12 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </details>
+          <details class="health-fold">
+            <summary>健康服务需求</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
-                <div class="health-group-title" style="margin-bottom:8px;">健康服务需求</div>
                 <div class="health-item full"><span class="item-title">需要的服务</span>
                   <div id="health-needs" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
                     <label><input type="checkbox" name="health-need" value="疾病筛查">疾病筛查</label>
@@ -599,7 +617,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </details>
           <input type="hidden" id="health-date">
           <input type="hidden" id="health-height">
           <input type="hidden" id="health-weight">
