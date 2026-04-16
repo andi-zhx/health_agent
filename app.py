@@ -2167,6 +2167,8 @@ def api_device_management_appointment_items():
                pem.project_name,
                pem.equipment_name,
                COALESCE(e.status, 'available') AS equipment_status,
+               COALESCE(e.location, '') AS equipment_location,
+               COALESCE(e.description, '') AS equipment_description,
                COALESCE(pem.created_at, e.created_at) AS created_at
           FROM project_equipment_mapping pem
           LEFT JOIN equipment e ON e.name = pem.equipment_name
@@ -2185,6 +2187,8 @@ def api_device_management_appointment_items_create():
     project_name = str(d.get('project_name') or '').strip()
     equipment_name = str(d.get('equipment_name') or '').strip()
     equipment_status = str(d.get('equipment_status') or 'available').strip()
+    equipment_location = str(d.get('equipment_location') or '').strip()
+    equipment_description = str(d.get('equipment_description') or '').strip()
     if not project_name or not equipment_name:
         return error_response('项目名称和设备名称为必填项')
     if equipment_status not in {'available', 'maintenance'}:
@@ -2223,8 +2227,8 @@ def api_device_management_appointment_items_create():
     equipment_row = c.fetchone()
     if equipment_row:
         c.execute(
-            "UPDATE equipment SET status=?, type='专用设备' WHERE id=?",
-            (equipment_status, equipment_row['id']),
+            "UPDATE equipment SET status=?, type='专用设备', location=?, description=? WHERE id=?",
+            (equipment_status, equipment_location, equipment_description, equipment_row['id']),
         )
     else:
         c.execute(
@@ -2232,7 +2236,14 @@ def api_device_management_appointment_items_create():
             INSERT INTO equipment (name, type, model, location, status, description)
             VALUES (?,?,?,?,?,?)
             ''',
-            (equipment_name, '专用设备', '', '', equipment_status, f'{project_name}预约设备'),
+            (
+                equipment_name,
+                '专用设备',
+                '',
+                equipment_location,
+                equipment_status,
+                equipment_description or f'{project_name}预约设备',
+            ),
         )
     c.execute(
         '''
@@ -2252,6 +2263,8 @@ def api_device_management_appointment_items_update(item_id):
     project_name = str(d.get('project_name') or '').strip()
     equipment_name = str(d.get('equipment_name') or '').strip()
     equipment_status = str(d.get('equipment_status') or 'available').strip()
+    equipment_location = str(d.get('equipment_location') or '').strip()
+    equipment_description = str(d.get('equipment_description') or '').strip()
     if not project_name or not equipment_name:
         return error_response('项目名称和设备名称为必填项')
     if equipment_status not in {'available', 'maintenance'}:
@@ -2292,8 +2305,8 @@ def api_device_management_appointment_items_update(item_id):
     old_equipment = c.fetchone()
     if old_equipment:
         c.execute(
-            "UPDATE equipment SET name=?, status=?, type='专用设备' WHERE id=?",
-            (equipment_name, equipment_status, old_equipment['id']),
+            "UPDATE equipment SET name=?, status=?, type='专用设备', location=?, description=? WHERE id=?",
+            (equipment_name, equipment_status, equipment_location, equipment_description, old_equipment['id']),
         )
     else:
         c.execute(
@@ -2301,7 +2314,14 @@ def api_device_management_appointment_items_update(item_id):
             INSERT INTO equipment (name, type, model, location, status, description)
             VALUES (?,?,?,?,?,?)
             ''',
-            (equipment_name, '专用设备', '', '', equipment_status, f'{project_name}预约设备'),
+            (
+                equipment_name,
+                '专用设备',
+                '',
+                equipment_location,
+                equipment_status,
+                equipment_description or f'{project_name}预约设备',
+            ),
         )
 
     c.execute(
