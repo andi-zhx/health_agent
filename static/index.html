@@ -122,6 +122,15 @@
     .stacked-track { display: flex; height: 20px; border-radius: 999px; overflow: hidden; background: #edf2f7; }
     .stacked-segment { height: 100%; }
     .stacked-value { text-align: right; font-size: 12px; color: #334155; }
+    .portrait-ranking-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .portrait-ranking-head label { min-width: auto; color: #64748b; }
+    .portrait-ranking-table-wrap { overflow-x: auto; border: 1px solid #eef2f7; border-radius: 8px; }
+    .portrait-ranking-table { min-width: 880px; width: 100%; border-collapse: collapse; }
+    .portrait-ranking-table th, .portrait-ranking-table td { border-bottom: 1px solid #eef2f7; padding: 8px 10px; font-size: 12px; }
+    .portrait-ranking-table th { background: #f8fbff; color: #334155; }
+    .ranking-progress-track { display: inline-block; width: 120px; height: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; vertical-align: middle; }
+    .ranking-progress-fill { height: 100%; background: linear-gradient(90deg, #60a5fa 0%, #22c55e 100%); }
+    .ranking-progress-text { margin-left: 8px; color: #1f2937; font-weight: 600; font-size: 12px; vertical-align: middle; }
     .service-funnel { margin-bottom: 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f8fbff; padding: 12px; }
     .funnel-step { border: 1px solid #dbeafe; border-radius: 8px; background: #fff; padding: 10px; display: grid; grid-template-columns: 140px 1fr 80px; gap: 10px; align-items: center; }
     .funnel-label { color: #1e293b; font-size: 13px; font-weight: 600; }
@@ -728,6 +737,17 @@
               <div id="portrait-service-funnel" class="service-funnel"></div>
               <h4>改善状态分层（按服务项目）</h4>
               <div id="portrait-improvement-stacked"></div>
+              <h4>服务项目改善率排行榜</h4>
+              <div class="portrait-ranking-head">
+                <div style="color:#64748b;font-size:12px">比较不同服务项目的改善效果（明显改善 + 部分改善）/ 总服务次数</div>
+                <label>排序方式
+                  <select id="portrait-improvement-ranking-sort" style="width:170px">
+                    <option value="improvement_rate">按改善率</option>
+                    <option value="total_services">按总服务次数</option>
+                  </select>
+                </label>
+              </div>
+              <div id="portrait-improvement-ranking"></div>
             </div>
           </div>
         </div>

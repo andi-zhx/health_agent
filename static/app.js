@@ -303,6 +303,7 @@
   var improvementEditingId = null;
   var improvementViewOnly = false;
   var improvementMeta = null;
+  var portraitImprovementRankingRaw = [];
   var deviceManagementModalState = { mode: 'appointment', editId: '' };
 
   function equipmentStatusLabel(status) {
@@ -1923,6 +1924,8 @@
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
       renderServiceFunnelCards('portrait-service-funnel', toList((res.dimension4 || {}).service_funnel));
       renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
+      portraitImprovementRankingRaw = toList((res.dimension4 || {}).improvement_project_ranking);
+      renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, (document.getElementById('portrait-improvement-ranking-sort') || {}).value || 'improvement_rate');
     });
   }
 
@@ -2203,6 +2206,44 @@
       return '<div class="stacked-row"><div class="stacked-label">' + escapeHtml(row.project) + '</div><div class="stacked-track">' + segments + '</div><div class="stacked-value">' + row.total + '</div></div>';
     }).join('') + '</div>';
     box.innerHTML = legend + listHtml;
+  }
+
+  function renderImprovementProjectRanking(elId, list, sortBy) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var rows = toList(list).slice();
+    if (!rows.length) {
+      box.innerHTML = '<p style="color:#666">暂无排行榜数据</p>';
+      return;
+    }
+    var mode = sortBy === 'total_services' ? 'total_services' : 'improvement_rate';
+    rows.sort(function (a, b) {
+      if (mode === 'total_services') {
+        if ((b.total_services || 0) !== (a.total_services || 0)) return (b.total_services || 0) - (a.total_services || 0);
+        if ((b.improvement_rate || 0) !== (a.improvement_rate || 0)) return (b.improvement_rate || 0) - (a.improvement_rate || 0);
+      } else {
+        if ((b.improvement_rate || 0) !== (a.improvement_rate || 0)) return (b.improvement_rate || 0) - (a.improvement_rate || 0);
+        if ((b.total_services || 0) !== (a.total_services || 0)) return (b.total_services || 0) - (a.total_services || 0);
+      }
+      return String(a.service_project || '').localeCompare(String(b.service_project || ''), 'zh-CN');
+    });
+    var maxRate = Math.max.apply(null, rows.map(function (item) { return Number(item.improvement_rate_percent || 0); }).concat([1]));
+    var thead = '<thead><tr><th style="width:56px">排名</th><th>服务项目</th><th style="width:100px">总服务次数</th><th style="width:90px">明显改善</th><th style="width:90px">部分改善</th><th style="width:90px">无改善</th><th style="width:80px">加重</th><th style="min-width:220px">改善率</th></tr></thead>';
+    var tbody = '<tbody>' + rows.map(function (item, idx) {
+      var percent = Number(item.improvement_rate_percent || 0);
+      var width = Math.round((percent * 100) / maxRate);
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td>' + escapeHtml(item.service_project || '未标注项目') + '</td>' +
+        '<td>' + (item.total_services || 0) + '</td>' +
+        '<td>' + (item.obvious_improved_count || 0) + '</td>' +
+        '<td>' + (item.partial_improved_count || 0) + '</td>' +
+        '<td>' + (item.no_improved_count || 0) + '</td>' +
+        '<td>' + (item.worsen_count || 0) + '</td>' +
+        '<td><div class="ranking-progress-track"><div class="ranking-progress-fill" style="width:' + width + '%"></div></div><span class="ranking-progress-text">' + percent.toFixed(1) + '%</span></td>' +
+      '</tr>';
+    }).join('') + '</tbody>';
+    box.innerHTML = '<div class="portrait-ranking-table-wrap"><table class="portrait-ranking-table">' + thead + tbody + '</table></div>';
   }
 
   function renderServiceFunnelCards(elId, list) {
@@ -2751,6 +2792,9 @@
   document.getElementById('btn-home-history-search').addEventListener('click', function () {
     listState.homeAppointments.page = 1;
     loadHomeAppointmentsPage();
+  });
+  document.getElementById('portrait-improvement-ranking-sort').addEventListener('change', function () {
+    renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, this.value || 'improvement_rate');
   });
 
   document.getElementById('btn-home-mark-cancel').addEventListener('click', function () {
