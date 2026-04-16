@@ -4627,6 +4627,10 @@ def api_dashboard_health_portrait():
     history_plus_bp_abnormal_people = 0
     low_exercise_bad_habit_people = 0
     bmi_abnormal = 0
+    blood_pressure_abnormal_people = 0
+    blood_lipid_abnormal_people = 0
+    blood_sugar_abnormal_people = 0
+    sleep_issue_people = 0
 
 
     for row in records:
@@ -4660,6 +4664,28 @@ def api_dashboard_health_portrait():
             if bmi_level != '正常':
                 bmi_abnormal += 1
 
+        blood_pressure_test = str(row.get('blood_pressure_test') or '')
+        blood_lipid_test = str(row.get('blood_lipid_test') or '')
+        blood_sugar_test = str(row.get('blood_sugar_test') or '')
+        sleep_hours_text = str(row.get('sleep_hours') or '')
+        sleep_quality_text = str(row.get('sleep_quality') or '')
+
+        bp_abnormal = ('偏高' in blood_pressure_test) or ('偏低' in blood_pressure_test)
+        lipid_abnormal = '偏高' in blood_lipid_test
+        sugar_abnormal = ('偏高' in blood_sugar_test) or ('偏低' in blood_sugar_test)
+        sleep_hours_abnormal = sleep_hours_text in ('<6小时', '>10小时')
+        sleep_quality_abnormal = sleep_quality_text in ('很差', '差')
+        sleep_abnormal = sleep_quality_abnormal or sleep_hours_abnormal
+
+        if bp_abnormal:
+            blood_pressure_abnormal_people += 1
+        if lipid_abnormal:
+            blood_lipid_abnormal_people += 1
+        if sugar_abnormal:
+            blood_sugar_abnormal_people += 1
+        if sleep_abnormal:
+            sleep_issue_people += 1
+
         portrait = extract_health_portrait(row)
         risk_level = portrait['risk_level']
         risks[risk_level] += 1
@@ -4690,8 +4716,7 @@ def api_dashboard_health_portrait():
         smoking = row.get('smoking_status') == '有'
         drinking = row.get('drinking_status') == '有'
         low_exercise = not exercise_items or any(item in ('无', '不运动', '很少运动', '偶尔运动') for item in exercise_items)
-        sleep_abnormal = row.get('sleep_hours') in ('<6小时', '>10小时')
-        poor_sleep = row.get('sleep_quality') in ('很差', '差')
+        poor_sleep = sleep_quality_abnormal
         has_past_history = bool(past_history_items)
         has_family_history = bool(family_history_items)
 
@@ -4775,6 +4800,33 @@ def api_dashboard_health_portrait():
 
     return jsonify({
         'total_customers': total,
+        'abnormal_indicators': [
+            {
+                'name': '血压异常人数',
+                'count': blood_pressure_abnormal_people,
+                'ratio': round((blood_pressure_abnormal_people * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': '血脂异常人数',
+                'count': blood_lipid_abnormal_people,
+                'ratio': round((blood_lipid_abnormal_people * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': '血糖异常人数',
+                'count': blood_sugar_abnormal_people,
+                'ratio': round((blood_sugar_abnormal_people * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': 'BMI异常人数',
+                'count': bmi_abnormal,
+                'ratio': round((bmi_abnormal * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': '睡眠异常人数',
+                'count': sleep_issue_people,
+                'ratio': round((sleep_issue_people * 100.0 / total), 1) if total else 0,
+            },
+        ],
         'dimension1': {
             'cards': {
                 'total_people': total,

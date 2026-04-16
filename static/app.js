@@ -1875,7 +1875,14 @@
       var d1 = res.dimension1 || {};
       var d2 = res.dimension2 || {};
       var d3 = res.dimension3 || {};
+      var abnormalIndicators = toList(res.abnormal_indicators);
       showMsg('portrait-msg', '已基于最新健康档案生成画像，共覆盖客户 ' + (res.total_customers || 0) + ' 人');
+      renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
+        return {
+          name: item.name || '-',
+          value: (item.count || 0) + '人 / ' + (item.ratio || 0) + '%'
+        };
+      }));
       renderKpiCards('portrait-kpi-cards', [
         { name: '总人数', value: (d1.cards || {}).total_people || 0 },
         { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%' },
