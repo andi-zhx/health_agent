@@ -5,7 +5,7 @@
 """
 
 from flask import Flask, request, jsonify, send_from_directory, session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
@@ -70,6 +70,7 @@ secret_key = os.environ.get('SECRET_KEY')
 if not secret_key:
     raise RuntimeError('未配置环境变量 SECRET_KEY，应用禁止启动。')
 app.config['SECRET_KEY'] = secret_key
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 
 DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
@@ -570,6 +571,20 @@ IMPROVEMENT_STATUS_OPTIONS = ['明显改善', '部分改善', '无改善', '加�
 FOLLOWUP_METHOD_OPTIONS = ['电话', '到店']
 FOLLOWUP_PRESET_OPTIONS = ['1个月', '3个月', '半年', '1年']
 ALLOWED_IMPROVEMENT_FILE_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+ALLOWED_IMPROVEMENT_MIME_TYPES = {
+    'pdf': {'application/pdf', 'application/x-pdf'},
+    'png': {'image/png', 'image/x-png'},
+    'jpg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
+    'jpeg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
+}
+
+
+def get_customer_privacy_folder(customer_name, customer_phone, customer_id):
+    name_text = str(customer_name or '').strip()
+    surname = sanitize_folder_part(name_text[:1], f'user_{customer_id}')
+    phone_digits = re.sub(r'\D', '', str(customer_phone or ''))
+    phone_last4 = phone_digits[-4:] if len(phone_digits) >= 4 else 'no_phone'
+    return f'{surname}_{phone_last4}'
 
 
 def sanitize_folder_part(value, fallback):
@@ -763,6 +778,11 @@ def success_response(data=None, message='操作成功', status=200):
 
 def error_response(message, status=400, error_code='VALIDATION_ERROR'):
     return jsonify({'success': False, 'message': message, 'error_code': error_code}), status
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(_err):
+    return error_response('上传文件过大，单个文件不能超过 10MB', 413, 'FILE_TOO_LARGE')
 
 
 def parse_list_params(default_page_size=20, max_page_size=100):
@@ -3039,7 +3059,15 @@ def api_improvement_record_file_upload(rid):
         return error_response('文件名不能为空')
     ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
     if ext not in ALLOWED_IMPROVEMENT_FILE_EXTENSIONS:
-        return error_response('仅支持上传 pdf/png/jpg/jpeg 文件')
+        return error_response('文件扩展名不合法，仅支持 pdf/png/jpg/jpeg')
+    mimetype = str(uploaded_file.mimetype or '').lower().strip()
+    allowed_mime_types = ALLOWED_IMPROVEMENT_MIME_TYPES.get(ext, set())
+    if mimetype not in allowed_mime_types:
+        return error_response(
+            f'文件 MIME type 不合法，当前为 {mimetype or "未知"}，仅支持 pdf/png/jpg/jpeg',
+            400,
+            'INVALID_FILE_TYPE',
+        )
 
     conn = get_db()
     c = conn.cursor()
@@ -3056,9 +3084,7 @@ def api_improvement_record_file_upload(rid):
         conn.close()
         return error_response('关联客户不存在', 404, 'NOT_FOUND')
 
-    customer_folder = sanitize_folder_part(customer['name'], f'user_{customer_id}')
-    phone_folder = sanitize_folder_part(customer['phone'], 'no_phone')
-    folder_name = f'{customer_folder}_{phone_folder}'
+    folder_name = get_customer_privacy_folder(customer['name'], customer['phone'], customer_id)
     target_dir = os.path.join(LOCAL_FILE_UPLOAD_ROOT, folder_name)
     os.makedirs(target_dir, exist_ok=True)
 
