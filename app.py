@@ -5,7 +5,7 @@
 """
 
 from flask import Flask, request, jsonify, send_from_directory, session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import sqlite3
@@ -578,6 +578,20 @@ IMPROVEMENT_STATUS_OPTIONS = ['明显改善', '部分改善', '无改善', '加�
 FOLLOWUP_METHOD_OPTIONS = ['电话', '到店']
 FOLLOWUP_PRESET_OPTIONS = ['1个月', '3个月', '半年', '1年']
 ALLOWED_IMPROVEMENT_FILE_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+ALLOWED_IMPROVEMENT_MIME_TYPES = {
+    'pdf': {'application/pdf', 'application/x-pdf'},
+    'png': {'image/png', 'image/x-png'},
+    'jpg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
+    'jpeg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
+}
+
+
+def get_customer_privacy_folder(customer_name, customer_phone, customer_id):
+    name_text = str(customer_name or '').strip()
+    surname = sanitize_folder_part(name_text[:1], f'user_{customer_id}')
+    phone_digits = re.sub(r'\D', '', str(customer_phone or ''))
+    phone_last4 = phone_digits[-4:] if len(phone_digits) >= 4 else 'no_phone'
+    return f'{surname}_{phone_last4}'
 
 
 def sanitize_folder_part(value, fallback):
@@ -771,6 +785,11 @@ def success_response(data=None, message='操作成功', status=200):
 
 def error_response(message, status=400, error_code='VALIDATION_ERROR'):
     return jsonify({'success': False, 'message': message, 'error_code': error_code}), status
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_file_too_large(_err):
+    return error_response('上传文件过大，单个文件不能超过 10MB', 413, 'FILE_TOO_LARGE')
 
 
 def parse_list_params(default_page_size=20, max_page_size=100):
@@ -3047,7 +3066,15 @@ def api_improvement_record_file_upload(rid):
         return error_response('文件名不能为空')
     ext = original_name.rsplit('.', 1)[-1].lower() if '.' in original_name else ''
     if ext not in ALLOWED_IMPROVEMENT_FILE_EXTENSIONS:
-        return error_response('仅支持上传 pdf/png/jpg/jpeg 文件')
+        return error_response('文件扩展名不合法，仅支持 pdf/png/jpg/jpeg')
+    mimetype = str(uploaded_file.mimetype or '').lower().strip()
+    allowed_mime_types = ALLOWED_IMPROVEMENT_MIME_TYPES.get(ext, set())
+    if mimetype not in allowed_mime_types:
+        return error_response(
+            f'文件 MIME type 不合法，当前为 {mimetype or "未知"}，仅支持 pdf/png/jpg/jpeg',
+            400,
+            'INVALID_FILE_TYPE',
+        )
 
     conn = get_db()
     c = conn.cursor()
@@ -3064,9 +3091,7 @@ def api_improvement_record_file_upload(rid):
         conn.close()
         return error_response('关联客户不存在', 404, 'NOT_FOUND')
 
-    customer_folder = sanitize_folder_part(customer['name'], f'user_{customer_id}')
-    phone_folder = sanitize_folder_part(customer['phone'], 'no_phone')
-    folder_name = f'{customer_folder}_{phone_folder}'
+    folder_name = get_customer_privacy_folder(customer['name'], customer['phone'], customer_id)
     target_dir = os.path.join(LOCAL_FILE_UPLOAD_ROOT, folder_name)
     os.makedirs(target_dir, exist_ok=True)
 
@@ -4596,7 +4621,6 @@ def api_dashboard_health_portrait():
     behavior_tag_counter = Counter()
     exercise_counter = Counter()
     demand_counter = Counter()
-    fatigue_counter = Counter()
 
     smoking_people = 0
     drinking_people = 0
@@ -4610,6 +4634,10 @@ def api_dashboard_health_portrait():
     history_plus_bp_abnormal_people = 0
     low_exercise_bad_habit_people = 0
     bmi_abnormal = 0
+    blood_pressure_abnormal_people = 0
+    blood_lipid_abnormal_people = 0
+    blood_sugar_abnormal_people = 0
+    sleep_issue_people = 0
 
 
     for row in records:
@@ -4643,6 +4671,28 @@ def api_dashboard_health_portrait():
             if bmi_level != '正常':
                 bmi_abnormal += 1
 
+        blood_pressure_test = str(row.get('blood_pressure_test') or '')
+        blood_lipid_test = str(row.get('blood_lipid_test') or '')
+        blood_sugar_test = str(row.get('blood_sugar_test') or '')
+        sleep_hours_text = str(row.get('sleep_hours') or '')
+        sleep_quality_text = str(row.get('sleep_quality') or '')
+
+        bp_abnormal = ('偏高' in blood_pressure_test) or ('偏低' in blood_pressure_test)
+        lipid_abnormal = '偏高' in blood_lipid_test
+        sugar_abnormal = ('偏高' in blood_sugar_test) or ('偏低' in blood_sugar_test)
+        sleep_hours_abnormal = sleep_hours_text in ('<6小时', '>10小时')
+        sleep_quality_abnormal = sleep_quality_text in ('很差', '差')
+        sleep_abnormal = sleep_quality_abnormal or sleep_hours_abnormal
+
+        if bp_abnormal:
+            blood_pressure_abnormal_people += 1
+        if lipid_abnormal:
+            blood_lipid_abnormal_people += 1
+        if sugar_abnormal:
+            blood_sugar_abnormal_people += 1
+        if sleep_abnormal:
+            sleep_issue_people += 1
+
         portrait = extract_health_portrait(row)
         risk_level = portrait['risk_level']
         risks[risk_level] += 1
@@ -4672,9 +4722,8 @@ def api_dashboard_health_portrait():
 
         smoking = row.get('smoking_status') == '有'
         drinking = row.get('drinking_status') == '有'
-        low_exercise = row.get('weekly_exercise_freq') == '<3次'
-        sleep_abnormal = row.get('sleep_hours') in ('<6小时', '>10小时')
-        poor_sleep = row.get('sleep_quality') in ('很差', '差')
+        low_exercise = not exercise_items or any(item in ('无', '不运动', '很少运动', '偶尔运动') for item in exercise_items)
+        poor_sleep = sleep_quality_abnormal
         has_past_history = bool(past_history_items)
         has_family_history = bool(family_history_items)
 
@@ -4698,10 +4747,6 @@ def api_dashboard_health_portrait():
             allergy_people += 1
         if row.get('chronic_pain') == '有':
             chronic_pain_people += 1
-
-        fatigue = (row.get('fatigue_last_month') or '').strip()
-        if fatigue and fatigue != '无':
-            fatigue_counter[fatigue] += 1
 
         if has_family_history and has_past_history:
             dual_history_high_risk_people += 1
@@ -4762,6 +4807,33 @@ def api_dashboard_health_portrait():
 
     return jsonify({
         'total_customers': total,
+        'abnormal_indicators': [
+            {
+                'name': '血压异常人数',
+                'count': blood_pressure_abnormal_people,
+                'ratio': round((blood_pressure_abnormal_people * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': '血脂异常人数',
+                'count': blood_lipid_abnormal_people,
+                'ratio': round((blood_lipid_abnormal_people * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': '血糖异常人数',
+                'count': blood_sugar_abnormal_people,
+                'ratio': round((blood_sugar_abnormal_people * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': 'BMI异常人数',
+                'count': bmi_abnormal,
+                'ratio': round((bmi_abnormal * 100.0 / total), 1) if total else 0,
+            },
+            {
+                'name': '睡眠异常人数',
+                'count': sleep_issue_people,
+                'ratio': round((sleep_issue_people * 100.0 / total), 1) if total else 0,
+            },
+        ],
         'dimension1': {
             'cards': {
                 'total_people': total,
@@ -4801,7 +4873,7 @@ def api_dashboard_health_portrait():
             'low_exercise_bad_habit_people': low_exercise_bad_habit_people,
             'exercise_top10': [{'name': k, 'count': v} for k, v in exercise_counter.most_common(10)],
             'health_needs_top10': [{'name': k, 'count': v} for k, v in demand_counter.most_common(10)],
-            'fatigue_distribution': [{'name': k, 'count': v} for k, v in fatigue_counter.items()],
+            'fatigue_distribution': [],
             'behavior_tags': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
         },
         'dimension4': {

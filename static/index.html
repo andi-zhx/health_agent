@@ -61,6 +61,12 @@
     .health-group-title { width: 100%; margin: 0 0 10px; font-size: 15px; font-weight: 700; color: #111; }
     .health-section { border: 1px solid #000; border-radius: 6px; padding: 12px; margin-bottom: 14px; background: #fff; }
     .health-section .form-row:last-child { margin-bottom: 0; }
+    .health-fold { border: 1px solid #000; border-radius: 6px; margin-bottom: 14px; background: #fff; overflow: hidden; }
+    .health-fold summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; padding: 12px; font-size: 15px; font-weight: 700; color: #111; }
+    .health-fold summary::-webkit-details-marker { display: none; }
+    .health-fold summary::after { content: '▸'; font-size: 12px; color: #666; transition: transform .2s ease; }
+    .health-fold[open] summary::after { transform: rotate(90deg); }
+    .health-fold-content { padding: 0 12px 12px; }
     .health-items { display: flex; flex-wrap: wrap; gap: 10px; }
     .health-item { border: 1px solid #000; border-radius: 4px; padding: 8px 10px; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; white-space: nowrap; background: #fff; }
     .health-item.full { width: 100%; overflow-x: auto; }
@@ -96,8 +102,8 @@
     .compare-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
     .compare-legend .male::before { background: #8ecbff; }
     .compare-legend .female::before { background: #ffb6c1; }
-    .radar-wrap { width: 100%; max-width: 420px; }
-    .radar-svg { width: 100%; height: 320px; }
+    .portrait-risk-bars.hbar .label { width: 130px; color: #334155; }
+    .portrait-risk-bars.hbar .value { width: 52px; color: #111827; }
     .heatmap-wrap { overflow-x: auto; }
     .heatmap-table { border-collapse: collapse; min-width: 720px; width: 100%; }
     .heatmap-table th, .heatmap-table td { border: 1px solid #e2e8f0; padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; }
@@ -126,6 +132,15 @@
     .checkin-btn-checked { background: #27ae60; }
     .checkin-btn-noshow { background: #95a5a6; }
     .checkin-cell-actions { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .row-action-menu { position: relative; display: inline-block; }
+    .row-action-menu > summary { list-style: none; cursor: pointer; user-select: none; }
+    .row-action-menu > summary::-webkit-details-marker { display: none; }
+    .row-action-trigger { border: 1px solid #d1d5db; background: #fff; color: #334155; border-radius: 4px; padding: 4px 10px; font-size: 12px; }
+    .row-action-menu[open] .row-action-trigger { border-color: #3498db; color: #1d4ed8; }
+    .row-action-list { position: absolute; right: 0; top: calc(100% + 6px); min-width: 136px; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 4px 12px rgba(0,0,0,.12); border-radius: 6px; padding: 6px; z-index: 8; display: flex; flex-direction: column; gap: 4px; }
+    .row-action-item { width: 100%; text-align: left; border: none; border-radius: 4px; background: #fff; color: #334155; padding: 6px 8px; font-size: 12px; cursor: pointer; }
+    .row-action-item:hover { background: #f1f5f9; }
+    .row-action-item.danger { color: #dc2626; }
 
     @keyframes healthFlow {
       0% { transform: translate3d(-8%, -4%, 0) scale(1); opacity: .7; }
@@ -203,6 +218,10 @@
     .home-staff-card.selected { background: #3b82f6; border-color: #2563eb; }
     .home-staff-card.selected .name, .home-staff-card.selected .meta { color: #fff; }
     .integrated-download-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .integrated-tab-bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .integrated-tab-btn { border: 1px solid #d1d5db; background: #fff; color: #334155; border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; transition: all .15s ease; }
+    .integrated-tab-btn:hover { border-color: #3498db; color: #1d4ed8; }
+    .integrated-tab-btn.active { background: #3498db; border-color: #3498db; color: #fff; }
     .integrated-section { border: 1px solid #dbe3ee; border-radius: 10px; padding: 14px; margin-bottom: 16px; background: #fff; }
     .integrated-section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .integrated-section-head h3 { margin: 0; font-size: 15px; }
@@ -381,7 +400,14 @@
             <button class="btn btn-primary" id="btn-customer-download-all">下载</button>
           </div>
           <div id="customer-msg"></div>
-          <div class="integrated-section">
+          <div class="integrated-tab-bar">
+            <button type="button" class="integrated-tab-btn active" data-integrated-tab-btn="basic">基础信息</button>
+            <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="health">健康档案</button>
+            <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="appointments">预约服务记录</button>
+            <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="home_appointments">上门预约记录</button>
+            <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="improvement">改善记录</button>
+          </div>
+          <div class="integrated-section" data-integrated-tab-panel="basic">
             <div class="integrated-section-head">
               <h3>基础信息</h3>
               <div>
@@ -392,7 +418,7 @@
             <table><thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th></tr></thead><tbody id="customer-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="basic"></div>
           </div>
-          <div class="integrated-section">
+          <div class="integrated-section hide" data-integrated-tab-panel="health">
             <div class="integrated-section-head">
               <h3>健康档案</h3>
               <div><input type="number" id="export-limit-health" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="health">下载</button></div>
@@ -400,7 +426,7 @@
             <table><thead><tr><th>客户</th><th>评估日期</th><th>年龄</th><th>近期症状</th><th>睡眠</th><th>操作</th></tr></thead><tbody id="integrated-health-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="health"></div>
           </div>
-          <div class="integrated-section">
+          <div class="integrated-section hide" data-integrated-tab-panel="appointments">
             <div class="integrated-section-head">
               <h3>预约服务记录</h3>
               <div><input type="number" id="export-limit-appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="appointments">下载</button></div>
@@ -408,7 +434,7 @@
             <table><thead><tr><th>客户</th><th>项目</th><th>预约日期</th><th>时间</th><th>签到状态</th><th>操作</th></tr></thead><tbody id="integrated-appointments-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="appointments"></div>
           </div>
-          <div class="integrated-section">
+          <div class="integrated-section hide" data-integrated-tab-panel="home_appointments">
             <div class="integrated-section-head">
               <h3>上门预约记录</h3>
               <div><input type="number" id="export-limit-home_appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="home_appointments">下载</button></div>
@@ -416,7 +442,7 @@
             <table><thead><tr><th>客户</th><th>项目</th><th>预约日期</th><th>时间</th><th>签到状态</th><th>操作</th></tr></thead><tbody id="integrated-home-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="home_appointments"></div>
           </div>
-          <div class="integrated-section">
+          <div class="integrated-section hide" data-integrated-tab-panel="improvement">
             <div class="integrated-section-head">
               <h3>健康改善记录</h3>
               <div><input type="number" id="export-limit-improvement" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="improvement">下载</button></div>
@@ -488,10 +514,10 @@
               </div>
             </div>
           </div>
-          <div class="health-section">
-            <div class="form-row">
+          <details class="health-fold" open>
+            <summary>既往病史与家族史</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%">
-                <div class="health-group-title" style="margin-bottom:8px;">既往病史与家族史</div>
                 <div class="health-item full"><span class="item-title">是否确诊过疾病（多选）</span>
                   <div id="ha-diagnosed-diseases" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
                     <label><input type="checkbox" name="ha-diagnosed-disease" value="无">无</label>
@@ -515,8 +541,12 @@
                 <div class="health-item full"><span class="item-title">过敏史</span><label><input type="radio" name="ha-allergy-history" value="无">无</label><label><input type="radio" name="ha-allergy-history" value="有">有</label><span>过敏史：</span><input type="text" id="ha-allergy-details" style="flex:1;min-width:180px"></div>
                 <div class="health-item full"><span class="item-title">是否植入过心脏器械或存在相关心脏问题（多选）</span><label><input type="checkbox" name="ha-special-condition" value="无">无</label><label><input type="checkbox" name="ha-special-condition" value="心脏支架">心脏支架</label><label><input type="checkbox" name="ha-special-condition" value="起搏器">起搏器</label><label><input type="checkbox" name="ha-special-condition" value="其他">其他</label><span>其他</span><input type="text" id="ha-special-condition-other" style="min-width:180px" placeholder="请输入其他情况"></div>
               </div>
+            </div>
+          </details>
+          <details class="health-fold">
+            <summary>近期症状</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
-                <div class="health-group-title" style="margin-bottom:8px;">近期症状</div>
                 <div class="health-item full"><span class="item-title">近半年症状（多选）</span>
                   <div id="ha-recent-symptoms" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
                     <label><input type="checkbox" name="ha-recent-symptom" value="无">无</label>
@@ -541,8 +571,12 @@
                 <div class="health-item full"><span class="item-title">近半年血糖检测情况</span><label><input type="radio" name="ha-blood-sugar-test" value="未监测">未监测</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：正常">监测：正常</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：偏低">监测：偏低</label><label><input type="radio" name="ha-blood-sugar-test" value="监测：偏高">监测：偏高</label></div>
                 <div class="health-item full"><span class="item-title">详细情况</span><input type="text" id="ha-recent-symptom-detail" style="flex:1;min-width:220px" placeholder="请输入近期症状详细情况"></div>
               </div>
+            </div>
+          </details>
+          <details class="health-fold">
+            <summary>生活方式</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
-                <div class="health-group-title" style="margin-bottom:8px;">生活方式</div>
                 <div class="health-item full"><span class="item-title">吸烟情况</span><label><input type="radio" name="ha-smoking-status" value="无">无</label><label><input type="radio" name="ha-smoking-status" value="有">有</label><span>烟龄</span><input type="text" inputmode="numeric" id="ha-smoking-years" style="width:90px"><span>年</span></div>
                 <div class="health-item full"><span class="item-title">饮酒</span><label><input type="radio" name="ha-drinking-status" value="无">无</label><label><input type="radio" name="ha-drinking-status" value="有">有</label><span>饮酒</span><input type="text" inputmode="numeric" id="ha-drinking-years" style="width:90px"><span>年</span></div>
                 <div class="health-item full"><span class="item-title">目前的睡眠状况</span><label><input type="radio" name="ha-sleep-quality" value="很差">很差</label><label><input type="radio" name="ha-sleep-quality" value="差">差</label><label><input type="radio" name="ha-sleep-quality" value="一般">一般</label><label><input type="radio" name="ha-sleep-quality" value="良好">良好</label></div>
@@ -565,8 +599,12 @@
                   </div>
                 </div>
               </div>
+            </div>
+          </details>
+          <details class="health-fold">
+            <summary>健康服务需求</summary>
+            <div class="health-fold-content">
               <div class="health-items" style="border:1px solid #e5e7eb;padding:12px;border-radius:8px;width:100%;margin-top:12px">
-                <div class="health-group-title" style="margin-bottom:8px;">健康服务需求</div>
                 <div class="health-item full"><span class="item-title">需要的服务</span>
                   <div id="health-needs" style="display:flex;flex-wrap:wrap;gap:10px;flex:1">
                     <label><input type="checkbox" name="health-need" value="疾病筛查">疾病筛查</label>
@@ -588,7 +626,7 @@
                 </div>
               </div>
             </div>
-          </div>
+          </details>
           <input type="hidden" id="health-date">
           <input type="hidden" id="health-height">
           <input type="hidden" id="health-weight">
@@ -617,6 +655,8 @@
         <div class="card">
           <h2>健康画像</h2>
           <div id="portrait-msg"></div>
+          <h3>关键健康异常指标</h3>
+          <div id="portrait-abnormal-kpi-cards" class="kpi-row"></div>
           <div class="portrait-grid">
             <div class="portrait-panel">
               <h3>维度1：人口学属性画像（基础分层）</h3>
@@ -634,18 +674,18 @@
             </div>
             <div class="portrait-panel">
               <h3>维度2：疾病风险与遗传画像（核心）</h3>
-              <h4>过去确诊疾病</h4>
-              <div class="chart-row"><div id="portrait-disease-pie"></div><div id="portrait-disease-legend" class="legend"></div></div>
-              <h4>家族病史</h4>
-              <div class="chart-row"><div id="portrait-family-pie"></div><div id="portrait-family-legend" class="legend"></div></div>
+              <h4>过去确诊疾病（Top10）</h4>
+              <div id="portrait-disease-top10" class="hbar"></div>
+              <h4>家族病史（Top10）</h4>
+              <div id="portrait-family-top10" class="hbar"></div>
               <h4>近期症状（近半年）</h4>
               <div id="portrait-recent-symptom-bars" class="hbar"></div>
             </div>
             <div class="portrait-panel">
               <h3>维度3：生活方式行为画像（可干预）</h3>
               <div id="portrait-habit-kpi" class="kpi-row"></div>
-              <h4>行为风险雷达图</h4>
-              <div id="portrait-habit-radar"></div>
+              <h4>行为风险指标（占比）</h4>
+              <div id="portrait-habit-risk-bars" class="hbar portrait-risk-bars"></div>
               <h4>运动方式</h4>
               <div id="portrait-exercise-top10" class="hbar"></div>
               <h4>健康服务需求</h4>

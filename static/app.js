@@ -452,6 +452,7 @@
     improvement: { page: 1, page_size: 10 },
     auditLogs: { page: 1, page_size: 10 }
   };
+  var activeIntegratedTab = 'basic';
   function escapeHtml(value) {
     return String(value == null ? '' : value)
       .replace(/&/g, '&amp;')
@@ -721,8 +722,19 @@
       renderIntegratedSectionPagination('improvement', res.improvement || {}, 'customerImprovement');
 
       bindIntegratedSectionActions();
+      renderIntegratedTabPanels();
       var p = getPagination(basicData);
       showMsg('customer-msg', '基础信息共 ' + (p.total || 0) + ' 条，当前第 ' + (p.page || 1) + ' / ' + (p.total_pages || 1) + ' 页');
+    });
+  }
+
+  function renderIntegratedTabPanels() {
+    document.querySelectorAll('[data-integrated-tab-btn]').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-integrated-tab-btn') === activeIntegratedTab);
+    });
+    document.querySelectorAll('[data-integrated-tab-panel]').forEach(function (panel) {
+      var key = panel.getAttribute('data-integrated-tab-panel');
+      panel.classList.toggle('hide', key !== activeIntegratedTab);
     });
   }
 
@@ -1461,20 +1473,36 @@
     return { text: '待签到', cls: 'checkin-btn-pending' };
   }
 
+  function canOperateCheckin(record) {
+    var bookingStatus = String(record.status || '').toLowerCase();
+    var checkinStatus = String(record.checkin_status || 'pending').toLowerCase();
+    return bookingStatus !== 'cancelled' && checkinStatus === 'pending' && String(record.appointment_date || '') === today;
+  }
+
   function renderCheckinCell(record, moduleName) {
     var bookingStatus = String(record.status || '').toLowerCase();
     var checkinStatus = String(record.checkin_status || 'pending').toLowerCase();
     var meta = getCheckinMeta(checkinStatus, bookingStatus);
     if (bookingStatus === 'cancelled') return '<span>-</span>';
-    var html = '<button class="checkin-btn ' + meta.cls + '" type="button" disabled>' + meta.text + '</button>';
-    var canOperate = checkinStatus === 'pending' && String(record.appointment_date || '') === today;
-    if (canOperate) {
-      html += '<div class="checkin-cell-actions">' +
-        '<button class="btn btn-small btn-primary" data-checkin-action="' + moduleName + '" data-checkin-id="' + record.id + '" data-checkin-target="checked_in">标记已签到</button>' +
-        '<button class="btn btn-small btn-secondary" data-checkin-action="' + moduleName + '" data-checkin-id="' + record.id + '" data-checkin-target="no_show">标记爽约</button>' +
-        '</div>';
+    return '<button class="checkin-btn ' + meta.cls + '" type="button" disabled>' + meta.text + '</button>';
+  }
+
+  function renderRowActionMenu(record, type) {
+    var id = record.id;
+    var meta = getStatusMeta(record.status);
+    var items = [
+      '<button class="row-action-item" type="button" data-' + type + '-history="' + id + '">查看历史</button>',
+      '<button class="row-action-item" type="button" data-' + type + '-improvement="' + id + '">填写改善情况</button>'
+    ];
+    if (meta.editable) {
+      items.splice(1, 0, '<button class="row-action-item" type="button" data-' + type + '-edit="' + id + '">编辑</button>');
+      items.push('<button class="row-action-item danger" type="button" data-' + type + '-cancel="' + id + '">取消预约</button>');
     }
-    return html;
+    if (canOperateCheckin(record)) {
+      items.push('<button class="row-action-item" type="button" data-checkin-action="' + (type === 'apt' ? 'appointments' : 'home_appointments') + '" data-checkin-id="' + id + '" data-checkin-target="checked_in">标记已签到</button>');
+      items.push('<button class="row-action-item" type="button" data-checkin-action="' + (type === 'apt' ? 'appointments' : 'home_appointments') + '" data-checkin-id="' + id + '" data-checkin-target="no_show">标记爽约</button>');
+    }
+    return '<details class="row-action-menu"><summary class="row-action-trigger">操作</summary><div class="row-action-list">' + items.join('') + '</div></details>';
   }
 
   function loadAppointmentsPage() {
@@ -1497,10 +1525,7 @@
     get('/api/appointments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('apt-list');
       tbody.innerHTML = toList(list).map(function (a) {
-        var meta = getStatusMeta(a.status);
-        var action = meta.editable
-          ? '<button class="btn btn-small btn-secondary" data-apt-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-primary" data-apt-history="' + a.id + '">查看历史</button> <button class="btn btn-small btn-primary" data-apt-improvement="' + a.id + '">填写改善情况</button>'
-          : '<button class="btn btn-small btn-primary" data-apt-history="' + a.id + '">查看历史</button> <button class="btn btn-small btn-primary" data-apt-improvement="' + a.id + '">填写改善情况</button>';
+        var action = renderRowActionMenu(a, 'apt');
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.equipment_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + renderCheckinCell(a, 'appointments') + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       var p = getPagination(list);
@@ -1554,6 +1579,17 @@
           });
         });
       });
+      tbody.querySelectorAll('[data-apt-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openConfirmModal('确认修改预约状态', [['状态', '取消预约']], function () {
+            post('/api/appointments/' + btn.dataset.aptCancel + '/cancel', {}).then(function (res) {
+              if (res.error) { showMsg('apt-msg', res.error, true); return; }
+              showMsg('apt-msg', '已更新为取消预约');
+              loadAppointmentsPage();
+            });
+          });
+        });
+      });
     });
   }
 
@@ -1582,10 +1618,7 @@
       var rows = toList(list);
       var tbody = document.getElementById('home-list');
       tbody.innerHTML = rows.map(function (a) {
-        var meta = getStatusMeta(a.status);
-        var action = meta.editable
-          ? '<button class="btn btn-small btn-secondary" data-home-edit="' + a.id + '">编辑</button> <button class="btn btn-small btn-primary" data-home-history="' + a.id + '">查看历史</button> <button class="btn btn-small btn-primary" data-home-improvement="' + a.id + '">填写改善情况</button>'
-          : '<button class="btn btn-small btn-primary" data-home-history="' + a.id + '">查看历史</button> <button class="btn btn-small btn-primary" data-home-improvement="' + a.id + '">填写改善情况</button>';
+        var action = renderRowActionMenu(a, 'home');
         return '<tr><td>' + (a.customer_name || '') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '') + '</td><td>' + (a.start_time || '') + '~' + (a.end_time || '') + '</td><td>' + (a.location || '-') + '</td><td>' + (a.staff_name || '-') + '</td><td>' + renderStatusPill(a.status) + '</td><td>' + renderCheckinCell(a, 'home_appointments') + '</td><td>' + action + '</td><td>' + renderOperationTime(a) + '</td></tr>';
       }).join('');
       var p = getPagination(list);
@@ -1635,6 +1668,17 @@
             if (!draft || draft.error) { showMsg('home-msg', (draft && draft.error) || '初始化改善记录失败', true); return; }
             showPage('improvement-tracking');
             openImprovementModal(draft, '填写改善情况');
+          });
+        });
+      });
+      tbody.querySelectorAll('[data-home-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          openConfirmModal('确认修改预约状态', [['状态', '取消预约']], function () {
+            post('/api/home-appointments/' + btn.dataset.homeCancel + '/cancel', {}).then(function (res) {
+              if (res.error) { showMsg('home-msg', res.error, true); return; }
+              showMsg('home-msg', '已更新为取消预约');
+              loadHomeAppointmentsPage();
+            });
           });
         });
       });
@@ -1831,7 +1875,14 @@
       var d1 = res.dimension1 || {};
       var d2 = res.dimension2 || {};
       var d3 = res.dimension3 || {};
+      var abnormalIndicators = toList(res.abnormal_indicators);
       showMsg('portrait-msg', '已基于最新健康档案生成画像，共覆盖客户 ' + (res.total_customers || 0) + ' 人');
+      renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
+        return {
+          name: item.name || '-',
+          value: (item.count || 0) + '人 / ' + (item.ratio || 0) + '%'
+        };
+      }));
       renderKpiCards('portrait-kpi-cards', [
         { name: '总人数', value: (d1.cards || {}).total_people || 0 },
         { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%' },
@@ -1842,24 +1893,26 @@
       renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution));
       renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
       renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-      renderCircleChart('portrait-disease-pie', toList(d2.past_disease_distribution), false);
-      renderLegend('portrait-disease-legend', toList(d2.past_disease_distribution));
-      renderCircleChart('portrait-family-pie', toList(d2.family_history_distribution), false);
-      renderLegend('portrait-family-legend', toList(d2.family_history_distribution));
+      renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', { maxItems: 10 });
+      renderHorizontalBars('portrait-family-top10', toList(d2.family_history_distribution), '#fb7185', { maxItems: 10 });
       renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
 
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
         { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
-        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' }
+        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' },
+        { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%' },
+        { name: '烟酒叠加占比', value: (d3.smoking_drinking_ratio || 0) + '%' }
       ]);
-      renderRadarChart('portrait-habit-radar', [
+      renderHorizontalBars('portrait-habit-risk-bars', [
         { name: '吸烟', value: d3.smoking_ratio || 0 },
         { name: '饮酒', value: d3.drinking_ratio || 0 },
         { name: '睡眠异常', value: d3.sleep_abnormal_ratio || 0 },
         { name: '睡眠质量差', value: d3.poor_sleep_quality_ratio || 0 },
         { name: '烟酒叠加', value: d3.smoking_drinking_ratio || 0 }
-      ]);
+      ].map(function (item) {
+        return { name: item.name, count: item.value };
+      }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
       renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
@@ -1982,17 +2035,19 @@
     return '<path d="M ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' L ' + x3 + ' ' + y3 + ' A ' + rInner + ' ' + rInner + ' 0 ' + largeArc + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '"></path>';
   }
 
-  function renderHorizontalBars(elId, list, color) {
+  function renderHorizontalBars(elId, list, color, options) {
     var box = document.getElementById(elId);
     if (!box) return;
-    if (!list.length) {
+    var config = options || {};
+    var rows = toList(list).slice(0, config.maxItems || 10);
+    if (!rows.length) {
       box.innerHTML = '<p style="color:#666">暂无数据</p>';
       return;
     }
-    var max = Math.max.apply(null, list.map(function (x) { return x.count || 0; }).concat([1]));
-    box.innerHTML = list.map(function (x) {
+    var max = Math.max.apply(null, rows.map(function (x) { return x.count || 0; }).concat([1]));
+    box.innerHTML = rows.map(function (x) {
       var width = Math.round(((x.count || 0) * 100) / max);
-      return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + '</div></div>';
+      return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + (config.valueSuffix || '') + '</div></div>';
     }).join('');
   }
 
@@ -2143,6 +2198,13 @@
   document.querySelectorAll('.sidebar a').forEach(function (a) {
     a.addEventListener('click', function (e) { e.preventDefault(); showPage(a.dataset.page); });
   });
+  document.querySelectorAll('[data-integrated-tab-btn]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      activeIntegratedTab = btn.getAttribute('data-integrated-tab-btn') || 'basic';
+      renderIntegratedTabPanels();
+    });
+  });
+  renderIntegratedTabPanels();
   var btnEquipmentRangeQuery = document.getElementById('btn-equipment-range-query');
   if (btnEquipmentRangeQuery) {
     btnEquipmentRangeQuery.addEventListener('click', function () {
