@@ -1921,6 +1921,7 @@
       }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
+      renderServiceFunnelCards('portrait-service-funnel', toList((res.dimension4 || {}).service_funnel));
       renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
     });
   }
@@ -2202,6 +2203,28 @@
       return '<div class="stacked-row"><div class="stacked-label">' + escapeHtml(row.project) + '</div><div class="stacked-track">' + segments + '</div><div class="stacked-value">' + row.total + '</div></div>';
     }).join('') + '</div>';
     box.innerHTML = legend + listHtml;
+  }
+
+  function renderServiceFunnelCards(elId, list) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#666">暂无漏斗数据</p>';
+      return;
+    }
+    var max = Math.max.apply(null, list.map(function (item) { return Number(item.count || 0); }).concat([1]));
+    box.innerHTML = list.map(function (item, idx) {
+      var count = Number(item.count || 0);
+      var width = Math.max(32, Math.round((count * 100) / max));
+      var ratioText = idx === 0 ? '100%' : ((list[idx - 1] && list[idx - 1].count) ? ((count * 100) / Number(list[idx - 1].count || 1)).toFixed(1) + '%' : '0.0%');
+      var arrow = idx === list.length - 1 ? '' : '<div class="funnel-arrow">↓</div>';
+      return '<div class="funnel-step">' +
+        '<div class="funnel-label">' + escapeHtml(item.label || '-') + '</div>' +
+        '<div class="funnel-track"><div class="funnel-bar" style="width:' + width + '%"></div></div>' +
+        '<div class="funnel-count">' + count + '人</div>' +
+        '<div class="funnel-rate">环比转化：' + ratioText + '</div>' +
+      '</div>' + arrow;
+    }).join('');
   }
 
   function getCompanionValue(name) {
