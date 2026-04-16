@@ -62,6 +62,14 @@
     return (data && data.pagination) || {};
   }
 
+  function generateBookingGroupId() {
+    // 前端一次提交多个时间段时，复用同一个分组ID，后端也会兜底生成。
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID().replace(/-/g, '');
+    }
+    return String(Date.now()) + String(Math.random()).slice(2, 10);
+  }
+
   function showPage(name) {
     document.querySelectorAll('.page').forEach(function (el) { el.classList.add('hide'); });
     document.querySelectorAll('.sidebar a').forEach(function (a) { a.classList.remove('active'); });
@@ -2691,8 +2699,10 @@
       ['设备', selectedAppointmentSlots.map(function (slot) { return slot.equipment_name || ('设备' + (slot.equipment_label || '-')); }).join('、')]
     ];
     openConfirmModal(appointmentEditId ? '确认修改预约后保存记录' : '确认预约信息', rows, function () {
+      var bookingGroupId = appointmentEditId ? '' : generateBookingGroupId();
       var requests = selectedAppointmentSlots.map(function (slot) {
         var payload = Object.assign({}, body, {
+          booking_group_id: bookingGroupId,
           equipment_id: slot.equipment_id,
           start_time: slot.start_time,
           end_time: slot.end_time
@@ -2755,8 +2765,13 @@
       ['家属陪同', body.has_companion || '无']
     ];
     openConfirmModal(homeAppointmentEditId ? '确认修改预约后保存记录' : '确认上门预约信息', rows, function () {
+      var bookingGroupId = homeAppointmentEditId ? '' : generateBookingGroupId();
       var requests = selectedHomeSlots.map(function (slot) {
-        var payload = Object.assign({}, body, { start_time: slot.start_time, end_time: slot.end_time });
+        var payload = Object.assign({}, body, {
+          booking_group_id: bookingGroupId,
+          start_time: slot.start_time,
+          end_time: slot.end_time
+        });
         if (homeAppointmentEditId) return put('/api/home-appointments/' + homeAppointmentEditId, payload);
         return post('/api/home-appointments', payload);
       });

@@ -15,6 +15,7 @@ import json
 import logging
 import re
 import hmac
+import uuid
 from collections import Counter
 from datetime import datetime
 from datetime import timedelta
@@ -48,6 +49,11 @@ def now_local_str():
 
 def now_local_date_str():
     return now_local().strftime('%Y-%m-%d')
+
+
+def generate_booking_group_id():
+    """生成预约分组ID：用于将同一次连续多时间段预约归为一组。"""
+    return uuid.uuid4().hex
 
 
 def calculate_age_by_birth_year(birth_date):
@@ -1271,6 +1277,7 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS appointments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_group_id TEXT,
             customer_id INTEGER NOT NULL,
             equipment_id INTEGER,
             project_id INTEGER,
@@ -1294,6 +1301,7 @@ def init_db():
     ''')
 
     ensure_columns(c, 'appointments', {
+        'booking_group_id': 'TEXT',
         'equipment_id': 'INTEGER',
         'project_id': 'INTEGER',
         'staff_id': 'INTEGER',
@@ -1463,6 +1471,7 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS home_appointments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_group_id TEXT,
             customer_id INTEGER NOT NULL,
             project_id INTEGER NOT NULL,
             staff_id INTEGER,
@@ -1495,6 +1504,7 @@ def init_db():
     ''')
 
     ensure_columns(c, 'home_appointments', {
+        'booking_group_id': 'TEXT',
         'project_id': 'INTEGER',
         'staff_id': 'INTEGER',
         'customer_name': 'TEXT',
@@ -3369,6 +3379,8 @@ def api_appointment_create():
     conn = get_db()
     c = conn.cursor()
     now_ts = now_local_str()
+    # 前端未传时由后端自动生成，保证单条/多条都具备分组ID
+    booking_group_id = str(d.get('booking_group_id') or '').strip() or generate_booking_group_id()
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
     if not project:
@@ -3410,9 +3422,17 @@ def api_appointment_create():
 
     checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
-        INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, checkin_status, has_companion, notes, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('has_companion', '无'), d.get('notes'), now_ts))
+        INSERT INTO appointments (
+            booking_group_id, customer_id, project_id, equipment_id, staff_id,
+            appointment_date, start_time, end_time, status, checkin_status,
+            has_companion, notes, updated_at
+        )
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ''', (
+        booking_group_id, d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None,
+        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status,
+        d.get('has_companion', '无'), d.get('notes'), now_ts,
+    ))
     rid = c.lastrowid
     c.execute(
         '''
@@ -3437,7 +3457,7 @@ def api_appointment_create():
     conn.commit()
     conn.close()
     audit_log('创建预约', 'appointments', rid, d.get('appointment_date'))
-    return success_response({'id': rid}, '预约成功', 201)
+    return success_response({'id': rid, 'booking_group_id': booking_group_id}, '预约成功', 201)
 
 
 @app.route('/api/appointments/slot-panel', methods=['GET'])
@@ -3967,6 +3987,8 @@ def api_home_appointments_create():
     conn = get_db()
     c = conn.cursor()
     now_ts = now_local_str()
+    # 前端未传时由后端自动生成，保证单条/多条都具备分组ID
+    booking_group_id = str(d.get('booking_group_id') or '').strip() or generate_booking_group_id()
 
     c.execute('SELECT id, name, phone FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     customer = c.fetchone()
@@ -4025,13 +4047,13 @@ def api_home_appointments_create():
     checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
         INSERT INTO home_appointments (
-            customer_id, project_id, staff_id,
+            booking_group_id, customer_id, project_id, staff_id,
             customer_name, phone, home_time, home_address, service_project, staff_name,
             appointment_date, start_time, end_time, location, contact_person, contact_phone, has_companion, notes, status, checkin_status, updated_at
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''', (
-        d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
+        booking_group_id, d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
         d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), d.get('status', 'scheduled'), checkin_status, now_ts
     ))
@@ -4056,7 +4078,7 @@ def api_home_appointments_create():
     conn.commit()
     conn.close()
     audit_log('创建上门预约', 'home_appointments', rid, d.get('appointment_date'))
-    return success_response({'id': rid}, '上门预约成功', 201)
+    return success_response({'id': rid, 'booking_group_id': booking_group_id}, '上门预约成功', 201)
 
 
 @app.route('/api/home-appointments/<int:hid>/cancel', methods=['POST'])
