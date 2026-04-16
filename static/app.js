@@ -1913,7 +1913,6 @@
         { name: '中风险人数', value: ((res.high_risk_summary || {}).medium || 0) + '人' },
         { name: '高风险人数', value: ((res.high_risk_summary || {}).high || 0) + '人' }
       ]);
-      renderHighRiskCustomerTable('portrait-high-risk-list', toList(res.high_risk_customers_top));
 
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
@@ -1969,31 +1968,6 @@
     }
     box.innerHTML = list.map(function (x) {
       return '<div class="kpi-card"><div class="k">' + (x.name || '-') + '</div><div class="v">' + (x.value == null ? '-' : x.value) + '</div></div>';
-    }).join('');
-  }
-
-  function renderRiskLevelBadge(level) {
-    if (level === '高风险') return '<span class="risk-level-badge risk-level-high">高风险</span>';
-    if (level === '中风险') return '<span class="risk-level-badge risk-level-medium">中风险</span>';
-    return '<span class="risk-level-badge risk-level-low">低风险</span>';
-  }
-
-  function renderHighRiskCustomerTable(elId, items) {
-    var tbody = document.getElementById(elId);
-    if (!tbody) return;
-    var list = toList(items);
-    if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="color:#666">暂无高风险客户</td></tr>';
-      return;
-    }
-    tbody.innerHTML = list.map(function (row) {
-      return '<tr>' +
-        '<td>' + (row.customer_name || '-') + '</td>' +
-        '<td>' + (row.age == null ? '-' : row.age) + '</td>' +
-        '<td>' + renderRiskLevelBadge(row.risk_level) + '</td>' +
-        '<td class="risk-reason-cell">' + (toList(row.risk_reasons).join('、') || '-') + '</td>' +
-        '<td>' + (row.recommended_intervention || '-') + '</td>' +
-      '</tr>';
     }).join('');
   }
 
