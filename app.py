@@ -46,6 +46,10 @@ def now_local_str():
     return now_local().strftime('%Y-%m-%d %H:%M:%S')
 
 
+def now_local_date_str():
+    return now_local().strftime('%Y-%m-%d')
+
+
 def calculate_age_by_birth_year(birth_date):
     text = str(birth_date or '').strip()
     if not text:
@@ -469,13 +473,14 @@ def get_setting_value(key, default_value=''):
 def set_setting_value(key, value):
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute('''
         INSERT INTO system_settings (setting_key, setting_value, updated_at)
-        VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+        VALUES (?, ?, ?)
         ON CONFLICT(setting_key) DO UPDATE SET
             setting_value=excluded.setting_value,
-            updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
-    ''', (key, value))
+            updated_at=excluded.updated_at
+    ''', (key, value, now_ts))
     conn.commit()
     conn.close()
 
@@ -635,7 +640,7 @@ def is_today_or_future(date_str):
     if not date_str:
         return False
     try:
-        return datetime.strptime(date_str, '%Y-%m-%d').date() >= datetime.now().date()
+        return datetime.strptime(date_str, '%Y-%m-%d').date() >= now_local().date()
     except ValueError:
         return False
 
@@ -1604,35 +1609,36 @@ def init_db():
             legacy_plaintext = value
             break
     if legacy_plaintext:
+        now_ts = now_local_str()
         c.execute(
             '''
             INSERT INTO system_settings (setting_key, setting_value, updated_at)
-            VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+            VALUES (?, ?, ?)
             ON CONFLICT(setting_key) DO UPDATE SET
                 setting_value=excluded.setting_value,
-                updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+                updated_at=excluded.updated_at
             ''',
-            ('password_hash', generate_password_hash(legacy_plaintext)),
+            ('password_hash', generate_password_hash(legacy_plaintext), now_ts),
         )
         c.execute(
             '''
             INSERT INTO system_settings (setting_key, setting_value, updated_at)
-            VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+            VALUES (?, ?, ?)
             ON CONFLICT(setting_key) DO UPDATE SET
                 setting_value=excluded.setting_value,
-                updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+                updated_at=excluded.updated_at
             ''',
-            ('admin_password', ''),
+            ('admin_password', '', now_ts),
         )
         c.execute(
             '''
             INSERT INTO system_settings (setting_key, setting_value, updated_at)
-            VALUES (?, ?, (strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+            VALUES (?, ?, ?)
             ON CONFLICT(setting_key) DO UPDATE SET
                 setting_value=excluded.setting_value,
-                updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+                updated_at=excluded.updated_at
             ''',
-            ('login_password', ''),
+            ('login_password', '', now_ts),
         )
 
     c.execute('''
@@ -2193,7 +2199,7 @@ def api_visit_checkin_create():
     c.execute('''
         INSERT INTO visit_checkins (customer_id, checkin_time, purpose, notes)
         VALUES (?,?,?,?)
-    ''', (d.get('customer_id'), d.get('checkin_time') or datetime.now().strftime('%Y-%m-%d %H:%M'), d.get('purpose'), d.get('notes')))
+    ''', (d.get('customer_id'), d.get('checkin_time') or now_local().strftime('%Y-%m-%d %H:%M'), d.get('purpose'), d.get('notes')))
     conn.commit()
     id = c.lastrowid
     conn.close()
@@ -3050,6 +3056,7 @@ def api_improvement_record_create():
         return error_response(err)
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     if not c.fetchone():
         conn.close()
@@ -3059,7 +3066,7 @@ def api_improvement_record_create():
         INSERT INTO service_improvement_records
         (service_id, service_type, customer_id, service_time, service_project, pre_service_status, service_content,
          post_service_evaluation, improvement_status, followup_time, followup_date, followup_method, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''',
         (
             d.get('service_id'),
@@ -3074,6 +3081,7 @@ def api_improvement_record_create():
             d.get('followup_time'),
             d.get('followup_date'),
             d.get('followup_method'),
+            now_ts,
         ),
     )
     rid = c.lastrowid
@@ -3091,6 +3099,7 @@ def api_improvement_record_update(rid):
         return error_response(err)
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute('SELECT id FROM service_improvement_records WHERE id=?', (rid,))
     if not c.fetchone():
         conn.close()
@@ -3100,7 +3109,7 @@ def api_improvement_record_update(rid):
         UPDATE service_improvement_records
         SET service_id=?, service_type=?, customer_id=?, service_time=?, service_project=?, pre_service_status=?, service_content=?,
             post_service_evaluation=?, improvement_status=?, followup_time=?, followup_date=?, followup_method=?,
-            updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            updated_at=?
         WHERE id=?
         ''',
         (
@@ -3116,6 +3125,7 @@ def api_improvement_record_update(rid):
             d.get('followup_time'),
             d.get('followup_date'),
             d.get('followup_method'),
+            now_ts,
             rid,
         ),
     )
@@ -3176,7 +3186,7 @@ def api_improvement_record_file_upload(rid):
     os.makedirs(target_dir, exist_ok=True)
 
     safe_base_name = secure_filename(os.path.splitext(original_name)[0]) or 'record_file'
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    timestamp = now_local().strftime('%Y%m%d_%H%M%S')
     save_filename = f'{timestamp}_{safe_base_name}.{ext}'
     absolute_path = os.path.join(target_dir, save_filename)
     uploaded_file.save(absolute_path)
@@ -3358,6 +3368,7 @@ def api_appointment_create():
         return error_response('预约时间仅可选择当天及以后日期')
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
     if not project:
@@ -3400,8 +3411,8 @@ def api_appointment_create():
     checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
     c.execute('''
         INSERT INTO appointments (customer_id, project_id, equipment_id, staff_id, appointment_date, start_time, end_time, status, checkin_status, has_companion, notes, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
-    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('has_companion', '无'), d.get('notes')))
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    ''', (d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None, d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status, d.get('has_companion', '无'), d.get('notes'), now_ts))
     rid = c.lastrowid
     c.execute(
         '''
@@ -3547,6 +3558,7 @@ def api_appointment_update(aid):
 
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute(
         '''
         SELECT a.*, c.name as customer_name, e.name as equipment_name, p.name as project_name
@@ -3614,12 +3626,13 @@ def api_appointment_update(aid):
     c.execute(
         '''
         UPDATE appointments
-        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, has_companion=?, notes=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+        SET customer_id=?, project_id=?, equipment_id=?, staff_id=?, appointment_date=?, start_time=?, end_time=?, status=?, checkin_status=?, has_companion=?, notes=?, updated_at=?
         WHERE id=?
         ''',
         (
             d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None,
             d.get('appointment_date'), d.get('start_time'), d.get('end_time'), new_status, next_checkin_status, d.get('has_companion', '无'), d.get('notes'),
+            now_ts,
             aid,
         ),
     )
@@ -3653,6 +3666,7 @@ def api_appointment_update(aid):
 def api_appointment_cancel(aid):
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute(
         '''
         SELECT a.*, c.name as customer_name, e.name as equipment_name, p.name as project_name
@@ -3672,8 +3686,8 @@ def api_appointment_cancel(aid):
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
-        "UPDATE appointments SET status='cancelled', checkin_status='none', checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?",
-        (session.get('username', 'anonymous'), get_request_ip(), aid),
+        "UPDATE appointments SET status='cancelled', checkin_status='none', checkin_updated_at=?, checkin_updated_by=?, checkin_updated_ip=?, updated_at=? WHERE id=?",
+        (now_ts, session.get('username', 'anonymous'), get_request_ip(), now_ts, aid),
     )
     insert_business_history_log(
         c,
@@ -3702,7 +3716,8 @@ def update_checkin_status(cursor, table_name, module_name, record_id, target_sta
         return None, '仅预约成功状态可操作签到'
     if not is_valid_date(appointment_date):
         return None, '预约日期异常，无法签到'
-    today_text = datetime.now().strftime('%Y-%m-%d')
+    now_ts = now_local_str()
+    today_text = now_ts[:10]
     if appointment_date != today_text:
         return None, '仅预约当日允许操作签到状态'
     if current_checkin == 'no_show':
@@ -3717,10 +3732,10 @@ def update_checkin_status(cursor, table_name, module_name, record_id, target_sta
     cursor.execute(
         f'''
         UPDATE {table_name}
-        SET checkin_status=?, checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+        SET checkin_status=?, checkin_updated_at=?, checkin_updated_by=?, checkin_updated_ip=?, updated_at=?
         WHERE id=?
         ''',
-        (target_status, session.get('username', 'anonymous'), get_request_ip(), record_id),
+        (target_status, now_ts, session.get('username', 'anonymous'), get_request_ip(), now_ts, record_id),
     )
     insert_business_history_log(cursor, module_name, record_id, 'checkin_status_update', before_text, after_text)
     insert_audit_log(cursor, '更新签到状态', module_name, record_id, f'{current_checkin}->{target_status}')
@@ -3951,6 +3966,7 @@ def api_home_appointments_create():
         return error_response(validation_error)
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
 
     c.execute('SELECT id, name, phone FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     customer = c.fetchone()
@@ -4013,11 +4029,11 @@ def api_home_appointments_create():
             customer_name, phone, home_time, home_address, service_project, staff_name,
             appointment_date, start_time, end_time, location, contact_person, contact_phone, has_companion, notes, status, checkin_status, updated_at
         )
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,(strftime('%Y-%m-%d %H:%M:%S','now','localtime')))
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
-        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), d.get('status', 'scheduled'), checkin_status
+        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), d.get('status', 'scheduled'), checkin_status, now_ts
     ))
     rid = c.lastrowid
     c.execute(
@@ -4047,6 +4063,7 @@ def api_home_appointments_create():
 def api_home_appointments_cancel(hid):
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
     c.execute('SELECT * FROM home_appointments WHERE id=?', (hid,))
     row = c.fetchone()
     if not row:
@@ -4056,8 +4073,8 @@ def api_home_appointments_cancel(hid):
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
     c.execute(
-        "UPDATE home_appointments SET status='cancelled', checkin_status='none', checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')) WHERE id=?",
-        (session.get('username', 'anonymous'), get_request_ip(), hid),
+        "UPDATE home_appointments SET status='cancelled', checkin_status='none', checkin_updated_at=?, checkin_updated_by=?, checkin_updated_ip=?, updated_at=? WHERE id=?",
+        (now_ts, session.get('username', 'anonymous'), get_request_ip(), now_ts, hid),
     )
     insert_business_history_log(
         c,
@@ -4096,6 +4113,7 @@ def api_home_appointments_update(hid):
         return error_response(validation_error)
     conn = get_db()
     c = conn.cursor()
+    now_ts = now_local_str()
 
     c.execute('SELECT * FROM home_appointments WHERE id=?', (hid,))
     old_row = c.fetchone()
@@ -4166,13 +4184,13 @@ def api_home_appointments_update(hid):
         SET customer_id=?, project_id=?, staff_id=?,
             customer_name=?, phone=?, home_time=?, home_address=?, service_project=?, staff_name=?,
             appointment_date=?, start_time=?, end_time=?, location=?,
-            contact_person=?, contact_phone=?, has_companion=?, notes=?, status=?, checkin_status=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            contact_person=?, contact_phone=?, has_companion=?, notes=?, status=?, checkin_status=?, updated_at=?
         WHERE id=?
     ''', (
         d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
         d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'),
-        d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), new_status, next_checkin_status,
+        d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), new_status, next_checkin_status, now_ts,
         hid,
     ))
     before_text = build_appointment_change_text(dict(old_row), 'home_appointments')
@@ -4195,7 +4213,8 @@ def api_home_appointments_update(hid):
 @app.route('/api/tasks/checkin-auto-no-show', methods=['POST'])
 def api_task_checkin_auto_no_show():
     payload = request.json or {}
-    task_date = str(payload.get('task_date') or datetime.now().strftime('%Y-%m-%d')).strip()
+    now_ts = now_local_str()
+    task_date = str(payload.get('task_date') or now_ts[:10]).strip()
     if not is_valid_date(task_date):
         return error_response('task_date 格式必须为 YYYY-MM-DD')
     operator = session.get('username', 'system')
@@ -4224,10 +4243,10 @@ def api_task_checkin_auto_no_show():
         c.execute(
             f'''
             UPDATE {table_name}
-            SET checkin_status='no_show', checkin_updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime')), checkin_updated_by=?, checkin_updated_ip=?, updated_at=(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))
+            SET checkin_status='no_show', checkin_updated_at=?, checkin_updated_by=?, checkin_updated_ip=?, updated_at=?
             WHERE id IN ({ph})
             ''',
-            [operator, operator_ip] + ids,
+            [now_ts, operator, operator_ip, now_ts] + ids,
         )
         for rid in ids:
             insert_business_history_log(
@@ -4459,7 +4478,7 @@ def api_query_export_no_show_top10():
 def api_dashboard_stats():
     conn = get_db()
     c = conn.cursor()
-    today_str = datetime.now().strftime('%Y-%m-%d')
+    today_str = now_local_date_str()
     c.execute("SELECT COUNT(*) as n FROM appointments WHERE status='completed'")
     completed_appointments = c.fetchone()['n']
     c.execute("SELECT COUNT(*) as n FROM home_appointments WHERE status='completed'")
@@ -4533,7 +4552,7 @@ def api_dashboard_analytics():
     equipment_end_date = (request.args.get('equipment_end_date') or '').strip()
 
     # 最近 7 天预约趋势（包含 0 值日期）
-    today = datetime.now().date()
+    today = now_local().date()
     start_day = today - timedelta(days=6)
     c.execute('''
         SELECT appointment_date, SUM(n) as n
@@ -4726,7 +4745,7 @@ def api_dashboard_health_portrait():
         if age is None and row.get('birth_date'):
             try:
                 birth = datetime.strptime(row.get('birth_date')[:10], '%Y-%m-%d').date()
-                today = datetime.now().date()
+                today = now_local().date()
                 age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
             except Exception:
                 age = None
@@ -5135,7 +5154,7 @@ def api_export_query_download():
         }
 
         target_keys = list(queries.keys()) if dataset == 'all' else [dataset]
-        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        ts = now_local().strftime('%Y%m%d_%H%M%S')
         fn = f'{name_prefix}_{dataset}_{ts}.xlsx'
         fp = os.path.join(UPLOAD_FOLDER, fn)
 
@@ -5440,7 +5459,7 @@ def api_export_customer_integrated_form():
     page_size = min(max(limit or 10000, 1), 10000)
     rows = _query_customer_integrated_dataset(c, form_key, where_sql, params, 1, page_size, keyword=search).get('items') or []
     conn.close()
-    fn = f'customer_{form_key}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    fn = f'customer_{form_key}_{now_local().strftime("%Y%m%d_%H%M%S")}.xlsx'
     fp = os.path.join(UPLOAD_FOLDER, fn)
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
         _init_export_workbook(writer)
@@ -5471,7 +5490,7 @@ def api_export_customer_integrated_all():
         where_sql = 'WHERE c.is_deleted=0 AND c.id=?'
         params = [selected_customer_id]
 
-    fn = f'customer_integrated_{scope}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    fn = f'customer_integrated_{scope}_{now_local().strftime("%Y%m%d_%H%M%S")}.xlsx'
     fp = os.path.join(UPLOAD_FOLDER, fn)
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
         _init_export_workbook(writer)
@@ -5502,7 +5521,7 @@ def api_export_customers():
     conn = get_db()
     df = pd.read_sql_query('SELECT * FROM customers WHERE is_deleted=0 ORDER BY created_at DESC', conn)
     conn.close()
-    fn = 'customers_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
+    fn = 'customers_%s.xlsx' % now_local().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
         _init_export_workbook(writer)
@@ -5517,7 +5536,7 @@ def api_export_appointments():
     df = pd.read_sql_query('''SELECT a.id, c.name as customer_name, c.phone, e.name as equipment_name, a.appointment_date, a.start_time, a.end_time, a.status, a.notes
         FROM appointments a JOIN customers c ON a.customer_id=c.id LEFT JOIN equipment e ON a.equipment_id=e.id ORDER BY a.appointment_date DESC''', conn)
     conn.close()
-    fn = 'appointments_%s.xlsx' % datetime.now().strftime('%Y%m%d_%H%M%S')
+    fn = 'appointments_%s.xlsx' % now_local().strftime('%Y%m%d_%H%M%S')
     fp = os.path.join(UPLOAD_FOLDER, fn)
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
         _init_export_workbook(writer)
