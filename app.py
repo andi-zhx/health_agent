@@ -276,6 +276,82 @@ def purge_legacy_equipment_and_store_massage(cursor):
         cursor.execute("DELETE FROM project_equipment_mapping WHERE project_name='按摩'")
 
 
+def migrate_appointments_equipment_nullable(cursor):
+    if not table_exists(cursor, 'appointments'):
+        return
+    cursor.execute('PRAGMA table_info(appointments)')
+    cols = cursor.fetchall()
+    if not cols:
+        return
+    col_map = {row[1]: row for row in cols}
+    equipment_col = col_map.get('equipment_id')
+    if not equipment_col:
+        return
+    # PRAGMA table_info: (cid, name, type, notnull, dflt_value, pk)
+    if equipment_col[3] == 0:
+        return
+
+    cursor.execute(
+        '''
+        CREATE TABLE appointments_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            equipment_id INTEGER,
+            project_id INTEGER,
+            staff_id INTEGER,
+            appointment_date TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            status TEXT DEFAULT 'scheduled',
+            checkin_status TEXT DEFAULT 'pending',
+            checkin_updated_at TEXT,
+            checkin_updated_by TEXT,
+            checkin_updated_ip TEXT,
+            has_companion TEXT DEFAULT '无',
+            notes TEXT,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            source_record_id INTEGER,
+            FOREIGN KEY (customer_id) REFERENCES customers(id),
+            FOREIGN KEY (equipment_id) REFERENCES equipment(id)
+        )
+        '''
+    )
+
+    target_cols = [
+        ('id', 'id'),
+        ('customer_id', 'customer_id'),
+        ('equipment_id', 'equipment_id'),
+        ('project_id', 'project_id'),
+        ('staff_id', 'staff_id'),
+        ('appointment_date', 'appointment_date'),
+        ('start_time', 'start_time'),
+        ('end_time', 'end_time'),
+        ('status', "'scheduled'"),
+        ('checkin_status', "'pending'"),
+        ('checkin_updated_at', 'NULL'),
+        ('checkin_updated_by', 'NULL'),
+        ('checkin_updated_ip', 'NULL'),
+        ('has_companion', "'无'"),
+        ('notes', 'NULL'),
+        ('created_at', "(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))"),
+        ('updated_at', "(strftime('%Y-%m-%d %H:%M:%S','now','localtime'))"),
+        ('source_record_id', 'NULL'),
+    ]
+    existing = {row[1] for row in cols}
+    insert_columns = ', '.join([name for name, _ in target_cols])
+    select_exprs = ', '.join([name if name in existing else default for name, default in target_cols])
+    cursor.execute(
+        f'''
+        INSERT INTO appointments_new ({insert_columns})
+        SELECT {select_exprs}
+        FROM appointments
+        '''
+    )
+    cursor.execute('DROP TABLE appointments')
+    cursor.execute('ALTER TABLE appointments_new RENAME TO appointments')
+
+
 def load_projects_with_parallel_strategy(cursor, enabled_only=False, scene=None):
     sql = 'SELECT * FROM therapy_projects'
     clauses = []
@@ -982,6 +1058,7 @@ def classify_age_segment(age):
 def init_db():
     conn = get_db()
     c = conn.cursor()
+    migrate_appointments_equipment_nullable(c)
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS customers (
