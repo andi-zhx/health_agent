@@ -66,11 +66,13 @@ def hydrate_customer_age(record):
     return record
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
-secret_key = os.environ.get('SECRET_KEY')
-if not secret_key:
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+
+
+def ensure_secret_key_configured():
+    if app.config.get('SECRET_KEY'):
+        return
     raise RuntimeError('未配置环境变量 SECRET_KEY，应用禁止启动。')
-app.config['SECRET_KEY'] = secret_key
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 
 DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
@@ -103,6 +105,11 @@ def handle_api_exception(err):
         message = err.description or message
     logging.exception('API异常: %s %s', request.path, err)
     return jsonify({'success': False, 'message': message, 'error_code': 'SERVER_ERROR'}), status_code
+
+
+@app.before_request
+def validate_secret_key_before_request():
+    ensure_secret_key_configured()
 
 
 def get_db():
@@ -5407,6 +5414,7 @@ def api_download(filename):
 
 
 if __name__ == '__main__':
+    ensure_secret_key_configured()
     init_db()
     print('请在浏览器打开: http://localhost:5000')
     app.run(host='127.0.0.1', port=5000, debug=False)
