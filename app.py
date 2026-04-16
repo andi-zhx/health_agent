@@ -66,7 +66,10 @@ def hydrate_customer_age(record):
     return record
 
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
-app.secret_key = os.environ.get('FLASK_SECRET_KEY') or 'health-agent-secret-key-change-me'
+secret_key = os.environ.get('SECRET_KEY')
+if not secret_key:
+    raise RuntimeError('未配置环境变量 SECRET_KEY，应用禁止启动。')
+app.config['SECRET_KEY'] = secret_key
 
 DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
 UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
