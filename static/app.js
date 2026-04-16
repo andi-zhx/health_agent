@@ -1886,24 +1886,26 @@
       renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution));
       renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
       renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-      renderCircleChart('portrait-disease-pie', toList(d2.past_disease_distribution), false);
-      renderLegend('portrait-disease-legend', toList(d2.past_disease_distribution));
-      renderCircleChart('portrait-family-pie', toList(d2.family_history_distribution), false);
-      renderLegend('portrait-family-legend', toList(d2.family_history_distribution));
+      renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', { maxItems: 10 });
+      renderHorizontalBars('portrait-family-top10', toList(d2.family_history_distribution), '#fb7185', { maxItems: 10 });
       renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
 
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
         { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
-        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' }
+        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' },
+        { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%' },
+        { name: '烟酒叠加占比', value: (d3.smoking_drinking_ratio || 0) + '%' }
       ]);
-      renderRadarChart('portrait-habit-radar', [
+      renderHorizontalBars('portrait-habit-risk-bars', [
         { name: '吸烟', value: d3.smoking_ratio || 0 },
         { name: '饮酒', value: d3.drinking_ratio || 0 },
         { name: '睡眠异常', value: d3.sleep_abnormal_ratio || 0 },
         { name: '睡眠质量差', value: d3.poor_sleep_quality_ratio || 0 },
         { name: '烟酒叠加', value: d3.smoking_drinking_ratio || 0 }
-      ]);
+      ].map(function (item) {
+        return { name: item.name, count: item.value };
+      }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
       renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
       renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
@@ -2026,17 +2028,19 @@
     return '<path d="M ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' L ' + x3 + ' ' + y3 + ' A ' + rInner + ' ' + rInner + ' 0 ' + largeArc + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '"></path>';
   }
 
-  function renderHorizontalBars(elId, list, color) {
+  function renderHorizontalBars(elId, list, color, options) {
     var box = document.getElementById(elId);
     if (!box) return;
-    if (!list.length) {
+    var config = options || {};
+    var rows = toList(list).slice(0, config.maxItems || 10);
+    if (!rows.length) {
       box.innerHTML = '<p style="color:#666">暂无数据</p>';
       return;
     }
-    var max = Math.max.apply(null, list.map(function (x) { return x.count || 0; }).concat([1]));
-    box.innerHTML = list.map(function (x) {
+    var max = Math.max.apply(null, rows.map(function (x) { return x.count || 0; }).concat([1]));
+    box.innerHTML = rows.map(function (x) {
       var width = Math.round(((x.count || 0) * 100) / max);
-      return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + '</div></div>';
+      return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + (config.valueSuffix || '') + '</div></div>';
     }).join('');
   }
 

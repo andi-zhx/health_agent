@@ -102,8 +102,8 @@
     .compare-legend span::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
     .compare-legend .male::before { background: #8ecbff; }
     .compare-legend .female::before { background: #ffb6c1; }
-    .radar-wrap { width: 100%; max-width: 420px; }
-    .radar-svg { width: 100%; height: 320px; }
+    .portrait-risk-bars.hbar .label { width: 130px; color: #334155; }
+    .portrait-risk-bars.hbar .value { width: 52px; color: #111827; }
     .heatmap-wrap { overflow-x: auto; }
     .heatmap-table { border-collapse: collapse; min-width: 720px; width: 100%; }
     .heatmap-table th, .heatmap-table td { border: 1px solid #e2e8f0; padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; }
@@ -672,18 +672,18 @@
             </div>
             <div class="portrait-panel">
               <h3>维度2：疾病风险与遗传画像（核心）</h3>
-              <h4>过去确诊疾病</h4>
-              <div class="chart-row"><div id="portrait-disease-pie"></div><div id="portrait-disease-legend" class="legend"></div></div>
-              <h4>家族病史</h4>
-              <div class="chart-row"><div id="portrait-family-pie"></div><div id="portrait-family-legend" class="legend"></div></div>
+              <h4>过去确诊疾病（Top10）</h4>
+              <div id="portrait-disease-top10" class="hbar"></div>
+              <h4>家族病史（Top10）</h4>
+              <div id="portrait-family-top10" class="hbar"></div>
               <h4>近期症状（近半年）</h4>
               <div id="portrait-recent-symptom-bars" class="hbar"></div>
             </div>
             <div class="portrait-panel">
               <h3>维度3：生活方式行为画像（可干预）</h3>
               <div id="portrait-habit-kpi" class="kpi-row"></div>
-              <h4>行为风险雷达图</h4>
-              <div id="portrait-habit-radar"></div>
+              <h4>行为风险指标（占比）</h4>
+              <div id="portrait-habit-risk-bars" class="hbar portrait-risk-bars"></div>
               <h4>运动方式</h4>
               <div id="portrait-exercise-top10" class="hbar"></div>
               <h4>健康服务需求</h4>
