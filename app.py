@@ -4913,7 +4913,6 @@ def api_dashboard_health_portrait():
         LEFT JOIN home_appointments ha ON r.service_type='home' AND r.service_id=ha.id
     ''')
     improvement_rows = row_list(c.fetchall())
-    conn.close()
 
     heatmap = {}
     improvement_project_stats = {}
