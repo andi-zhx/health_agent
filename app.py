@@ -4905,6 +4905,71 @@ def api_dashboard_health_portrait():
                 'status_summary': status_summary or '无改善0',
             })
 
+    archived_customer_ids = {safe_int(row.get('customer_id')) for row in records if safe_int(row.get('customer_id')) is not None}
+    health_need_customer_ids = set()
+    for row in records:
+        customer_id = safe_int(row.get('customer_id'))
+        if customer_id is None:
+            continue
+        need_items = normalize_multi_text(row.get('health_needs'))
+        if need_items and not all(item == '无' for item in need_items):
+            health_need_customer_ids.add(customer_id)
+    health_need_customer_ids &= archived_customer_ids
+
+    c.execute(
+        '''
+        SELECT DISTINCT customer_id
+        FROM appointments
+        WHERE LOWER(COALESCE(status, '')) <> 'cancelled'
+        UNION
+        SELECT DISTINCT customer_id
+        FROM home_appointments
+        WHERE LOWER(COALESCE(status, '')) <> 'cancelled'
+        '''
+    )
+    booked_customer_ids = {safe_int(row['customer_id']) for row in c.fetchall() if safe_int(row['customer_id']) is not None}
+    booked_customer_ids &= health_need_customer_ids
+
+    c.execute(
+        '''
+        SELECT DISTINCT customer_id
+        FROM appointments
+        WHERE LOWER(COALESCE(checkin_status, ''))='checked_in'
+        UNION
+        SELECT DISTINCT customer_id
+        FROM home_appointments
+        WHERE LOWER(COALESCE(checkin_status, ''))='checked_in'
+        '''
+    )
+    checked_in_customer_ids = {safe_int(row['customer_id']) for row in c.fetchall() if safe_int(row['customer_id']) is not None}
+    checked_in_customer_ids &= booked_customer_ids
+
+    c.execute('SELECT DISTINCT customer_id, improvement_status FROM service_improvement_records')
+    improvement_customers = row_list(c.fetchall())
+    filled_improvement_customer_ids = {
+        safe_int(row.get('customer_id'))
+        for row in improvement_customers
+        if safe_int(row.get('customer_id')) is not None
+    }
+    filled_improvement_customer_ids &= checked_in_customer_ids
+
+    improved_customer_ids = {
+        safe_int(row.get('customer_id'))
+        for row in improvement_customers
+        if safe_int(row.get('customer_id')) is not None
+        and str(row.get('improvement_status') or '').strip() in ('明显改善', '部分改善')
+    }
+    improved_customer_ids &= filled_improvement_customer_ids
+
+    obvious_improved_customer_ids = {
+        safe_int(row.get('customer_id'))
+        for row in improvement_customers
+        if safe_int(row.get('customer_id')) is not None
+        and str(row.get('improvement_status') or '').strip() == '明显改善'
+    }
+    obvious_improved_customer_ids &= improved_customer_ids
+    conn.close()
+
     return jsonify({
         'total_customers': total,
         'abnormal_indicators': [
@@ -4984,6 +5049,15 @@ def api_dashboard_health_portrait():
         },
         'dimension4': {
             'improvement_matrix': heatmap_rows,
+            'service_funnel': [
+                {'key': 'archived', 'label': '已建档人数', 'count': len(archived_customer_ids)},
+                {'key': 'health_needs', 'label': '有健康需求人数', 'count': len(health_need_customer_ids)},
+                {'key': 'booked', 'label': '已预约人数', 'count': len(booked_customer_ids)},
+                {'key': 'checked_in', 'label': '已签到人数', 'count': len(checked_in_customer_ids)},
+                {'key': 'improvement_filled', 'label': '已填写改善记录人数', 'count': len(filled_improvement_customer_ids)},
+                {'key': 'improved', 'label': '有改善人数', 'count': len(improved_customer_ids)},
+                {'key': 'significant_improved', 'label': '明显改善人数', 'count': len(obvious_improved_customer_ids)},
+            ],
         }
     })
 
