@@ -4614,7 +4614,6 @@ def api_dashboard_health_portrait():
     behavior_tag_counter = Counter()
     exercise_counter = Counter()
     demand_counter = Counter()
-    fatigue_counter = Counter()
 
     smoking_people = 0
     drinking_people = 0
@@ -4690,7 +4689,7 @@ def api_dashboard_health_portrait():
 
         smoking = row.get('smoking_status') == '有'
         drinking = row.get('drinking_status') == '有'
-        low_exercise = row.get('weekly_exercise_freq') == '<3次'
+        low_exercise = not exercise_items or any(item in ('无', '不运动', '很少运动', '偶尔运动') for item in exercise_items)
         sleep_abnormal = row.get('sleep_hours') in ('<6小时', '>10小时')
         poor_sleep = row.get('sleep_quality') in ('很差', '差')
         has_past_history = bool(past_history_items)
@@ -4716,10 +4715,6 @@ def api_dashboard_health_portrait():
             allergy_people += 1
         if row.get('chronic_pain') == '有':
             chronic_pain_people += 1
-
-        fatigue = (row.get('fatigue_last_month') or '').strip()
-        if fatigue and fatigue != '无':
-            fatigue_counter[fatigue] += 1
 
         if has_family_history and has_past_history:
             dual_history_high_risk_people += 1
@@ -4819,7 +4814,7 @@ def api_dashboard_health_portrait():
             'low_exercise_bad_habit_people': low_exercise_bad_habit_people,
             'exercise_top10': [{'name': k, 'count': v} for k, v in exercise_counter.most_common(10)],
             'health_needs_top10': [{'name': k, 'count': v} for k, v in demand_counter.most_common(10)],
-            'fatigue_distribution': [{'name': k, 'count': v} for k, v in fatigue_counter.items()],
+            'fatigue_distribution': [],
             'behavior_tags': [{'name': k, 'count': v} for k, v in behavior_tag_counter.most_common(20)],
         },
         'dimension4': {
