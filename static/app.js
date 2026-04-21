@@ -2910,9 +2910,10 @@
         showMsg('improvement-msg', '保存成功，但未获取记录ID，无法上传附件', true);
         return;
       }
+      document.getElementById('improvement-id').value = String(savedId);
       uploadImprovementFileForRecord(savedId, improvementPendingUploadFile).then(function (uploadResult) {
         if (uploadResult && uploadResult.success === false) {
-          showMsg('improvement-msg', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || ''), true);
+          showMsg('improvement-msg', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || '') + '。请重试保存或重新上传。', true);
           return;
         }
         document.getElementById('modal-improvement').classList.add('hide');
