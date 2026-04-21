@@ -1366,9 +1366,103 @@ def is_indicator_abnormal(value):
     return ('偏高' in text) or ('偏低' in text)
 
 
-def calculate_lightweight_risk(row):
-    reasons = []
+LIGHTWEIGHT_RISK_CONFIG = {
+    'thresholds': {
+        'high': 9,
+        'medium': 5,
+    },
+    'defaults': {
+        'symptom_count_threshold': 2,
+    },
+    'weights': {
+        'age': 1,
+        'vital_signs': 1,
+        'behavior': 1,
+        'symptoms': 1,
+        'family_history': 1,
+    },
+    'rules': {
+        'age': [
+            {'id': 'age_over_70', 'label': '年龄≥70', 'weight': 2},
+        ],
+        'vital_signs': [
+            {'id': 'bmi_obesity', 'label': 'BMI肥胖', 'weight': 3},
+            {'id': 'bmi_overweight', 'label': 'BMI超重', 'weight': 2},
+            {'id': 'blood_pressure_abnormal', 'label': '血压异常', 'weight': 3},
+            {'id': 'blood_sugar_abnormal', 'label': '血糖异常', 'weight': 3},
+            {'id': 'blood_lipid_abnormal', 'label': '血脂异常', 'weight': 2},
+        ],
+        'behavior': [
+            {'id': 'sleep_poor', 'label': '睡眠差', 'weight': 2},
+            {'id': 'smoking', 'label': '吸烟', 'weight': 2},
+            {'id': 'drinking', 'label': '饮酒', 'weight': 1},
+        ],
+        'symptoms': [
+            {'id': 'recent_symptoms_many', 'label': '近期症状较多', 'weight': 2},
+        ],
+        'family_history': [
+            {'id': 'family_history_positive', 'label': '家族史阳性', 'weight': 2},
+        ],
+    },
+}
 
+
+LIGHTWEIGHT_RISK_INTERVENTIONS = {
+    'age_over_70': '提升老年综合健康管理频次',
+    'bmi_obesity': '营养+运动联合体重管理',
+    'bmi_overweight': '开展饮食与运动减重指导',
+    'blood_pressure_abnormal': '优先血压复测与慢病随访',
+    'blood_sugar_abnormal': '尽快进行血糖复测与代谢评估',
+    'blood_lipid_abnormal': '安排血脂复检与饮食干预',
+    'sleep_poor': '开展睡眠评估与作息干预',
+    'smoking': '启动戒烟干预与行为随访',
+    'drinking': '建议限酒并进行生活方式指导',
+    'recent_symptoms_many': '安排综合评估与重点症状排查',
+    'family_history_positive': '强化家族史相关专项筛查',
+}
+
+
+def build_lightweight_risk_items(row, age, bmi_level, recent_symptom_items, family_history_items):
+    config = LIGHTWEIGHT_RISK_CONFIG
+    grouped_items = []
+
+    if age is not None and age >= 70:
+        grouped_items.append({'group': 'age', **config['rules']['age'][0]})
+
+    if bmi_level == '肥胖':
+        grouped_items.append({'group': 'vital_signs', **config['rules']['vital_signs'][0]})
+    elif bmi_level == '超重':
+        grouped_items.append({'group': 'vital_signs', **config['rules']['vital_signs'][1]})
+
+    blood_pressure_test = str(row.get('blood_pressure_test') or '')
+    if is_indicator_abnormal(blood_pressure_test):
+        grouped_items.append({'group': 'vital_signs', **config['rules']['vital_signs'][2]})
+
+    blood_sugar_test = str(row.get('blood_sugar_test') or '')
+    if is_indicator_abnormal(blood_sugar_test):
+        grouped_items.append({'group': 'vital_signs', **config['rules']['vital_signs'][3]})
+
+    blood_lipid_test = str(row.get('blood_lipid_test') or '')
+    if '偏高' in blood_lipid_test:
+        grouped_items.append({'group': 'vital_signs', **config['rules']['vital_signs'][4]})
+
+    if str(row.get('sleep_quality') or '') in ('很差', '差'):
+        grouped_items.append({'group': 'behavior', **config['rules']['behavior'][0]})
+    if row.get('smoking_status') == '有':
+        grouped_items.append({'group': 'behavior', **config['rules']['behavior'][1]})
+    if row.get('drinking_status') == '有':
+        grouped_items.append({'group': 'behavior', **config['rules']['behavior'][2]})
+
+    if len(recent_symptom_items) >= config['defaults']['symptom_count_threshold']:
+        grouped_items.append({'group': 'symptoms', **config['rules']['symptoms'][0]})
+
+    if family_history_items:
+        grouped_items.append({'group': 'family_history', **config['rules']['family_history'][0]})
+
+    return grouped_items
+
+
+def calculate_lightweight_risk(row):
     age = safe_int(row.get('age'))
     if age is None and row.get('birth_date'):
         try:
@@ -1377,57 +1471,46 @@ def calculate_lightweight_risk(row):
             age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
         except Exception:
             age = None
-    if age is not None and age >= 70:
-        reasons.append('年龄≥70')
 
     bmi_value, bmi_level = classify_bmi(row.get('height_cm'), row.get('weight_kg'))
-    if bmi_level and bmi_level != '正常':
-        reasons.append(f'BMI异常（{bmi_level}）')
-
-    blood_pressure_test = str(row.get('blood_pressure_test') or '')
-    if is_indicator_abnormal(blood_pressure_test):
-        reasons.append('血压异常')
-
-    blood_sugar_test = str(row.get('blood_sugar_test') or '')
-    if is_indicator_abnormal(blood_sugar_test):
-        reasons.append('血糖异常')
-
-    blood_lipid_test = str(row.get('blood_lipid_test') or '')
-    if '偏高' in blood_lipid_test:
-        reasons.append('血脂异常')
 
     family_history_items = normalize_multi_text(row.get('family_history'))
-    if family_history_items:
-        reasons.append('家族史阳性')
-
-    if str(row.get('sleep_quality') or '') in ('很差', '差'):
-        reasons.append('睡眠差')
-
     recent_symptom_items = normalize_multi_text(row.get('recent_symptoms'))
-    if len(recent_symptom_items) >= 2:
-        reasons.append('近期症状≥2项')
+    risk_items = build_lightweight_risk_items(
+        row=row,
+        age=age,
+        bmi_level=bmi_level,
+        recent_symptom_items=recent_symptom_items,
+        family_history_items=family_history_items,
+    )
 
-    score = len(reasons)
-    if score >= 4:
+    group_weights = LIGHTWEIGHT_RISK_CONFIG['weights']
+    score = sum(item['weight'] * group_weights.get(item['group'], 1) for item in risk_items)
+    reasons = [item['label'] for item in risk_items]
+
+    high_threshold = LIGHTWEIGHT_RISK_CONFIG['thresholds']['high']
+    medium_threshold = LIGHTWEIGHT_RISK_CONFIG['thresholds']['medium']
+    if score >= high_threshold:
         level = '高风险'
-    elif score >= 2:
+    elif score >= medium_threshold:
         level = '中风险'
     else:
         level = '低风险'
 
+    ranked_items = sorted(
+        risk_items,
+        key=lambda item: (
+            -(item['weight'] * group_weights.get(item['group'], 1)),
+            str(item.get('label') or '')
+        )
+    )
     intervention_suggestions = []
-    if any(item in ('血压异常', '血糖异常', '血脂异常') for item in reasons):
-        intervention_suggestions.append('优先慢病指标复测与医生随访')
-    if any(item.startswith('BMI异常') for item in reasons):
-        intervention_suggestions.append('营养+运动联合体重管理')
-    if '睡眠差' in reasons:
-        intervention_suggestions.append('开展睡眠评估与作息干预')
-    if '近期症状≥2项' in reasons:
-        intervention_suggestions.append('安排综合评估与重点症状排查')
-    if '家族史阳性' in reasons:
-        intervention_suggestions.append('强化家族史相关专项筛查')
-    if '年龄≥70' in reasons:
-        intervention_suggestions.append('提升老年综合健康管理频次')
+    seen_suggestions = set()
+    for item in ranked_items:
+        suggestion = LIGHTWEIGHT_RISK_INTERVENTIONS.get(item['id'])
+        if suggestion and suggestion not in seen_suggestions:
+            seen_suggestions.add(suggestion)
+            intervention_suggestions.append(suggestion)
     if not intervention_suggestions:
         intervention_suggestions.append('保持常规健康随访')
 
@@ -1436,6 +1519,7 @@ def calculate_lightweight_risk(row):
         'risk_level': level,
         'risk_reasons': reasons,
         'recommended_intervention': '；'.join(intervention_suggestions[:3]),
+        'risk_reason_count': len(risk_items),
         'age': age,
         'bmi': bmi_value,
     }
@@ -5207,6 +5291,7 @@ def api_dashboard_health_portrait():
                 'age': risk_info.get('age'),
                 'risk_level': risk_level,
                 'risk_score': risk_info.get('risk_score', 0),
+                'risk_reason_count': risk_info.get('risk_reason_count', 0),
                 'risk_reasons': risk_info.get('risk_reasons', []),
                 'recommended_intervention': risk_info.get('recommended_intervention', ''),
             })
@@ -5276,6 +5361,7 @@ def api_dashboard_health_portrait():
     high_risk_customers.sort(
         key=lambda item: (
             -safe_int(item.get('risk_score') or 0),
+            -safe_int(item.get('risk_reason_count') or 0),
             -safe_int(item.get('age') or 0),
             str(item.get('customer_name') or '')
         )
