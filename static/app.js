@@ -2,19 +2,19 @@
   const API = '';
   function parseJsonResponse(r) {
     return r.text().then(function (text) {
-      if (!text) return {};
+      if (!text) return { success: false, message: '服务返回空响应', error_code: 'EMPTY_RESPONSE' };
       try {
         return JSON.parse(text);
       } catch (e) {
         var fallback = '服务返回异常，请刷新后重试';
         if (typeof text === 'string') {
           if (text.indexOf('<!doctype html') >= 0 || text.indexOf('<html') >= 0) {
-            return { error: '服务端发生异常，请稍后重试' };
+            return { success: false, message: '服务端发生异常，请稍后重试', error_code: 'SERVER_ERROR' };
           }
           var shortText = text.trim();
           if (shortText) fallback = shortText.slice(0, 120);
         }
-        return { error: fallback };
+        return { success: false, message: fallback, error_code: 'INVALID_JSON' };
       }
     });
   }
@@ -29,18 +29,15 @@
 
   function requestJson(url, options) {
     return fetch(API + url, options || {}).then(function (response) {
-      return parseJsonResponse(response).then(function (data) {
-        var normalized = data;
-        if (data && typeof data === 'object' && Object.prototype.hasOwnProperty.call(data, 'success')) {
-          normalized = data.success ? (data.data == null ? {} : data.data) : { error: data.message || '请求失败', error_code: data.error_code || 'UNKNOWN_ERROR' };
-        }
+      return parseJsonResponse(response).then(function (payload) {
+        var body = payload && typeof payload === 'object' ? payload : {};
         if (response.status === 401 && url !== '/api/auth/login') {
-          showLoginScreen((normalized && normalized.error) || (data && data.message) || '未登录或登录已失效，请重新登录');
+          showLoginScreen(body.message || '未登录或登录已失效，请重新登录');
         }
-        if (!response.ok && normalized && !normalized.error) {
-          normalized.error = '请求失败(' + response.status + ')';
+        if (!response.ok || body.success !== true) {
+          return { error: body.message || ('请求失败(' + response.status + ')'), error_code: body.error_code || 'REQUEST_FAILED' };
         }
-        return normalized;
+        return body.data == null ? {} : body.data;
       });
     }).catch(function () {
       return { error: '网络请求失败，请稍后重试' };
