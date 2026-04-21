@@ -227,6 +227,15 @@
     return params.length ? ('?' + params.join('&')) : '';
   }
 
+  function buildPortraitRangeQuery() {
+    var start = (document.getElementById('portrait-date-from') || {}).value || '';
+    var end = (document.getElementById('portrait-date-to') || {}).value || '';
+    var params = [];
+    if (start) params.push('date_from=' + encodeURIComponent(start));
+    if (end) params.push('date_to=' + encodeURIComponent(end));
+    return params.length ? ('?' + params.join('&')) : '';
+  }
+
   function renderEquipmentUsageTop(list) {
     var tbody = document.getElementById('equipment-usage-top');
     if (!tbody) return;
@@ -1928,7 +1937,13 @@
   }
 
   function loadPortraitPage() {
-    get('/api/dashboard/health-portrait').then(function (res) {
+    var start = (document.getElementById('portrait-date-from') || {}).value || '';
+    var end = (document.getElementById('portrait-date-to') || {}).value || '';
+    if (start && end && start > end) {
+      showMsg('portrait-msg', '开始日期不能晚于结束日期', true);
+      return;
+    }
+    get('/api/dashboard/health-portrait' + buildPortraitRangeQuery()).then(function (res) {
       if (res.error) {
         showMsg('portrait-msg', res.error, true);
         return;
@@ -1937,7 +1952,10 @@
       var d2 = res.dimension2 || {};
       var d3 = res.dimension3 || {};
       var abnormalIndicators = toList(res.abnormal_indicators);
-      showMsg('portrait-msg', '已基于最新健康档案生成画像，共覆盖客户 ' + (res.total_customers || 0) + ' 人');
+      var scopeText = (res.filter_applied ? '按所选时间范围' : '按全量最新档案');
+      showMsg('portrait-msg', '已' + scopeText + '生成画像，当前统计样本量：' + (res.total_customers || 0) + ' 人');
+      var noteBox = document.getElementById('portrait-caliber-note');
+      if (noteBox) noteBox.textContent = res.sampling_note || '';
       renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
         return {
           name: item.name || '-',
@@ -2857,6 +2875,16 @@
   });
   document.getElementById('portrait-improvement-ranking-sort').addEventListener('change', function () {
     renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, this.value || 'improvement_rate');
+  });
+  document.getElementById('btn-portrait-query').addEventListener('click', function () {
+    loadPortraitPage();
+  });
+  document.getElementById('btn-portrait-reset').addEventListener('click', function () {
+    var start = document.getElementById('portrait-date-from');
+    var end = document.getElementById('portrait-date-to');
+    if (start) start.value = '';
+    if (end) end.value = '';
+    loadPortraitPage();
   });
 
   document.getElementById('btn-home-mark-cancel').addEventListener('click', function () {

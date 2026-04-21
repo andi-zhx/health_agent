@@ -679,7 +679,20 @@
       <div id="page-portrait" class="page hide">
         <div class="card">
           <h2>健康画像</h2>
+          <div class="search-bar" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
+            <div>
+              <label style="display:block;color:#64748b;font-size:12px;margin-bottom:4px">评估开始日期</label>
+              <input type="date" id="portrait-date-from">
+            </div>
+            <div>
+              <label style="display:block;color:#64748b;font-size:12px;margin-bottom:4px">评估结束日期</label>
+              <input type="date" id="portrait-date-to">
+            </div>
+            <button class="btn btn-primary" id="btn-portrait-query">查询</button>
+            <button class="btn btn-secondary" id="btn-portrait-reset">重置</button>
+          </div>
           <div id="portrait-msg"></div>
+          <div id="portrait-caliber-note" style="font-size:12px;color:#64748b;margin:6px 0 10px"></div>
           <h3>关键健康异常指标</h3>
           <div id="portrait-abnormal-kpi-cards" class="kpi-row"></div>
           <div class="portrait-grid">

@@ -944,7 +944,14 @@ def get_latest_assessment_summary(cursor, customer_id):
     return '；'.join(summary_parts)
 
 
-def fetch_latest_health_assessments(cursor):
+def fetch_latest_health_assessments(cursor, date_from='', date_to=''):
+    date_from = str(date_from or '').strip()
+    date_to = str(date_to or '').strip()
+    filter_clause = '''
+        WHERE (? = '' OR h.assessment_date >= ?)
+          AND (? = '' OR h.assessment_date <= ?)
+    '''
+    params = [date_from, date_from, date_to, date_to]
     window_sql = '''
         SELECT latest_h.*
         FROM (
@@ -954,28 +961,32 @@ def fetch_latest_health_assessments(cursor):
                        ORDER BY h.assessment_date DESC, h.id DESC
                    ) AS row_no
             FROM health_assessments h
+            {filter_clause}
         ) latest_h
         WHERE latest_h.row_no = 1
         ORDER BY latest_h.customer_id ASC
-    '''
+    '''.format(filter_clause=filter_clause)
     fallback_sql = '''
         SELECT h.*
         FROM health_assessments h
-        WHERE NOT EXISTS (
+        {filter_clause}
+          AND NOT EXISTS (
             SELECT 1
             FROM health_assessments newer
             WHERE newer.customer_id = h.customer_id
+              AND (? = '' OR newer.assessment_date >= ?)
+              AND (? = '' OR newer.assessment_date <= ?)
               AND (
                     newer.assessment_date > h.assessment_date
                  OR (newer.assessment_date = h.assessment_date AND newer.id > h.id)
               )
         )
         ORDER BY h.customer_id ASC
-    '''
+    '''.format(filter_clause=filter_clause)
     try:
-        cursor.execute(window_sql)
+        cursor.execute(window_sql, params)
     except sqlite3.OperationalError:
-        cursor.execute(fallback_sql)
+        cursor.execute(fallback_sql, params + params)
     return row_list(cursor.fetchall())
 
 
@@ -5040,7 +5051,19 @@ def api_dashboard_analytics():
 def api_dashboard_health_portrait():
     conn = get_db()
     c = conn.cursor()
-    latest_rows = fetch_latest_health_assessments(c)
+    date_from = (request.args.get('date_from') or '').strip()
+    date_to = (request.args.get('date_to') or '').strip()
+    if date_from and not is_valid_date(date_from):
+        conn.close()
+        return jsonify({'error': '开始日期格式必须为 YYYY-MM-DD'}), 400
+    if date_to and not is_valid_date(date_to):
+        conn.close()
+        return jsonify({'error': '结束日期格式必须为 YYYY-MM-DD'}), 400
+    if date_from and date_to and date_from > date_to:
+        conn.close()
+        return jsonify({'error': '开始日期不能晚于结束日期'}), 400
+
+    latest_rows = fetch_latest_health_assessments(c, date_from=date_from, date_to=date_to)
     records = []
     customer_ids = [safe_int(row.get('customer_id')) for row in latest_rows if safe_int(row.get('customer_id')) is not None]
     customer_map = {}
@@ -5395,6 +5418,15 @@ def api_dashboard_health_portrait():
     conn.close()
 
     return jsonify({
+        'date_from': date_from,
+        'date_to': date_to,
+        'filter_applied': bool(date_from or date_to),
+        'sampling_note': (
+            f'统计口径：assessment_date 在 {date_from or "最早"} 至 {date_to or "最新"} 范围内，'
+            '每位客户仅取该范围内最新一条健康评估。'
+            if (date_from or date_to)
+            else '统计口径：未设置时间范围，默认每位客户取全量数据中的最新一条健康评估。'
+        ),
         'total_customers': total,
         'abnormal_indicators': [
             {
