@@ -990,6 +990,43 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to=''):
     return row_list(cursor.fetchall())
 
 
+def build_health_portrait_sample_records(cursor, date_from='', date_to=''):
+    latest_rows = fetch_latest_health_assessments(cursor, date_from=date_from, date_to=date_to)
+    records = []
+    customer_ids = [safe_int(row.get('customer_id')) for row in latest_rows if safe_int(row.get('customer_id')) is not None]
+    customer_map = {}
+    if customer_ids:
+        placeholders = ','.join('?' for _ in customer_ids)
+        cursor.execute(
+            f'''
+            SELECT id, name, gender, birth_date, phone, chronic_diseases, medical_history
+            FROM customers
+            WHERE id IN ({placeholders})
+            ''',
+            customer_ids,
+        )
+        customer_map = {safe_int(item['id']): dict(item) for item in cursor.fetchall()}
+    for row in latest_rows:
+        customer_id = safe_int(row.get('customer_id'))
+        if customer_id is None or customer_id not in customer_map:
+            continue
+        customer_row = customer_map[customer_id]
+        merged = dict(row)
+        merged.update({
+            'customer_name': customer_row.get('name'),
+            'name': customer_row.get('name'),
+            'gender': customer_row.get('gender'),
+            'birth_date': customer_row.get('birth_date'),
+            'phone': customer_row.get('phone'),
+            'chronic_diseases': customer_row.get('chronic_diseases'),
+            'medical_history': customer_row.get('medical_history'),
+            'latest_assessment_date': row.get('assessment_date'),
+        })
+        records.append(merged)
+    records.sort(key=lambda r: (safe_int(r.get('customer_id')) or 0, safe_int(r.get('id')) or 0), reverse=True)
+    return records
+
+
 def validate_improvement_payload(d, cursor=None):
     required_fields = ('customer_id', 'service_time', 'service_project', 'improvement_status')
     if not all(str(d.get(k) or '').strip() for k in required_fields):
@@ -5063,36 +5100,7 @@ def api_dashboard_health_portrait():
         conn.close()
         return jsonify({'error': '开始日期不能晚于结束日期'}), 400
 
-    latest_rows = fetch_latest_health_assessments(c, date_from=date_from, date_to=date_to)
-    records = []
-    customer_ids = [safe_int(row.get('customer_id')) for row in latest_rows if safe_int(row.get('customer_id')) is not None]
-    customer_map = {}
-    if customer_ids:
-        placeholders = ','.join('?' for _ in customer_ids)
-        c.execute(
-            f'''
-            SELECT id, name, gender, birth_date, chronic_diseases, medical_history
-            FROM customers
-            WHERE id IN ({placeholders})
-            ''',
-            customer_ids,
-        )
-        customer_map = {safe_int(item['id']): dict(item) for item in c.fetchall()}
-    for row in latest_rows:
-        customer_id = safe_int(row.get('customer_id'))
-        if customer_id is None or customer_id not in customer_map:
-            continue
-        customer_row = customer_map[customer_id]
-        merged = dict(row)
-        merged.update({
-            'customer_name': customer_row.get('name'),
-            'gender': customer_row.get('gender'),
-            'birth_date': customer_row.get('birth_date'),
-            'chronic_diseases': customer_row.get('chronic_diseases'),
-            'medical_history': customer_row.get('medical_history'),
-        })
-        records.append(merged)
-    records.sort(key=lambda r: (safe_int(r.get('customer_id')) or 0, safe_int(r.get('id')) or 0), reverse=True)
+    records = build_health_portrait_sample_records(c, date_from=date_from, date_to=date_to)
     conn.close()
 
     age_segments = ['<50岁', '50-60岁', '61-65岁', '66-70岁', '71-75岁', '76-80岁', '>80岁']
@@ -5516,6 +5524,109 @@ def api_dashboard_health_portrait():
                 {'key': 'significant_improved', 'label': '明显改善人数', 'count': len(obvious_improved_customer_ids)},
             ],
         }
+    })
+
+
+@app.route('/api/dashboard/health-portrait/drilldown', methods=['GET'])
+def api_dashboard_health_portrait_drilldown():
+    conn = get_db()
+    c = conn.cursor()
+    date_from = (request.args.get('date_from') or '').strip()
+    date_to = (request.args.get('date_to') or '').strip()
+    metric = (request.args.get('metric') or '').strip()
+    metric_value = (request.args.get('metric_value') or '').strip()
+    if date_from and not is_valid_date(date_from):
+        conn.close()
+        return error_response('开始日期格式必须为 YYYY-MM-DD')
+    if date_to and not is_valid_date(date_to):
+        conn.close()
+        return error_response('结束日期格式必须为 YYYY-MM-DD')
+    if date_from and date_to and date_from > date_to:
+        conn.close()
+        return error_response('开始日期不能晚于结束日期')
+    if metric not in {
+        'blood_pressure_abnormal', 'blood_lipid_abnormal', 'blood_sugar_abnormal',
+        'bmi_abnormal', 'sleep_abnormal', 'high_risk',
+        'age_group', 'health_need_tag', 'past_history_tag'
+    }:
+        conn.close()
+        return error_response('metric 参数不合法')
+
+    page, page_size, _ = parse_list_params(default_page_size=10, max_page_size=100)
+    records = build_health_portrait_sample_records(c, date_from=date_from, date_to=date_to)
+    conn.close()
+
+    detail_rows = []
+    for row in records:
+        age = safe_int(row.get('age'))
+        if age is None and row.get('birth_date'):
+            try:
+                birth = datetime.strptime(row.get('birth_date')[:10], '%Y-%m-%d').date()
+                today = now_local().date()
+                age = today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+            except Exception:
+                age = None
+        age_segment = classify_age_segment(age) or ''
+        _, bmi_level = classify_bmi(row.get('height_cm'), row.get('weight_kg'))
+        bp_abnormal = ('偏高' in str(row.get('blood_pressure_test') or '')) or ('偏低' in str(row.get('blood_pressure_test') or ''))
+        lipid_abnormal = '偏高' in str(row.get('blood_lipid_test') or '')
+        sugar_abnormal = ('偏高' in str(row.get('blood_sugar_test') or '')) or ('偏低' in str(row.get('blood_sugar_test') or ''))
+        sleep_hours_abnormal = str(row.get('sleep_hours') or '') in ('<6小时', '>10小时')
+        sleep_quality_abnormal = str(row.get('sleep_quality') or '') in ('很差', '差')
+        sleep_abnormal = sleep_hours_abnormal or sleep_quality_abnormal
+        risk_info = calculate_lightweight_risk(row)
+        health_need_items = normalize_multi_text(row.get('health_needs'))
+        past_history_items = normalize_multi_text(row.get('past_medical_history'))
+
+        matched = False
+        if metric == 'blood_pressure_abnormal':
+            matched = bp_abnormal
+        elif metric == 'blood_lipid_abnormal':
+            matched = lipid_abnormal
+        elif metric == 'blood_sugar_abnormal':
+            matched = sugar_abnormal
+        elif metric == 'bmi_abnormal':
+            matched = bmi_level not in ('', '正常')
+        elif metric == 'sleep_abnormal':
+            matched = sleep_abnormal
+        elif metric == 'high_risk':
+            matched = risk_info.get('risk_level') == '高风险'
+        elif metric == 'age_group':
+            matched = bool(metric_value) and (age_segment == metric_value)
+        elif metric == 'health_need_tag':
+            matched = bool(metric_value) and metric_value in health_need_items
+        elif metric == 'past_history_tag':
+            matched = bool(metric_value) and metric_value in past_history_items
+        if not matched:
+            continue
+        detail_rows.append({
+            'customer_id': row.get('customer_id'),
+            'customer_name': row.get('customer_name') or '-',
+            'gender': row.get('gender') or '未知',
+            'age': age,
+            'phone': row.get('phone') or '',
+            'risk_level': risk_info.get('risk_level'),
+            'risk_reasons': risk_info.get('risk_reasons') or [],
+            'latest_assessment_date': row.get('latest_assessment_date') or '',
+        })
+
+    detail_rows.sort(
+        key=lambda item: (
+            -safe_int(item.get('age') or 0),
+            str(item.get('customer_name') or ''),
+            safe_int(item.get('customer_id') or 0),
+        )
+    )
+    total = len(detail_rows)
+    start = (page - 1) * page_size
+    end = start + page_size
+    page_items = detail_rows[start:end]
+    return success_response({
+        'metric': metric,
+        'metric_value': metric_value,
+        'date_from': date_from,
+        'date_to': date_to,
+        **paginate_result(page_items, total, page, page_size)
     })
 
 

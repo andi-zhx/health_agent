@@ -49,6 +49,12 @@
     .modal { background: #fff; border-radius: 8px; max-width: 520px; width: 100%; max-height: 90vh; overflow: auto; padding: 24px; }
     .modal h3 { margin: 0 0 16px; }
     .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    .drilldown-trigger { cursor: pointer; }
+    .drilldown-trigger:hover { box-shadow: 0 8px 20px rgba(59,130,246,.12); transform: translateY(-1px); transition: all .2s; }
+    .drilldown-table-wrap { max-height: 420px; overflow: auto; border: 1px solid #eef2f7; border-radius: 8px; }
+    .drilldown-table-wrap table { margin: 0; }
+    .drilldown-table-wrap th { position: sticky; top: 0; background: #f8fafc; z-index: 1; }
+    .drilldown-pagination { margin-top: 10px; display: flex; justify-content: flex-end; }
     textarea { min-height: 60px; resize: vertical; width: 100%; }
     .analytics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
     .mini-table { width: 100%; font-size: 13px; }
@@ -1190,6 +1196,24 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-dm-modal-cancel">取消</button>
         <button class="btn btn-primary" id="btn-dm-modal-save">保存</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-portrait-drilldown" class="modal-mask hide">
+    <div class="modal" style="max-width:980px;width:96%">
+      <h3 id="portrait-drilldown-title">画像明细</h3>
+      <div id="portrait-drilldown-desc" style="font-size:12px;color:#64748b;margin-bottom:10px"></div>
+      <div class="drilldown-table-wrap">
+        <table>
+          <thead>
+            <tr><th>客户ID</th><th>姓名</th><th>性别</th><th>年龄</th><th>电话</th><th>风险等级</th><th>风险原因</th><th>最新评估日期</th></tr>
+          </thead>
+          <tbody id="portrait-drilldown-list"></tbody>
+        </table>
+      </div>
+      <div id="portrait-drilldown-pagination" class="section-pagination drilldown-pagination"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-portrait-drilldown-close">关闭</button>
       </div>
     </div>
   </div>

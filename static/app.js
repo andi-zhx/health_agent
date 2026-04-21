@@ -319,6 +319,7 @@
   var improvementMeta = null;
   var improvementPendingUploadFile = null;
   var portraitImprovementRankingRaw = [];
+  var portraitDrilldownContext = { metric: '', metric_value: '', title: '' };
   var deviceManagementModalState = { mode: 'appointment', editId: '' };
 
   function equipmentStatusLabel(status) {
@@ -466,7 +467,8 @@
     appointments: { page: 1, page_size: 10 },
     homeAppointments: { page: 1, page_size: 10 },
     improvement: { page: 1, page_size: 10 },
-    auditLogs: { page: 1, page_size: 10 }
+    auditLogs: { page: 1, page_size: 10 },
+    portraitDrilldown: { page: 1, page_size: 10 }
   };
   var activeIntegratedTab = 'basic';
   function escapeHtml(value) {
@@ -1961,7 +1963,19 @@
           name: item.name || '-',
           value: (item.count || 0) + '人 / ' + (item.ratio || 0) + '%'
         };
-      }));
+      }), {
+        onClick: function (item) {
+          var metricMap = {
+            '血压异常人数': 'blood_pressure_abnormal',
+            '血脂异常人数': 'blood_lipid_abnormal',
+            '血糖异常人数': 'blood_sugar_abnormal',
+            'BMI异常人数': 'bmi_abnormal',
+            '睡眠异常人数': 'sleep_abnormal'
+          };
+          var metric = metricMap[item.name || ''];
+          if (metric) openPortraitDrilldown(item.name || '异常明细', metric, '');
+        }
+      });
       renderKpiCards('portrait-kpi-cards', [
         { name: '总人数', value: (d1.cards || {}).total_people || 0 },
         { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%' },
@@ -1969,17 +1983,30 @@
       ]);
       renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
       renderLegend('portrait-gender-legend', toList(d1.gender_distribution));
-      renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution));
+      renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution), {
+        onClick: function (ageGroup) {
+          if (ageGroup) openPortraitDrilldown('年龄段：' + ageGroup, 'age_group', ageGroup);
+        }
+      });
       renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
       renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-      renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', { maxItems: 10 });
+      renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', {
+        maxItems: 10,
+        onClick: function (item) {
+          if (item && item.name) openPortraitDrilldown('既往病史：' + item.name, 'past_history_tag', item.name);
+        }
+      });
       renderHorizontalBars('portrait-family-top10', toList(d2.family_history_distribution), '#fb7185', { maxItems: 10 });
       renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
       renderKpiCards('portrait-high-risk-kpi', [
         { name: '低风险人数', value: ((res.high_risk_summary || {}).low || 0) + '人' },
         { name: '中风险人数', value: ((res.high_risk_summary || {}).medium || 0) + '人' },
         { name: '高风险人数', value: ((res.high_risk_summary || {}).high || 0) + '人' }
-      ]);
+      ], {
+        onClick: function (item) {
+          if ((item.name || '') === '高风险人数') openPortraitDrilldown('高风险客户', 'high_risk', '');
+        }
+      });
 
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
@@ -1998,7 +2025,11 @@
         return { name: item.name, count: item.value };
       }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
       renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
-      renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9');
+      renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9', {
+        onClick: function (item) {
+          if (item && item.name) openPortraitDrilldown('健康需求：' + item.name, 'health_need_tag', item.name);
+        }
+      });
       renderServiceFunnelCards('portrait-service-funnel', toList((res.dimension4 || {}).service_funnel));
       renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
       portraitImprovementRankingRaw = toList((res.dimension4 || {}).improvement_project_ranking);
@@ -2006,7 +2037,51 @@
     });
   }
 
-  function renderAgeGenderCompare(elId, list) {
+  function buildPortraitDrilldownQuery() {
+    var params = [];
+    var start = (document.getElementById('portrait-date-from') || {}).value || '';
+    var end = (document.getElementById('portrait-date-to') || {}).value || '';
+    var state = listState.portraitDrilldown || { page: 1, page_size: 10 };
+    if (start) params.push('date_from=' + encodeURIComponent(start));
+    if (end) params.push('date_to=' + encodeURIComponent(end));
+    params.push('metric=' + encodeURIComponent(portraitDrilldownContext.metric || ''));
+    if (portraitDrilldownContext.metric_value) params.push('metric_value=' + encodeURIComponent(portraitDrilldownContext.metric_value));
+    params.push('page=' + encodeURIComponent(state.page || 1));
+    params.push('page_size=' + encodeURIComponent(state.page_size || 10));
+    return params.join('&');
+  }
+
+  function openPortraitDrilldown(title, metric, metricValue) {
+    portraitDrilldownContext = { title: title || '画像明细', metric: metric || '', metric_value: metricValue || '' };
+    if (listState.portraitDrilldown) listState.portraitDrilldown.page = 1;
+    var modal = document.getElementById('modal-portrait-drilldown');
+    if (!modal) return;
+    document.getElementById('portrait-drilldown-title').textContent = portraitDrilldownContext.title || '画像明细';
+    modal.classList.remove('hide');
+    loadPortraitDrilldownList();
+  }
+
+  function loadPortraitDrilldownList() {
+    if (!portraitDrilldownContext.metric) return;
+    get('/api/dashboard/health-portrait/drilldown?' + buildPortraitDrilldownQuery()).then(function (res) {
+      if (!res || res.error) {
+        showMsg('portrait-msg', (res && res.error) || '明细加载失败', true);
+        return;
+      }
+      var rows = toList(res);
+      var tbody = document.getElementById('portrait-drilldown-list');
+      if (!tbody) return;
+      tbody.innerHTML = rows.length ? rows.map(function (row) {
+        return '<tr><td>' + (row.customer_id || '-') + '</td><td>' + (row.customer_name || '-') + '</td><td>' + (row.gender || '-') + '</td><td>' + (row.age || '-') + '</td><td>' + (row.phone || '-') + '</td><td>' + (row.risk_level || '-') + '</td><td>' + ((row.risk_reasons || []).join('、') || '-') + '</td><td>' + (row.latest_assessment_date || '-') + '</td></tr>';
+      }).join('') : '<tr><td colspan="8">暂无符合条件的客户</td></tr>';
+      var pagination = getPagination(res);
+      var desc = document.getElementById('portrait-drilldown-desc');
+      if (desc) desc.textContent = '口径：与当前画像筛选一致（当前时间范围内每位客户最新评估），共 ' + (pagination.total || 0) + ' 人';
+      renderListPagination('portrait-drilldown-pagination', pagination, 'portraitDrilldown', loadPortraitDrilldownList);
+    });
+  }
+
+  function renderAgeGenderCompare(elId, list, options) {
     var box = document.getElementById(elId);
     if (!box) return;
     if (!list.length) {
@@ -2014,18 +2089,25 @@
       return;
     }
     var max = Math.max.apply(null, list.map(function (x) { return Math.max(x.male || 0, x.female || 0); }).concat([1]));
+    var config = options || {};
     var groups = list.map(function (x) {
       var maleHeight = Math.round(((x.male || 0) * 160) / max);
       var femaleHeight = Math.round(((x.female || 0) * 160) / max);
+      var clickable = typeof config.onClick === 'function';
       return '<div class="vbar-group"><div class="vbar-bars">' +
-        '<div class="vbar-item" style="height:' + maleHeight + 'px;background:#8ecbff"><span class="num">' + (x.male || 0) + '</span></div>' +
-        '<div class="vbar-item" style="height:' + femaleHeight + 'px;background:#ffb6c1"><span class="num">' + (x.female || 0) + '</span></div>' +
+        '<div class="vbar-item ' + (clickable ? 'drilldown-trigger' : '') + '" data-drill-value="' + escapeHtml(x.name || '') + '" style="height:' + maleHeight + 'px;background:#8ecbff"><span class="num">' + (x.male || 0) + '</span></div>' +
+        '<div class="vbar-item ' + (clickable ? 'drilldown-trigger' : '') + '" data-drill-value="' + escapeHtml(x.name || '') + '" style="height:' + femaleHeight + 'px;background:#ffb6c1"><span class="num">' + (x.female || 0) + '</span></div>' +
         '</div><div class="vbar-label">' + (x.name || '-') + '</div></div>';
     }).join('');
     box.innerHTML = '<div class="vbar-chart">' + groups + '</div><div class="compare-legend"><span class="male">男性</span><span class="female">女性</span></div>';
+    if (typeof config.onClick === 'function') {
+      box.querySelectorAll('[data-drill-value]').forEach(function (el) {
+        el.addEventListener('click', function () { config.onClick(el.getAttribute('data-drill-value') || ''); });
+      });
+    }
   }
 
-  function renderKpiCards(elId, items) {
+  function renderKpiCards(elId, items, options) {
     var box = document.getElementById(elId);
     if (!box) return;
     var list = toList(items);
@@ -2033,9 +2115,19 @@
       box.innerHTML = '<div style="color:#666">暂无数据</div>';
       return;
     }
-    box.innerHTML = list.map(function (x) {
-      return '<div class="kpi-card"><div class="k">' + (x.name || '-') + '</div><div class="v">' + (x.value == null ? '-' : x.value) + '</div></div>';
+    var config = options || {};
+    box.innerHTML = list.map(function (x, idx) {
+      var clickable = typeof config.onClick === 'function';
+      return '<div class="kpi-card ' + (clickable ? 'drilldown-trigger' : '') + '" data-kpi-index="' + idx + '"><div class="k">' + (x.name || '-') + '</div><div class="v">' + (x.value == null ? '-' : x.value) + '</div></div>';
     }).join('');
+    if (typeof config.onClick === 'function') {
+      box.querySelectorAll('[data-kpi-index]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var idx = Number(el.getAttribute('data-kpi-index') || 0);
+          config.onClick(list[idx] || {}, idx);
+        });
+      });
+    }
   }
 
   function renderTagCloud(elId, items) {
@@ -2132,10 +2224,19 @@
       return;
     }
     var max = Math.max.apply(null, rows.map(function (x) { return x.count || 0; }).concat([1]));
-    box.innerHTML = rows.map(function (x) {
+    box.innerHTML = rows.map(function (x, idx) {
       var width = Math.round(((x.count || 0) * 100) / max);
-      return '<div class="bar-row"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + (config.valueSuffix || '') + '</div></div>';
+      var clickable = typeof config.onClick === 'function';
+      return '<div class="bar-row ' + (clickable ? 'drilldown-trigger' : '') + '" data-bar-index="' + idx + '"><div class="label">' + (x.name || '-') + '</div><div class="bar-track"><div class="bar-fill" style="width:' + width + '%;background:' + color + '"></div></div><div class="value">' + (x.count || 0) + (config.valueSuffix || '') + '</div></div>';
     }).join('');
+    if (typeof config.onClick === 'function') {
+      box.querySelectorAll('[data-bar-index]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var idx = Number(el.getAttribute('data-bar-index') || 0);
+          config.onClick(rows[idx] || {}, idx);
+        });
+      });
+    }
   }
 
   function renderRadarChart(elId, items) {
@@ -2877,6 +2978,7 @@
     renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, this.value || 'improvement_rate');
   });
   document.getElementById('btn-portrait-query').addEventListener('click', function () {
+    listState.portraitDrilldown.page = 1;
     loadPortraitPage();
   });
   document.getElementById('btn-portrait-reset').addEventListener('click', function () {
@@ -2884,7 +2986,11 @@
     var end = document.getElementById('portrait-date-to');
     if (start) start.value = '';
     if (end) end.value = '';
+    listState.portraitDrilldown.page = 1;
     loadPortraitPage();
+  });
+  document.getElementById('btn-portrait-drilldown-close').addEventListener('click', function () {
+    document.getElementById('modal-portrait-drilldown').classList.add('hide');
   });
 
   document.getElementById('btn-home-mark-cancel').addEventListener('click', function () {
