@@ -818,6 +818,39 @@ def get_latest_assessment_summary(cursor, customer_id):
     return '；'.join(summary_parts)
 
 
+def fetch_latest_health_assessments(cursor):
+    window_sql = '''
+        SELECT latest_h.*
+        FROM (
+            SELECT h.*,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY h.customer_id
+                       ORDER BY h.assessment_date DESC, h.id DESC
+                   ) AS row_no
+            FROM health_assessments h
+        ) latest_h
+        WHERE latest_h.row_no = 1
+    '''
+    fallback_sql = '''
+        SELECT h.*
+        FROM health_assessments h
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM health_assessments newer
+            WHERE newer.customer_id = h.customer_id
+              AND (
+                    newer.assessment_date > h.assessment_date
+                 OR (newer.assessment_date = h.assessment_date AND newer.id > h.id)
+              )
+        )
+    '''
+    try:
+        cursor.execute(window_sql)
+    except sqlite3.OperationalError:
+        cursor.execute(fallback_sql)
+    return row_list(cursor.fetchall())
+
+
 def validate_improvement_payload(d, cursor=None):
     required_fields = ('customer_id', 'service_time', 'service_project', 'improvement_status')
     if not all(str(d.get(k) or '').strip() for k in required_fields):
@@ -4786,27 +4819,37 @@ def api_dashboard_analytics():
 def api_dashboard_health_portrait():
     conn = get_db()
     c = conn.cursor()
-    c.execute('''
-        SELECT latest_h.*, c.name as customer_name, c.gender, c.birth_date, c.chronic_diseases, c.medical_history
-        FROM (
-            SELECT h.*,
-                   ROW_NUMBER() OVER (
-                       PARTITION BY h.customer_id
-                       ORDER BY h.assessment_date DESC, h.id DESC
-                   ) AS row_no
-            FROM health_assessments h
-        ) latest_h
-        JOIN customers c ON latest_h.customer_id = c.id
-        WHERE latest_h.row_no = 1
-        ORDER BY latest_h.customer_id DESC, latest_h.id DESC
-    ''')
-    rows = row_list(c.fetchall())
+    latest_rows = fetch_latest_health_assessments(c)
+    records = []
+    customer_ids = [safe_int(row.get('customer_id')) for row in latest_rows if safe_int(row.get('customer_id')) is not None]
+    customer_map = {}
+    if customer_ids:
+        placeholders = ','.join('?' for _ in customer_ids)
+        c.execute(
+            f'''
+            SELECT id, name, gender, birth_date, chronic_diseases, medical_history
+            FROM customers
+            WHERE id IN ({placeholders})
+            ''',
+            customer_ids,
+        )
+        customer_map = {safe_int(item['id']): dict(item) for item in c.fetchall()}
+    for row in latest_rows:
+        customer_id = safe_int(row.get('customer_id'))
+        if customer_id is None or customer_id not in customer_map:
+            continue
+        customer_row = customer_map[customer_id]
+        merged = dict(row)
+        merged.update({
+            'customer_name': customer_row.get('name'),
+            'gender': customer_row.get('gender'),
+            'birth_date': customer_row.get('birth_date'),
+            'chronic_diseases': customer_row.get('chronic_diseases'),
+            'medical_history': customer_row.get('medical_history'),
+        })
+        records.append(merged)
+    records.sort(key=lambda r: (safe_int(r.get('customer_id')) or 0, safe_int(r.get('id')) or 0), reverse=True)
     conn.close()
-
-    dedup = {}
-    for row in rows:
-        dedup[row['customer_id']] = row
-    records = list(dedup.values())
 
     age_segments = ['<50岁', '50-60岁', '61-65岁', '66-70岁', '71-75岁', '76-80岁', '>80岁']
     age_distribution = {k: 0 for k in age_segments}
