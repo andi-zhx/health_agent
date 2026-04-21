@@ -830,6 +830,7 @@ def fetch_latest_health_assessments(cursor):
             FROM health_assessments h
         ) latest_h
         WHERE latest_h.row_no = 1
+        ORDER BY latest_h.customer_id ASC
     '''
     fallback_sql = '''
         SELECT h.*
@@ -843,6 +844,7 @@ def fetch_latest_health_assessments(cursor):
                  OR (newer.assessment_date = h.assessment_date AND newer.id > h.id)
               )
         )
+        ORDER BY h.customer_id ASC
     '''
     try:
         cursor.execute(window_sql)
@@ -2139,9 +2141,9 @@ def api_customer_get(cid):
     )
     cust['appointments'] = row_list(c.fetchall())
     cust['usage_records'] = []
-    c.execute('SELECT * FROM health_records WHERE customer_id=? ORDER BY record_date DESC', (cid,))
+    c.execute('SELECT * FROM health_records WHERE customer_id=? ORDER BY record_date DESC, id DESC', (cid,))
     cust['health_records'] = row_list(c.fetchall())
-    c.execute('SELECT * FROM visit_checkins WHERE customer_id=? ORDER BY checkin_time DESC', (cid,))
+    c.execute('SELECT * FROM visit_checkins WHERE customer_id=? ORDER BY checkin_time DESC, id DESC', (cid,))
     cust['visit_checkins'] = row_list(c.fetchall())
     conn.close()
     return success_response(cust)
@@ -2236,9 +2238,9 @@ def api_health_records_list():
     conn = get_db()
     c = conn.cursor()
     if customer_id:
-        c.execute('SELECT h.*, c.name as customer_name FROM health_records h JOIN customers c ON h.customer_id=c.id WHERE h.customer_id=? ORDER BY h.record_date DESC', (customer_id,))
+        c.execute('SELECT h.*, c.name as customer_name FROM health_records h JOIN customers c ON h.customer_id=c.id WHERE h.customer_id=? ORDER BY h.record_date DESC, h.id DESC', (customer_id,))
     else:
-        c.execute('SELECT h.*, c.name as customer_name FROM health_records h JOIN customers c ON h.customer_id=c.id ORDER BY h.record_date DESC')
+        c.execute('SELECT h.*, c.name as customer_name FROM health_records h JOIN customers c ON h.customer_id=c.id ORDER BY h.record_date DESC, h.id DESC')
     rows = c.fetchall()
     conn.close()
     return jsonify(row_list(rows))
@@ -2269,9 +2271,9 @@ def api_visit_checkins_list():
     conn = get_db()
     c = conn.cursor()
     if customer_id:
-        c.execute('SELECT v.*, c.name as customer_name FROM visit_checkins v JOIN customers c ON v.customer_id=c.id WHERE v.customer_id=? ORDER BY v.checkin_time DESC', (customer_id,))
+        c.execute('SELECT v.*, c.name as customer_name FROM visit_checkins v JOIN customers c ON v.customer_id=c.id WHERE v.customer_id=? ORDER BY v.checkin_time DESC, v.id DESC', (customer_id,))
     else:
-        c.execute('SELECT v.*, c.name as customer_name FROM visit_checkins v JOIN customers c ON v.customer_id=c.id ORDER BY v.checkin_time DESC')
+        c.execute('SELECT v.*, c.name as customer_name FROM visit_checkins v JOIN customers c ON v.customer_id=c.id ORDER BY v.checkin_time DESC, v.id DESC')
     rows = c.fetchall()
     conn.close()
     return jsonify(row_list(rows))
