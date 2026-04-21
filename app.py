@@ -3145,31 +3145,36 @@ def api_improvement_record_create():
     if not c.fetchone():
         conn.close()
         return error_response('客户不存在')
-    c.execute(
-        '''
-        INSERT INTO service_improvement_records
-        (service_id, service_type, customer_id, service_time, service_project, pre_service_status, service_content,
-         post_service_evaluation, improvement_status, followup_time, followup_date, followup_method, updated_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-        ''',
-        (
-            d.get('service_id'),
-            d.get('service_type') or 'appointments',
-            d.get('customer_id'),
-            d.get('service_time'),
-            d.get('service_project'),
-            d.get('pre_service_status'),
-            d.get('service_content'),
-            d.get('post_service_evaluation'),
-            d.get('improvement_status'),
-            d.get('followup_time'),
-            d.get('followup_date'),
-            d.get('followup_method'),
-            now_ts,
-        ),
-    )
-    rid = c.lastrowid
-    conn.commit()
+    try:
+        c.execute(
+            '''
+            INSERT INTO service_improvement_records
+            (service_id, service_type, customer_id, service_time, service_project, pre_service_status, service_content,
+             post_service_evaluation, improvement_status, followup_time, followup_date, followup_method, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ''',
+            (
+                d.get('service_id'),
+                d.get('service_type') or 'appointments',
+                d.get('customer_id'),
+                d.get('service_time'),
+                d.get('service_project'),
+                d.get('pre_service_status'),
+                d.get('service_content'),
+                d.get('post_service_evaluation'),
+                d.get('improvement_status'),
+                d.get('followup_time'),
+                d.get('followup_date'),
+                d.get('followup_method'),
+                now_ts,
+            ),
+        )
+        rid = c.lastrowid
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        conn.close()
+        return error_response('保存失败：关联数据不存在或已失效')
     conn.close()
     audit_log('新增改善记录', 'service_improvement_records', rid, f"customer_id={d.get('customer_id')}")
     return success_response({'id': rid}, '改善记录已添加', 201)
@@ -3189,32 +3194,41 @@ def api_improvement_record_update(rid):
     if not c.fetchone():
         conn.close()
         return error_response('记录不存在', 404, 'NOT_FOUND')
-    c.execute(
-        '''
-        UPDATE service_improvement_records
-        SET service_id=?, service_type=?, customer_id=?, service_time=?, service_project=?, pre_service_status=?, service_content=?,
-            post_service_evaluation=?, improvement_status=?, followup_time=?, followup_date=?, followup_method=?,
-            updated_at=?
-        WHERE id=?
-        ''',
-        (
-            d.get('service_id'),
-            d.get('service_type') or 'appointments',
-            d.get('customer_id'),
-            d.get('service_time'),
-            d.get('service_project'),
-            d.get('pre_service_status'),
-            d.get('service_content'),
-            d.get('post_service_evaluation'),
-            d.get('improvement_status'),
-            d.get('followup_time'),
-            d.get('followup_date'),
-            d.get('followup_method'),
-            now_ts,
-            rid,
-        ),
-    )
-    conn.commit()
+    c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
+    if not c.fetchone():
+        conn.close()
+        return error_response('客户不存在')
+    try:
+        c.execute(
+            '''
+            UPDATE service_improvement_records
+            SET service_id=?, service_type=?, customer_id=?, service_time=?, service_project=?, pre_service_status=?, service_content=?,
+                post_service_evaluation=?, improvement_status=?, followup_time=?, followup_date=?, followup_method=?,
+                updated_at=?
+            WHERE id=?
+            ''',
+            (
+                d.get('service_id'),
+                d.get('service_type') or 'appointments',
+                d.get('customer_id'),
+                d.get('service_time'),
+                d.get('service_project'),
+                d.get('pre_service_status'),
+                d.get('service_content'),
+                d.get('post_service_evaluation'),
+                d.get('improvement_status'),
+                d.get('followup_time'),
+                d.get('followup_date'),
+                d.get('followup_method'),
+                now_ts,
+                rid,
+            ),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        conn.close()
+        return error_response('保存失败：关联数据不存在或已失效')
     conn.close()
     audit_log('修改改善记录', 'service_improvement_records', rid, f"customer_id={d.get('customer_id')}")
     return success_response({'id': rid}, '改善记录已更新')
@@ -3224,9 +3238,28 @@ def api_improvement_record_update(rid):
 def api_improvement_record_delete(rid):
     conn = get_db()
     c = conn.cursor()
-    c.execute('DELETE FROM service_improvement_records WHERE id=?', (rid,))
-    conn.commit()
+    c.execute('SELECT id FROM service_improvement_records WHERE id=?', (rid,))
+    if not c.fetchone():
+        conn.close()
+        return error_response('记录不存在', 404, 'NOT_FOUND')
+    c.execute('SELECT file_path FROM improvement_record_files WHERE improvement_record_id=?', (rid,))
+    attached_paths = [str(row['file_path'] or '').strip() for row in c.fetchall() if str(row['file_path'] or '').strip()]
+    try:
+        c.execute('DELETE FROM improvement_record_files WHERE improvement_record_id=?', (rid,))
+        c.execute('DELETE FROM service_improvement_records WHERE id=?', (rid,))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.rollback()
+        conn.close()
+        return error_response('删除失败：该记录存在关联数据，无法删除')
     conn.close()
+    for rel_path in attached_paths:
+        abs_path = os.path.join(BASE_DIR, rel_path)
+        if os.path.isfile(abs_path):
+            try:
+                os.remove(abs_path)
+            except OSError:
+                logging.exception('删除理疗附件失败: %s', abs_path)
     audit_log('删除改善记录', 'service_improvement_records', rid, '')
     return success_response({}, '已删除')
 
