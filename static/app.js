@@ -1517,6 +1517,13 @@
     return '<details class="row-action-menu"><summary class="row-action-trigger">操作</summary><div class="row-action-list">' + items.join('') + '</div></details>';
   }
 
+  function closeRowActionMenusExcept(target) {
+    document.querySelectorAll('.row-action-menu[open]').forEach(function (menu) {
+      if (target && menu.contains(target)) return;
+      menu.removeAttribute('open');
+    });
+  }
+
   function loadAppointmentsPage() {
     setAppointmentEditMode(null);
     appointmentSlotPanel = null;
@@ -2352,9 +2359,14 @@
   });
   document.getElementById('btn-confirm-cancel').addEventListener('click', closeConfirmModal);
   document.getElementById('btn-confirm-submit').addEventListener('click', function () {
-    if (typeof pendingAction === 'function') pendingAction();
+    var action = pendingAction;
+    closeConfirmModal();
+    if (typeof action === 'function') action();
   });
   document.getElementById('btn-history-close').addEventListener('click', closeHistoryModal);
+  document.addEventListener('click', function (e) {
+    closeRowActionMenusExcept(e.target);
+  });
   document.getElementById('btn-modal-cancel').addEventListener('click', function () { document.getElementById('modal-customer').classList.add('hide'); });
   document.getElementById('btn-modal-save').addEventListener('click', function () {
     var id = document.getElementById('modal-customer-id').value;
