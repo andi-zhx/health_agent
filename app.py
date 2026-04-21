@@ -210,6 +210,36 @@ def ensure_columns(cursor, table_name, columns):
             cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {col} {col_type}')
 
 
+def normalize_appointment_status_data(cursor, table_name):
+    cursor.execute(f"UPDATE {table_name} SET status='scheduled' WHERE LOWER(COALESCE(status,'')) NOT IN ('scheduled','cancelled','completed')")
+    cursor.execute(f"UPDATE {table_name} SET checkin_status='pending' WHERE LOWER(COALESCE(status,''))='scheduled' AND LOWER(COALESCE(checkin_status,'')) IN ('', 'none')")
+    cursor.execute(f"UPDATE {table_name} SET checkin_status='none' WHERE LOWER(COALESCE(status,''))='cancelled'")
+    cursor.execute(
+        f"""
+        UPDATE {table_name}
+        SET status='scheduled'
+        WHERE LOWER(COALESCE(status,''))='completed'
+          AND LOWER(COALESCE(checkin_status,''))='no_show'
+        """
+    )
+    cursor.execute(
+        f"""
+        UPDATE {table_name}
+        SET checkin_status='checked_in'
+        WHERE LOWER(COALESCE(status,''))='completed'
+          AND LOWER(COALESCE(checkin_status,'')) IN ('', 'pending', 'none')
+        """
+    )
+    cursor.execute(
+        f"""
+        UPDATE {table_name}
+        SET checkin_status='pending'
+        WHERE LOWER(COALESCE(checkin_status,'')) NOT IN ('pending','checked_in','no_show','none')
+          AND LOWER(COALESCE(status,'')) IN ('scheduled','completed')
+        """
+    )
+
+
 def migrate_service_improvement_records_drop_followup_result(cursor):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='service_improvement_records'")
     if not cursor.fetchone():
@@ -1430,6 +1460,7 @@ def init_db():
         'checkin_updated_by': 'TEXT',
         'checkin_updated_ip': 'TEXT',
     })
+    normalize_appointment_status_data(c, 'appointments')
 
     c.execute('DROP TABLE IF EXISTS equipment_usage')
 
@@ -1641,6 +1672,7 @@ def init_db():
         'checkin_updated_by': 'TEXT',
         'checkin_updated_ip': 'TEXT',
     })
+    normalize_appointment_status_data(c, 'home_appointments')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS db_backups (
@@ -3120,7 +3152,7 @@ def api_improvement_records_pending_fill():
         FROM appointments a
         JOIN customers c ON a.customer_id=c.id
         LEFT JOIN therapy_projects p ON a.project_id=p.id
-        WHERE LOWER(COALESCE(a.status, ''))='scheduled'
+        WHERE LOWER(COALESCE(a.status, ''))='completed'
           AND LOWER(COALESCE(a.checkin_status, ''))='checked_in'
           AND NOT EXISTS (
                 SELECT 1
@@ -3141,7 +3173,7 @@ def api_improvement_records_pending_fill():
         FROM home_appointments h
         JOIN customers c ON h.customer_id=c.id
         LEFT JOIN therapy_projects p ON h.project_id=p.id
-        WHERE LOWER(COALESCE(h.status, ''))='scheduled'
+        WHERE LOWER(COALESCE(h.status, ''))='completed'
           AND LOWER(COALESCE(h.checkin_status, ''))='checked_in'
           AND NOT EXISTS (
                 SELECT 1
@@ -3477,6 +3509,7 @@ def api_improvement_record_from_appointment():
 def api_appointments_list():
     sort_by = (request.args.get('sort_by') or 'time_desc').strip()
     status = (request.args.get('status', '') or '').strip().lower()
+    checkin_status = (request.args.get('checkin_status', '') or '').strip().lower()
     search = (request.args.get('search', '') or '').strip()
     date_from = (request.args.get('date_from', '') or '').strip()
     date_to = (request.args.get('date_to', '') or '').strip()
@@ -3500,6 +3533,9 @@ def api_appointments_list():
     if status:
         base_sql += ' AND LOWER(COALESCE(a.status, ""))=?'
         params.append(status)
+    if checkin_status:
+        base_sql += ' AND LOWER(COALESCE(a.checkin_status, ""))=?'
+        params.append(checkin_status)
     if search:
         like = f'%{search}%'
         base_sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
@@ -3576,7 +3612,8 @@ def api_appointment_create():
             conn.close()
             return error_response('该时段设备已被预约')
 
-    checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
+    new_status = str(d.get('status') or 'scheduled').strip().lower()
+    checkin_status = 'none' if new_status == 'cancelled' else 'pending'
     c.execute('''
         INSERT INTO appointments (
             booking_group_id, customer_id, project_id, equipment_id, staff_id,
@@ -3586,7 +3623,7 @@ def api_appointment_create():
         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
     ''', (
         booking_group_id, d.get('customer_id'), d.get('project_id'), d.get('equipment_id'), None,
-        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('status', 'scheduled'), checkin_status,
+        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), new_status, checkin_status,
         d.get('has_companion', '无'), d.get('notes'), now_ts,
     ))
     rid = c.lastrowid
@@ -3750,6 +3787,10 @@ def api_appointment_update(aid):
     if not old_row:
         conn.close()
         return error_response('预约记录不存在', 404, 'NOT_FOUND')
+    old_status = str(old_row['status'] or 'scheduled').strip().lower()
+    if old_status == 'completed':
+        conn.close()
+        return error_response('服务已完成，预约不可再编辑')
 
     c.execute('SELECT * FROM therapy_projects WHERE id=?', (d.get('project_id'),))
     project = c.fetchone()
@@ -3858,9 +3899,13 @@ def api_appointment_cancel(aid):
     if not row:
         conn.close()
         return error_response('预约记录不存在', 404, 'NOT_FOUND')
-    if (row['status'] or '').strip().lower() == 'cancelled':
+    row_status = (row['status'] or '').strip().lower()
+    if row_status == 'cancelled':
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
+    if row_status == 'completed':
+        conn.close()
+        return error_response('服务已完成，不可取消预约')
     c.execute(
         "UPDATE appointments SET status='cancelled', checkin_status='none', checkin_updated_at=?, checkin_updated_by=?, checkin_updated_ip=?, updated_at=? WHERE id=?",
         (now_ts, session.get('username', 'anonymous'), get_request_ip(), now_ts, aid),
@@ -3918,6 +3963,39 @@ def update_checkin_status(cursor, table_name, module_name, record_id, target_sta
     return dict(row), None
 
 
+def complete_service(cursor, table_name, module_name, record_id):
+    cursor.execute(f'SELECT * FROM {table_name} WHERE id=?', (record_id,))
+    row = cursor.fetchone()
+    if not row:
+        return None, '预约记录不存在'
+    booking_status = str(row['status'] or '').strip().lower()
+    current_checkin = str(row['checkin_status'] or 'pending').strip().lower()
+    now_ts = now_local_str()
+
+    if booking_status == 'cancelled':
+        return None, '取消预约不可完成服务'
+    if booking_status == 'completed':
+        return None, '该预约已完成服务，请勿重复提交'
+    if booking_status != 'scheduled':
+        return None, '仅预约成功状态可完成服务'
+    if current_checkin != 'checked_in':
+        return None, '仅已签到预约可完成服务'
+
+    cursor.execute(
+        f'''
+        UPDATE {table_name}
+        SET status='completed', updated_at=?
+        WHERE id=?
+        ''',
+        (now_ts, record_id),
+    )
+    before_text = '预约状态:预约成功；签到状态:已签到'
+    after_text = '预约状态:服务完成；签到状态:已签到'
+    insert_business_history_log(cursor, module_name, record_id, 'complete_service', before_text, after_text)
+    insert_audit_log(cursor, '完成服务', module_name, record_id, 'scheduled+checked_in->completed')
+    return dict(row), None
+
+
 @app.route('/api/appointments/<int:aid>/checkin-status', methods=['POST'])
 def api_appointment_checkin_status(aid):
     payload = request.json or {}
@@ -3933,11 +4011,25 @@ def api_appointment_checkin_status(aid):
     return success_response({'id': aid, 'checkin_status': target_status}, '签到状态更新成功')
 
 
+@app.route('/api/appointments/<int:aid>/complete', methods=['POST'])
+def api_appointment_complete(aid):
+    conn = get_db()
+    c = conn.cursor()
+    _, err = complete_service(c, 'appointments', 'appointments', aid)
+    if err:
+        conn.close()
+        return error_response(err)
+    conn.commit()
+    conn.close()
+    return success_response({'id': aid, 'status': 'completed'}, '服务已完成')
+
+
 # ========== 上门预约 ==========
 @app.route('/api/home-appointments', methods=['GET'])
 def api_home_appointments_list():
     sort_by = (request.args.get('sort_by') or 'time_desc').strip()
     status = (request.args.get('status', '') or '').strip().lower()
+    checkin_status = (request.args.get('checkin_status', '') or '').strip().lower()
     search = (request.args.get('search', '') or '').strip()
     date_from = (request.args.get('date_from', '') or '').strip()
     date_to = (request.args.get('date_to', '') or '').strip()
@@ -3961,6 +4053,9 @@ def api_home_appointments_list():
     if status:
         base_sql += ' AND LOWER(COALESCE(h.status, ""))=?'
         params.append(status)
+    if checkin_status:
+        base_sql += ' AND LOWER(COALESCE(h.checkin_status, ""))=?'
+        params.append(checkin_status)
     if search:
         like = f'%{search}%'
         base_sql += ' AND (COALESCE(h.customer_name, c.name) LIKE ? OR COALESCE(h.phone, c.phone) LIKE ?)'
@@ -4200,7 +4295,8 @@ def api_home_appointments_create():
     home_address = d.get('home_address') or d.get('location')
     home_time = d.get('home_time') or f"{d.get('start_time')}-{d.get('end_time')}"
 
-    checkin_status = 'none' if str(d.get('status') or 'scheduled').strip().lower() == 'cancelled' else 'pending'
+    new_status = str(d.get('status') or 'scheduled').strip().lower()
+    checkin_status = 'none' if new_status == 'cancelled' else 'pending'
     c.execute('''
         INSERT INTO home_appointments (
             booking_group_id, customer_id, project_id, staff_id,
@@ -4211,7 +4307,7 @@ def api_home_appointments_create():
     ''', (
         booking_group_id, d.get('customer_id'), d.get('project_id'), d.get('staff_id'),
         customer['name'], customer['phone'], home_time, home_address, project['name'], staff['name'] if staff else None,
-        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), d.get('status', 'scheduled'), checkin_status, now_ts
+        d.get('appointment_date'), d.get('start_time'), d.get('end_time'), d.get('location'), d.get('contact_person'), d.get('contact_phone'), d.get('has_companion', '无'), d.get('notes'), new_status, checkin_status, now_ts
     ))
     rid = c.lastrowid
     c.execute(
@@ -4247,9 +4343,13 @@ def api_home_appointments_cancel(hid):
     if not row:
         conn.close()
         return error_response('上门预约不存在', 404, 'NOT_FOUND')
-    if (row['status'] or '').strip().lower() == 'cancelled':
+    row_status = (row['status'] or '').strip().lower()
+    if row_status == 'cancelled':
         conn.close()
         return error_response('已经提交过取消预约，请勿再次提交')
+    if row_status == 'completed':
+        conn.close()
+        return error_response('服务已完成，不可取消预约')
     c.execute(
         "UPDATE home_appointments SET status='cancelled', checkin_status='none', checkin_updated_at=?, checkin_updated_by=?, checkin_updated_ip=?, updated_at=? WHERE id=?",
         (now_ts, session.get('username', 'anonymous'), get_request_ip(), now_ts, hid),
@@ -4283,6 +4383,19 @@ def api_home_appointments_checkin_status(hid):
     return success_response({'id': hid, 'checkin_status': target_status}, '签到状态更新成功')
 
 
+@app.route('/api/home-appointments/<int:hid>/complete', methods=['POST'])
+def api_home_appointments_complete(hid):
+    conn = get_db()
+    c = conn.cursor()
+    _, err = complete_service(c, 'home_appointments', 'home_appointments', hid)
+    if err:
+        conn.close()
+        return error_response(err)
+    conn.commit()
+    conn.close()
+    return success_response({'id': hid, 'status': 'completed'}, '服务已完成')
+
+
 @app.route('/api/home-appointments/<int:hid>', methods=['PUT'])
 def api_home_appointments_update(hid):
     d = request.json or {}
@@ -4298,6 +4411,10 @@ def api_home_appointments_update(hid):
     if not old_row:
         conn.close()
         return error_response('上门预约不存在', 404, 'NOT_FOUND')
+    old_status = str(old_row['status'] or 'scheduled').strip().lower()
+    if old_status == 'completed':
+        conn.close()
+        return error_response('服务已完成，预约不可再编辑')
 
     c.execute('SELECT id, name, phone FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     customer = c.fetchone()
@@ -4688,14 +4805,14 @@ def api_dashboard_stats():
         SELECT COUNT(*) as n
         FROM appointments
         WHERE appointment_date=?
-          AND LOWER(COALESCE(checkin_status, ''))='checked_in'
+          AND LOWER(COALESCE(status, ''))='completed'
     ''', (today_str,))
     today_checked_appointments = c.fetchone()['n']
     c.execute('''
         SELECT COUNT(*) as n
         FROM home_appointments
         WHERE appointment_date=?
-          AND LOWER(COALESCE(checkin_status, ''))='checked_in'
+          AND LOWER(COALESCE(status, ''))='completed'
     ''', (today_str,))
     today_checked_home_appointments = c.fetchone()['n']
     today_service_count = (today_checked_appointments or 0) + (today_checked_home_appointments or 0)
