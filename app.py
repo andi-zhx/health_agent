@@ -258,6 +258,22 @@ def migrate_service_improvement_records_drop_followup_result(cursor):
     cursor.execute('ALTER TABLE service_improvement_records_new RENAME TO service_improvement_records')
 
 
+def migrate_service_improvement_service_type_values(cursor):
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='service_improvement_records'")
+    if not cursor.fetchone():
+        return
+    cursor.execute(
+        '''
+        UPDATE service_improvement_records
+        SET service_type = CASE
+            WHEN LOWER(TRIM(COALESCE(service_type, ''))) IN ('appointments', 'appointment') THEN 'appointments'
+            WHEN LOWER(TRIM(COALESCE(service_type, ''))) IN ('home_appointments', 'home') THEN 'home_appointments'
+            ELSE 'appointments'
+        END
+        '''
+    )
+
+
 def table_exists(cursor, table_name):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
     return cursor.fetchone() is not None
@@ -588,6 +604,13 @@ IMPROVEMENT_SERVICE_PROJECTS = [
 IMPROVEMENT_STATUS_OPTIONS = ['明显改善', '部分改善', '无改善', '加重']
 FOLLOWUP_METHOD_OPTIONS = ['电话', '到店']
 FOLLOWUP_PRESET_OPTIONS = ['1个月', '3个月', '半年', '1年']
+IMPROVEMENT_SERVICE_TYPE_OPTIONS = ('appointments', 'home_appointments')
+IMPROVEMENT_SERVICE_TYPE_ALIASES = {
+    'appointment': 'appointments',
+    'appointments': 'appointments',
+    'home': 'home_appointments',
+    'home_appointments': 'home_appointments',
+}
 ALLOWED_IMPROVEMENT_FILE_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
 ALLOWED_IMPROVEMENT_MIME_TYPES = {
     'pdf': {'application/pdf', 'application/x-pdf'},
@@ -595,6 +618,14 @@ ALLOWED_IMPROVEMENT_MIME_TYPES = {
     'jpg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
     'jpeg': {'image/jpeg', 'image/pjpeg', 'image/jpg'},
 }
+
+
+def normalize_improvement_service_type(service_type, default='appointments'):
+    raw = str(service_type or '').strip().lower()
+    if not raw:
+        raw = default
+    normalized = IMPROVEMENT_SERVICE_TYPE_ALIASES.get(raw)
+    return normalized if normalized in IMPROVEMENT_SERVICE_TYPE_OPTIONS else None
 
 
 def get_improvement_service_projects(cursor=None):
@@ -857,6 +888,8 @@ def validate_improvement_payload(d, cursor=None):
     required_fields = ('customer_id', 'service_time', 'service_project', 'improvement_status')
     if not all(str(d.get(k) or '').strip() for k in required_fields):
         return '缺少必填字段'
+    if normalize_improvement_service_type(d.get('service_type') or 'appointments') is None:
+        return 'service_type 不合法'
     allowed_projects = get_improvement_service_projects(cursor)
     if str(d.get('service_project') or '').strip() not in allowed_projects:
         return '服务项目不合法'
@@ -1873,6 +1906,7 @@ def init_db():
         'updated_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
     migrate_service_improvement_records_drop_followup_result(c)
+    migrate_service_improvement_service_type_values(c)
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS improvement_record_files (
@@ -2984,6 +3018,7 @@ def api_improvement_records_meta():
     conn.close()
     return success_response({
         'service_projects': projects,
+        'service_type_options': list(IMPROVEMENT_SERVICE_TYPE_OPTIONS),
         'improvement_status_options': IMPROVEMENT_STATUS_OPTIONS,
         'followup_method_options': FOLLOWUP_METHOD_OPTIONS,
         'followup_time_options': FOLLOWUP_PRESET_OPTIONS,
@@ -3090,7 +3125,7 @@ def api_improvement_records_pending_fill():
           AND NOT EXISTS (
                 SELECT 1
                 FROM service_improvement_records r
-                WHERE r.service_type='appointments'
+                WHERE LOWER(TRIM(COALESCE(r.service_type, ''))) IN ('appointments', 'appointment')
                   AND r.service_id=a.id
           )
         UNION ALL
@@ -3111,7 +3146,7 @@ def api_improvement_records_pending_fill():
           AND NOT EXISTS (
                 SELECT 1
                 FROM service_improvement_records r
-                WHERE r.service_type='home_appointments'
+                WHERE LOWER(TRIM(COALESCE(r.service_type, ''))) IN ('home_appointments', 'home')
                   AND r.service_id=h.id
           )
         ORDER BY appointment_date DESC, start_time DESC, service_id DESC
@@ -3145,6 +3180,7 @@ def api_improvement_record_get(rid):
 @app.route('/api/improvement-records', methods=['POST'])
 def api_improvement_record_create():
     d = request.json or {}
+    service_type = normalize_improvement_service_type(d.get('service_type') or 'appointments')
     conn = get_db()
     c = conn.cursor()
     err = validate_improvement_payload(d, c)
@@ -3166,7 +3202,7 @@ def api_improvement_record_create():
             ''',
             (
                 d.get('service_id'),
-                d.get('service_type') or 'appointments',
+                service_type,
                 d.get('customer_id'),
                 d.get('service_time'),
                 d.get('service_project'),
@@ -3194,6 +3230,7 @@ def api_improvement_record_create():
 @app.route('/api/improvement-records/<int:rid>', methods=['PUT'])
 def api_improvement_record_update(rid):
     d = request.json or {}
+    service_type = normalize_improvement_service_type(d.get('service_type') or 'appointments')
     conn = get_db()
     c = conn.cursor()
     err = validate_improvement_payload(d, c)
@@ -3220,7 +3257,7 @@ def api_improvement_record_update(rid):
             ''',
             (
                 d.get('service_id'),
-                d.get('service_type') or 'appointments',
+                service_type,
                 d.get('customer_id'),
                 d.get('service_time'),
                 d.get('service_project'),
@@ -3382,10 +3419,10 @@ def api_improvement_record_latest():
 @app.route('/api/improvement-records/from-appointment', methods=['GET'])
 def api_improvement_record_from_appointment():
     service_id = request.args.get('service_id', type=int)
-    service_type = (request.args.get('service_type') or 'appointments').strip()
+    service_type = normalize_improvement_service_type(request.args.get('service_type') or 'appointments')
     if not service_id:
         return error_response('service_id 必填')
-    if service_type not in ('appointments', 'home_appointments'):
+    if service_type not in IMPROVEMENT_SERVICE_TYPE_OPTIONS:
         return error_response('service_type 不合法')
     conn = get_db()
     c = conn.cursor()
@@ -5041,8 +5078,8 @@ def api_dashboard_health_portrait():
         SELECT r.service_project, r.service_content, r.improvement_status,
                a.status AS appointment_status, ha.status AS home_appointment_status
         FROM service_improvement_records r
-        LEFT JOIN appointments a ON r.service_type='appointment' AND r.service_id=a.id
-        LEFT JOIN home_appointments ha ON r.service_type='home' AND r.service_id=ha.id
+        LEFT JOIN appointments a ON r.service_type='appointments' AND r.service_id=a.id
+        LEFT JOIN home_appointments ha ON r.service_type='home_appointments' AND r.service_id=ha.id
     ''')
     improvement_rows = row_list(c.fetchall())
 
