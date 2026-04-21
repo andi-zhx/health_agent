@@ -2843,30 +2843,6 @@ def api_health_assessment_create():
     conn = get_db()
     c = conn.cursor()
     customer_id = d.get('customer_id')
-    c.execute('SELECT id FROM health_assessments WHERE customer_id=? ORDER BY id DESC LIMIT 1', (customer_id,))
-    existing = c.fetchone()
-    if existing:
-        hid = existing['id']
-        c.execute('''
-            UPDATE health_assessments
-            SET customer_id=?, assessment_date=?, assessor=?, age=?, height_cm=?, weight_kg=?, address=?, past_medical_history=?,
-                family_history=?, allergy_history=?, allergy_details=?, smoking_status=?, smoking_years=?, cigarettes_per_day=?,
-                drinking_status=?, drinking_years=?, sleep_quality=?, sleep_hours=?, recent_symptoms=?, recent_symptom_detail=?,
-                life_impact_issues=?, blood_pressure_test=?, blood_lipid_test=?, blood_sugar_test=?, chronic_pain=?, pain_details=?,
-                exercise_methods=?, health_needs=?, notes=?
-            WHERE id=?
-        ''', (
-            customer_id, d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
-            d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
-            d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-            d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
-            d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
-            parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes'), hid
-        ))
-        conn.commit()
-        conn.close()
-        audit_log('修改健康评估', 'health_assessments', hid, f"customer_id={customer_id}")
-        return jsonify({'id': hid, 'message': '健康评估已更新'}), 200
 
     c.execute('''
         INSERT INTO health_assessments (customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
@@ -4811,15 +4787,18 @@ def api_dashboard_health_portrait():
     conn = get_db()
     c = conn.cursor()
     c.execute('''
-        SELECT h.*, c.name as customer_name, c.gender, c.birth_date, c.chronic_diseases, c.medical_history
-        FROM health_assessments h
-        JOIN customers c ON h.customer_id = c.id
-        JOIN (
-            SELECT customer_id, MAX(assessment_date) as latest_date
-            FROM health_assessments
-            GROUP BY customer_id
-        ) latest ON latest.customer_id = h.customer_id AND latest.latest_date = h.assessment_date
-        ORDER BY h.customer_id DESC, h.id DESC
+        SELECT latest_h.*, c.name as customer_name, c.gender, c.birth_date, c.chronic_diseases, c.medical_history
+        FROM (
+            SELECT h.*,
+                   ROW_NUMBER() OVER (
+                       PARTITION BY h.customer_id
+                       ORDER BY h.assessment_date DESC, h.id DESC
+                   ) AS row_no
+            FROM health_assessments h
+        ) latest_h
+        JOIN customers c ON latest_h.customer_id = c.id
+        WHERE latest_h.row_no = 1
+        ORDER BY latest_h.customer_id DESC, latest_h.id DESC
     ''')
     rows = row_list(c.fetchall())
     conn.close()
