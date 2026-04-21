@@ -151,6 +151,7 @@
     .status-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; color: #fff; font-size: 12px; font-weight: 600; }
     .status-pill-success { background: #27ae60; }
     .status-pill-cancelled { background: #e74c3c; }
+    .status-pill-completed { background: #2563eb; }
     .checkin-btn { border: none; border-radius: 999px; padding: 4px 10px; color: #fff; font-size: 12px; font-weight: 600; }
     .checkin-btn-pending { background: #3498db; }
     .checkin-btn-checked { background: #27ae60; }
@@ -786,6 +787,21 @@
               <option value="time_desc">按时间倒序</option>
               <option value="name_asc">按姓名排序</option>
             </select>
+            <label style="margin-left:12px">预约状态</label>
+            <select id="apt-status-filter">
+              <option value="">全部</option>
+              <option value="scheduled">预约中</option>
+              <option value="completed">已完成</option>
+              <option value="cancelled">已取消</option>
+            </select>
+            <label style="margin-left:12px">签到状态</label>
+            <select id="apt-checkin-filter">
+              <option value="">全部</option>
+              <option value="pending">待签到</option>
+              <option value="checked_in">已签到</option>
+              <option value="no_show">爽约</option>
+              <option value="none">无</option>
+            </select>
             <input type="text" id="apt-history-search" placeholder="按姓名或手机号查询历史记录" style="margin-left:12px;min-width:240px">
             <button class="btn btn-primary" id="btn-apt-history-search">查询</button>
           </div>
@@ -847,6 +863,21 @@
             <select id="home-sort">
               <option value="time_desc">按时间倒序</option>
               <option value="name_asc">按姓名排序</option>
+            </select>
+            <label style="margin-left:12px">预约状态</label>
+            <select id="home-status-filter">
+              <option value="">全部</option>
+              <option value="scheduled">预约中</option>
+              <option value="completed">已完成</option>
+              <option value="cancelled">已取消</option>
+            </select>
+            <label style="margin-left:12px">签到状态</label>
+            <select id="home-checkin-filter">
+              <option value="">全部</option>
+              <option value="pending">待签到</option>
+              <option value="checked_in">已签到</option>
+              <option value="no_show">爽约</option>
+              <option value="none">无</option>
             </select>
             <input type="text" id="home-history-search" placeholder="按姓名或手机号查询历史记录" style="margin-left:12px;min-width:240px">
             <button class="btn btn-primary" id="btn-home-history-search">查询</button>

@@ -1464,7 +1464,11 @@
   }
 
   function getStatusMeta(status) {
-    if (status === 'cancelled') {
+    var raw = String(status || '').toLowerCase();
+    if (raw === 'completed') {
+      return { text: '服务完成', cls: 'status-pill-completed', editable: false };
+    }
+    if (raw === 'cancelled') {
       return { text: '取消预约', cls: 'status-pill-cancelled', editable: false };
     }
     return { text: '预约成功', cls: 'status-pill-success', editable: true };
@@ -1481,6 +1485,7 @@
 
   function getCheckinMeta(checkinStatus, bookingStatus) {
     if (bookingStatus === 'cancelled') return { text: '-', cls: '' };
+    if (checkinStatus === 'none') return { text: '无', cls: '' };
     if (checkinStatus === 'checked_in') return { text: '已签到', cls: 'checkin-btn-checked' };
     if (checkinStatus === 'no_show') return { text: '爽约', cls: 'checkin-btn-noshow' };
     return { text: '待签到', cls: 'checkin-btn-pending' };
@@ -1492,11 +1497,17 @@
     return bookingStatus !== 'cancelled' && checkinStatus === 'pending' && String(record.appointment_date || '') === today;
   }
 
+  function canCompleteService(record) {
+    var bookingStatus = String(record.status || '').toLowerCase();
+    var checkinStatus = String(record.checkin_status || 'pending').toLowerCase();
+    return bookingStatus === 'scheduled' && checkinStatus === 'checked_in';
+  }
+
   function renderCheckinCell(record, moduleName) {
     var bookingStatus = String(record.status || '').toLowerCase();
     var checkinStatus = String(record.checkin_status || 'pending').toLowerCase();
     var meta = getCheckinMeta(checkinStatus, bookingStatus);
-    if (bookingStatus === 'cancelled') return '<span>-</span>';
+    if (bookingStatus === 'cancelled' || checkinStatus === 'none') return '<span>-</span>';
     return '<button class="checkin-btn ' + meta.cls + '" type="button" disabled>' + meta.text + '</button>';
   }
 
@@ -1514,6 +1525,9 @@
     if (canOperateCheckin(record)) {
       items.push('<button class="row-action-item" type="button" data-checkin-action="' + (type === 'apt' ? 'appointments' : 'home_appointments') + '" data-checkin-id="' + id + '" data-checkin-target="checked_in">标记已签到</button>');
       items.push('<button class="row-action-item" type="button" data-checkin-action="' + (type === 'apt' ? 'appointments' : 'home_appointments') + '" data-checkin-id="' + id + '" data-checkin-target="no_show">标记爽约</button>');
+    }
+    if (canCompleteService(record)) {
+      items.push('<button class="row-action-item" type="button" data-complete-action="' + (type === 'apt' ? 'appointments' : 'home_appointments') + '" data-complete-id="' + id + '">完成服务</button>');
     }
     return '<details class="row-action-menu"><summary class="row-action-trigger">操作</summary><div class="row-action-list">' + items.join('') + '</div></details>';
   }
@@ -1541,6 +1555,10 @@
       'page=' + listState.appointments.page,
       'page_size=' + listState.appointments.page_size
     ];
+    var statusFilter = (document.getElementById('apt-status-filter') || {}).value || '';
+    var checkinFilter = (document.getElementById('apt-checkin-filter') || {}).value || '';
+    if (statusFilter) qs.push('status=' + encodeURIComponent(statusFilter));
+    if (checkinFilter) qs.push('checkin_status=' + encodeURIComponent(checkinFilter));
     if (historySearch.trim()) qs.push('search=' + encodeURIComponent(historySearch.trim()));
     get('/api/appointments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('apt-list');
@@ -1599,6 +1617,15 @@
           });
         });
       });
+      tbody.querySelectorAll('[data-complete-action="appointments"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          post('/api/appointments/' + btn.dataset.completeId + '/complete', {}).then(function (res) {
+            if (res.error) { showMsg('apt-msg', res.error, true); return; }
+            showMsg('apt-msg', '服务状态已更新为已完成');
+            loadAppointmentsPage();
+          });
+        });
+      });
       tbody.querySelectorAll('[data-apt-cancel]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           openConfirmModal('确认修改预约状态', [['状态', '取消预约']], function () {
@@ -1633,6 +1660,10 @@
       'page=' + listState.homeAppointments.page,
       'page_size=' + listState.homeAppointments.page_size
     ];
+    var statusFilter = (document.getElementById('home-status-filter') || {}).value || '';
+    var checkinFilter = (document.getElementById('home-checkin-filter') || {}).value || '';
+    if (statusFilter) qs.push('status=' + encodeURIComponent(statusFilter));
+    if (checkinFilter) qs.push('checkin_status=' + encodeURIComponent(checkinFilter));
     if (historySearch.trim()) qs.push('search=' + encodeURIComponent(historySearch.trim()));
     get('/api/home-appointments?' + qs.join('&')).then(function (list) {
       var rows = toList(list);
@@ -1688,6 +1719,15 @@
             if (!draft || draft.error) { showMsg('home-msg', (draft && draft.error) || '初始化改善记录失败', true); return; }
             showPage('improvement-tracking');
             openImprovementModal(draft, '填写改善情况');
+          });
+        });
+      });
+      tbody.querySelectorAll('[data-complete-action="home_appointments"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          post('/api/home-appointments/' + btn.dataset.completeId + '/complete', {}).then(function (res) {
+            if (res.error) { showMsg('home-msg', res.error, true); return; }
+            showMsg('home-msg', '服务状态已更新为已完成');
+            loadHomeAppointmentsPage();
           });
         });
       });
@@ -2631,6 +2671,14 @@
     listState.appointments.page = 1;
     loadAppointmentsPage();
   });
+  document.getElementById('apt-status-filter').addEventListener('change', function () {
+    listState.appointments.page = 1;
+    loadAppointmentsPage();
+  });
+  document.getElementById('apt-checkin-filter').addEventListener('change', function () {
+    listState.appointments.page = 1;
+    loadAppointmentsPage();
+  });
   document.getElementById('btn-apt-history-search').addEventListener('click', function () {
     listState.appointments.page = 1;
     loadAppointmentsPage();
@@ -2795,6 +2843,14 @@
     showMsg('home-msg', '已退出编辑');
   });
   document.getElementById('home-sort').addEventListener('change', function () {
+    listState.homeAppointments.page = 1;
+    loadHomeAppointmentsPage();
+  });
+  document.getElementById('home-status-filter').addEventListener('change', function () {
+    listState.homeAppointments.page = 1;
+    loadHomeAppointmentsPage();
+  });
+  document.getElementById('home-checkin-filter').addEventListener('change', function () {
     listState.homeAppointments.page = 1;
     loadHomeAppointmentsPage();
   });
