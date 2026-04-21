@@ -597,6 +597,48 @@ ALLOWED_IMPROVEMENT_MIME_TYPES = {
 }
 
 
+def get_improvement_service_projects(cursor=None):
+    own_conn = None
+    c = cursor
+    projects = []
+    seen = set()
+
+    def add_project(name):
+        text = str(name or '').strip()
+        if not text or text in seen:
+            return
+        seen.add(text)
+        projects.append(text)
+
+    try:
+        if c is None:
+            own_conn = get_db()
+            c = own_conn.cursor()
+
+        for item in IMPROVEMENT_SERVICE_PROJECTS:
+            add_project(item)
+
+        c.execute("SELECT name FROM therapy_projects WHERE COALESCE(status, 'enabled')='enabled' ORDER BY id ASC")
+        for row in c.fetchall():
+            add_project(row['name'])
+
+        c.execute("SELECT project_name FROM project_staff_mapping WHERE COALESCE(status, 'enabled')='enabled' ORDER BY id ASC")
+        for row in c.fetchall():
+            add_project(row['project_name'])
+
+        c.execute("SELECT project_name FROM project_rules WHERE allow_home=1 AND COALESCE(status, 'enabled')='enabled' ORDER BY id ASC")
+        for row in c.fetchall():
+            add_project(row['project_name'])
+
+        c.execute("SELECT DISTINCT service_project FROM home_appointments WHERE COALESCE(service_project, '')<>'' ORDER BY service_project ASC")
+        for row in c.fetchall():
+            add_project(row['service_project'])
+        return projects
+    finally:
+        if own_conn:
+            own_conn.close()
+
+
 def get_customer_privacy_folder(customer_name, customer_phone, customer_id):
     name_text = str(customer_name or '').strip()
     surname = sanitize_folder_part(name_text[:1], f'user_{customer_id}')
@@ -776,11 +818,12 @@ def get_latest_assessment_summary(cursor, customer_id):
     return '；'.join(summary_parts)
 
 
-def validate_improvement_payload(d):
+def validate_improvement_payload(d, cursor=None):
     required_fields = ('customer_id', 'service_time', 'service_project', 'improvement_status')
     if not all(str(d.get(k) or '').strip() for k in required_fields):
         return '缺少必填字段'
-    if str(d.get('service_project') or '').strip() not in IMPROVEMENT_SERVICE_PROJECTS:
+    allowed_projects = get_improvement_service_projects(cursor)
+    if str(d.get('service_project') or '').strip() not in allowed_projects:
         return '服务项目不合法'
     if str(d.get('improvement_status') or '').strip() not in IMPROVEMENT_STATUS_OPTIONS:
         return '改善情况不合法'
@@ -2924,8 +2967,12 @@ def api_health_assessment_delete(hid):
 # ========== 健康改善追踪 ==========
 @app.route('/api/improvement-records/meta', methods=['GET'])
 def api_improvement_records_meta():
+    conn = get_db()
+    c = conn.cursor()
+    projects = get_improvement_service_projects(c)
+    conn.close()
     return success_response({
-        'service_projects': IMPROVEMENT_SERVICE_PROJECTS,
+        'service_projects': projects,
         'improvement_status_options': IMPROVEMENT_STATUS_OPTIONS,
         'followup_method_options': FOLLOWUP_METHOD_OPTIONS,
         'followup_time_options': FOLLOWUP_PRESET_OPTIONS,
@@ -3087,11 +3134,12 @@ def api_improvement_record_get(rid):
 @app.route('/api/improvement-records', methods=['POST'])
 def api_improvement_record_create():
     d = request.json or {}
-    err = validate_improvement_payload(d)
-    if err:
-        return error_response(err)
     conn = get_db()
     c = conn.cursor()
+    err = validate_improvement_payload(d, c)
+    if err:
+        conn.close()
+        return error_response(err)
     now_ts = now_local_str()
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     if not c.fetchone():
@@ -3130,11 +3178,12 @@ def api_improvement_record_create():
 @app.route('/api/improvement-records/<int:rid>', methods=['PUT'])
 def api_improvement_record_update(rid):
     d = request.json or {}
-    err = validate_improvement_payload(d)
-    if err:
-        return error_response(err)
     conn = get_db()
     c = conn.cursor()
+    err = validate_improvement_payload(d, c)
+    if err:
+        conn.close()
+        return error_response(err)
     now_ts = now_local_str()
     c.execute('SELECT id FROM service_improvement_records WHERE id=?', (rid,))
     if not c.fetchone():

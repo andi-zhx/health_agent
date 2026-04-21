@@ -311,6 +311,7 @@
   var improvementEditingId = null;
   var improvementViewOnly = false;
   var improvementMeta = null;
+  var improvementPendingUploadFile = null;
   var portraitImprovementRankingRaw = [];
   var deviceManagementModalState = { mode: 'appointment', editId: '' };
 
@@ -1762,6 +1763,7 @@
         document.getElementById('improvement-followup-date').value = data.followup_date || '';
         document.getElementById('improvement-followup-method').value = data.followup_method || '';
         setImprovementUploadStatus('', false, false);
+        improvementPendingUploadFile = null;
         setImprovementModalReadonly(isViewOnly);
         document.getElementById('modal-improvement').classList.remove('hide');
       });
@@ -1776,22 +1778,25 @@
 
   function uploadImprovementFile(file) {
     if (!file) return;
-    var rid = (document.getElementById('improvement-id').value || '').trim();
-    if (!rid) {
-      setImprovementUploadStatus('请先保存理疗记录后再上传文件', true, false);
-      closeImprovementUploadModal();
-      return;
-    }
+    improvementPendingUploadFile = file;
+    setImprovementUploadStatus('已选择文件：' + (file.name || '未命名文件') + '，保存理疗记录后将自动上传', false, false);
+    closeImprovementUploadModal();
+  }
+
+  function uploadImprovementFileForRecord(rid, file) {
+    if (!rid || !file) return Promise.resolve({ success: true });
     var formData = new FormData();
     formData.append('file', file);
     setImprovementUploadStatus('正在上传中...', false, true);
-    postForm('/api/improvement-records/' + encodeURIComponent(rid) + '/files', formData).then(function (res) {
+    return postForm('/api/improvement-records/' + encodeURIComponent(rid) + '/files', formData).then(function (res) {
       if (!res || res.error) {
         setImprovementUploadStatus((res && res.error) || '文件上传失败', true, false);
-        return;
+        return { success: false, error: (res && res.error) || '文件上传失败' };
       }
       setImprovementUploadStatus('上传成功：' + (res.file_name || file.name || ''), false, false);
+      improvementPendingUploadFile = null;
       closeImprovementUploadModal();
+      return { success: true };
     });
   }
 
@@ -2867,6 +2872,8 @@
     });
   })();
   document.getElementById('btn-improvement-cancel').addEventListener('click', function () {
+    improvementPendingUploadFile = null;
+    setImprovementUploadStatus('', false, false);
     document.getElementById('modal-improvement').classList.add('hide');
   });
   document.getElementById('btn-improvement-save').addEventListener('click', function () {
@@ -2898,9 +2905,20 @@
     var req = id ? put('/api/improvement-records/' + id, payload) : post('/api/improvement-records', payload);
     req.then(function (ret) {
       if (ret && ret.error) { showMsg('improvement-msg', ret.error, true); return; }
-      document.getElementById('modal-improvement').classList.add('hide');
-      showMsg('improvement-msg', id ? '改善记录已更新' : '改善记录已新增');
-      loadImprovementTrackingPage();
+      var savedId = (ret && ret.id) || id || (ret && ret.data && ret.data.id) || document.getElementById('improvement-id').value;
+      if (!savedId) {
+        showMsg('improvement-msg', '保存成功，但未获取记录ID，无法上传附件', true);
+        return;
+      }
+      uploadImprovementFileForRecord(savedId, improvementPendingUploadFile).then(function (uploadResult) {
+        if (uploadResult && uploadResult.success === false) {
+          showMsg('improvement-msg', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || ''), true);
+          return;
+        }
+        document.getElementById('modal-improvement').classList.add('hide');
+        showMsg('improvement-msg', id ? '改善记录已更新' : '改善记录已新增');
+        loadImprovementTrackingPage();
+      });
     });
   });
   document.getElementById('improvement-customer-search').addEventListener('input', function () {
