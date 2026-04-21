@@ -602,6 +602,71 @@ def require_login():
     return None
 
 
+def infer_error_code_by_status(status_code):
+    if status_code == 400:
+        return 'VALIDATION_ERROR'
+    if status_code == 401:
+        return 'UNAUTHORIZED'
+    if status_code == 403:
+        return 'FORBIDDEN'
+    if status_code == 404:
+        return 'NOT_FOUND'
+    if status_code == 413:
+        return 'FILE_TOO_LARGE'
+    if status_code >= 500:
+        return 'SERVER_ERROR'
+    return 'REQUEST_FAILED'
+
+
+@app.after_request
+def normalize_api_response(response):
+    if not request.path.startswith('/api/'):
+        return response
+    if response.direct_passthrough or not response.is_json:
+        return response
+
+    payload = response.get_json(silent=True)
+    if payload is None:
+        return response
+
+    status_code = response.status_code or 200
+
+    if status_code >= 400:
+        if isinstance(payload, dict) and payload.get('success') is False:
+            normalized = dict(payload)
+            normalized.setdefault('message', '请求失败')
+            normalized.setdefault('error_code', infer_error_code_by_status(status_code))
+        else:
+            message = '请求失败'
+            error_code = infer_error_code_by_status(status_code)
+            if isinstance(payload, dict):
+                message = str(payload.get('message') or payload.get('error') or message)
+                error_code = str(payload.get('error_code') or error_code)
+            elif isinstance(payload, str) and payload.strip():
+                message = payload.strip()
+            normalized = {'success': False, 'message': message, 'error_code': error_code}
+        response = jsonify(normalized)
+        response.status_code = status_code
+        return response
+
+    if isinstance(payload, dict) and payload.get('success') is True:
+        normalized = dict(payload)
+        if 'data' not in normalized:
+            normalized['data'] = {}
+        response = jsonify(normalized)
+        response.status_code = status_code
+        return response
+
+    message = '操作成功'
+    data = payload
+    if isinstance(payload, dict):
+        message = str(payload.get('message') or message)
+        data = {k: v for k, v in payload.items() if k != 'message'}
+    normalized = {'success': True, 'message': message, 'data': data if data is not None else {}}
+    response = jsonify(normalized)
+    response.status_code = status_code
+    return response
+
 
 DEFAULT_PROJECT_EQUIPMENT_MAP = {}
 
