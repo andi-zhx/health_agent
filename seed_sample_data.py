@@ -230,23 +230,21 @@ def seed_samples() -> dict:
         birth_date = f'{birth_year}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}'
         id_card = f'11010119{random.randint(60, 99):02d}{random.randint(1, 12):02d}{random.randint(1, 28):02d}{idx:04d}'
         phone = f'13{random.randint(100000000, 999999999)}'
-        email = f'customer{idx:02d}@example.com'
         address = f'北京市朝阳区康复路{idx}号'
 
         c.execute(
             '''
             INSERT INTO customers (
-                name, id_card, phone, email, address, gender, age, birth_date,
+                name, id_card, phone, address, gender, age, birth_date,
                 identity_type, military_rank, record_creator, medical_history, allergies,
                 diet_habits, chronic_diseases, health_status, therapy_contraindications,
                 created_at, updated_at, is_deleted
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)
             ''',
             (
                 name,
                 id_card,
                 phone,
-                email,
                 address,
                 gender,
                 age,
