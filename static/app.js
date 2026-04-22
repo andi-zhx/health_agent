@@ -724,25 +724,25 @@
 
       var healthTbody = document.getElementById('integrated-health-list');
       healthTbody.innerHTML = toList(res.health).map(function (h) {
-        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-int-health-jump="1">跳转详情页</button></td></tr><tr class="integrated-health-detail-row hide" data-int-health-detail-row="' + h.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-health-detail-content="' + h.id + '">加载中...</div></td></tr>';
+        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-health-detail="' + h.id + '">详细信息</button></td></tr><tr class="integrated-health-detail-row hide" data-int-health-detail-row="' + h.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-health-detail-content="' + h.id + '">加载中...</div></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('health', res.health || {}, 'customerHealth');
 
       var aptTbody = document.getElementById('integrated-appointments-list');
       aptTbody.innerHTML = toList(res.appointments).map(function (a) {
-        return '<tr><td>' + (a.customer_name || '-') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '-') + '</td><td>' + ((a.start_time || '-') + '~' + (a.end_time || '-')) + '</td><td>' + renderCheckinStatusText(a.checkin_status) + '</td><td><button class="btn btn-small btn-secondary" data-int-apt-history="' + a.id + '">查看历史</button> <button class="btn btn-small btn-primary" data-int-apt-jump="1">跳转详情页</button></td></tr>';
+        return '<tr><td>' + (a.customer_name || '-') + '</td><td>' + (a.project_name || '-') + '</td><td>' + (a.appointment_date || '-') + '</td><td>' + ((a.start_time || '-') + '~' + (a.end_time || '-')) + '</td><td>' + renderCheckinStatusText(a.checkin_status) + '</td><td><button class="btn btn-small btn-secondary" data-int-apt-history="' + a.id + '">查看历史</button></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('appointments', res.appointments || {}, 'customerAppointments');
 
       var homeTbody = document.getElementById('integrated-home-list');
       homeTbody.innerHTML = toList(res.home_appointments).map(function (h) {
-        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.project_name || '-') + '</td><td>' + (h.appointment_date || '-') + '</td><td>' + ((h.start_time || '-') + '~' + (h.end_time || '-')) + '</td><td>' + renderCheckinStatusText(h.checkin_status) + '</td><td><button class="btn btn-small btn-secondary" data-int-home-history="' + h.id + '">查看历史</button> <button class="btn btn-small btn-primary" data-int-home-jump="1">跳转详情页</button></td></tr>';
+        return '<tr><td>' + (h.customer_name || '-') + '</td><td>' + (h.project_name || '-') + '</td><td>' + (h.appointment_date || '-') + '</td><td>' + ((h.start_time || '-') + '~' + (h.end_time || '-')) + '</td><td>' + renderCheckinStatusText(h.checkin_status) + '</td><td><button class="btn btn-small btn-secondary" data-int-home-history="' + h.id + '">查看历史</button></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('home_appointments', res.home_appointments || {}, 'customerHomeAppointments');
 
       var improveTbody = document.getElementById('integrated-improvement-list');
       improveTbody.innerHTML = toList(res.improvement).map(function (r) {
-        return '<tr><td>' + (r.customer_name || '-') + '</td><td>' + (r.service_project || '-') + '</td><td>' + (r.service_time || '-') + '</td><td>' + (r.improvement_status || '-') + '</td><td>' + (r.followup_date || r.followup_time || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-imp-view="' + r.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-int-imp-jump="1">跳转详情页</button></td></tr><tr class="integrated-improvement-detail-row hide" data-int-imp-detail-row="' + r.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-imp-detail-content="' + r.id + '">加载中...</div></td></tr>';
+        return '<tr><td>' + (r.customer_name || '-') + '</td><td>' + (r.service_project || '-') + '</td><td>' + (r.service_time || '-') + '</td><td>' + (r.improvement_status || '-') + '</td><td>' + (r.followup_date || r.followup_time || '-') + '</td><td><button class="btn btn-small btn-secondary" data-int-imp-view="' + r.id + '">详细信息</button></td></tr><tr class="integrated-improvement-detail-row hide" data-int-imp-detail-row="' + r.id + '"><td colspan="6"><div class="integrated-health-detail-content" data-int-imp-detail-content="' + r.id + '">加载中...</div></td></tr>';
       }).join('');
       renderIntegratedSectionPagination('improvement', res.improvement || {}, 'customerImprovement');
 
@@ -831,15 +831,6 @@
         viewBusinessHistory('home_appointments', btn.dataset.intHomeHistory, '上门预约 - 业务历史日志');
       });
     });
-    document.querySelectorAll('[data-int-health-jump]').forEach(function (btn) {
-      btn.addEventListener('click', function () { showPage('health'); });
-    });
-    document.querySelectorAll('[data-int-apt-jump]').forEach(function (btn) {
-      btn.addEventListener('click', function () { showPage('appointments'); });
-    });
-    document.querySelectorAll('[data-int-home-jump]').forEach(function (btn) {
-      btn.addEventListener('click', function () { showPage('home-appointments'); });
-    });
     document.querySelectorAll('[data-int-imp-view]').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var detailId = btn.dataset.intImpView;
@@ -865,9 +856,19 @@
         });
       });
     });
-    document.querySelectorAll('[data-int-imp-jump]').forEach(function (btn) {
-      btn.addEventListener('click', function () { showPage('improvement-tracking'); });
-    });
+  }
+
+  function setInputEnabled(inputId, enabled) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    input.disabled = !enabled;
+    if (!enabled) input.value = '';
+  }
+
+  function refreshHealthConditionalInputs() {
+    setInputEnabled('ha-allergy-details', healthRadioValue('ha-allergy-history') === '有');
+    setInputEnabled('ha-smoking-years', healthRadioValue('ha-smoking-status') === '有');
+    setInputEnabled('ha-drinking-years', healthRadioValue('ha-drinking-status') === '有');
   }
 
   function buildImprovementDetailRows(data) {
@@ -2769,7 +2770,8 @@
     if (!customerBody.birth_date) { showMsg('health-msg', '出生日期为必填项', true); return; }
     customerBody.age = calculateAgeByBirthYear(customerBody.birth_date);
     if (!customerBody.identity_type) { showMsg('health-msg', '身份为必选项，请选择“本人”或“家属”', true); return; }
-    if (customerBody.id_card && !/^\d{17}[\dXx]$/.test(customerBody.id_card)) { showMsg('health-msg', '身份证号格式不正确，应为18位（最后一位可为X）', true); return; }
+    if (!customerBody.id_card) { showMsg('health-msg', '身份证号为必填项', true); return; }
+    if (!/^\d{17}[\dXx]$/.test(customerBody.id_card)) { showMsg('health-msg', '身份证号格式不正确，应为18位（最后一位可为X）', true); return; }
     if (!/^\d{11}$/.test(customerBody.phone)) { showMsg('health-msg', '手机号必须为11位数字', true); return; }
     if (!customerBody.record_creator) { showMsg('health-msg', '建档人为必填项', true); return; }
     var lifeImpactIssues = healthCheckboxValues('ha-life-impact-issue');
@@ -2894,6 +2896,11 @@
   });
   document.getElementById('ha-birth-date').addEventListener('change', function () {
     syncAgeFieldByBirthDate('ha-birth-date', 'ha-age');
+  });
+  ['ha-allergy-history', 'ha-smoking-status', 'ha-drinking-status'].forEach(function (name) {
+    document.querySelectorAll('input[name="' + name + '"]').forEach(function (el) {
+      el.addEventListener('change', refreshHealthConditionalInputs);
+    });
   });
   document.querySelectorAll('input[name="ha-life-impact-issue"]').forEach(function (el) {
     el.addEventListener('change', function () {
@@ -3558,8 +3565,10 @@
         el.checked = vals.indexOf(el.value) !== -1;
       });
     });
+    refreshHealthConditionalInputs();
     window.scrollTo(0, 0);
     showMsg('health-msg', '', false);
   }
 
+  refreshHealthConditionalInputs();
 })();
