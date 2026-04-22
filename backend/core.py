@@ -442,8 +442,16 @@ def migrate_customers_drop_email(cursor):
         return
     cursor.execute('PRAGMA table_info(customers)')
     columns = [row[1] for row in cursor.fetchall()]
+    column_set = set(columns)
     if 'email' not in columns:
         return
+    try:
+        cursor.execute('ALTER TABLE customers DROP COLUMN email')
+        return
+    except sqlite3.OperationalError:
+        # 兼容不支持 DROP COLUMN 的 SQLite 版本，回退为重建表方案
+        pass
+    cursor.execute('DROP TABLE IF EXISTS customers_new')
     cursor.execute(
         '''
         CREATE TABLE IF NOT EXISTS customers_new (
@@ -470,22 +478,50 @@ def migrate_customers_drop_email(cursor):
         )
         '''
     )
-    cursor.execute(
-        '''
-        INSERT INTO customers_new (
-            id, name, id_card, phone, address, gender, age, birth_date, identity_type, military_rank,
-            record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status,
-            therapy_contraindications, created_at, updated_at, is_deleted
+    def _value_or_default(column_name, default_sql='NULL'):
+        return column_name if column_name in column_set else default_sql
+
+    cursor.execute('PRAGMA foreign_keys')
+    foreign_keys_enabled = cursor.fetchone()[0]
+    try:
+        if foreign_keys_enabled:
+            cursor.execute('PRAGMA foreign_keys=OFF')
+        cursor.execute(
+            f'''
+            INSERT INTO customers_new (
+                id, name, id_card, phone, address, gender, age, birth_date, identity_type, military_rank,
+                record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status,
+                therapy_contraindications, created_at, updated_at, is_deleted
+            )
+            SELECT
+                id,
+                name,
+                id_card,
+                phone,
+                {_value_or_default('address')},
+                {_value_or_default('gender')},
+                {_value_or_default('age')},
+                {_value_or_default('birth_date')},
+                {_value_or_default('identity_type')},
+                {_value_or_default('military_rank')},
+                {_value_or_default('record_creator')},
+                {_value_or_default('medical_history')},
+                {_value_or_default('allergies')},
+                {_value_or_default('diet_habits')},
+                {_value_or_default('chronic_diseases')},
+                {_value_or_default('health_status')},
+                {_value_or_default('therapy_contraindications')},
+                {_value_or_default('created_at', "strftime('%Y-%m-%d %H:%M:%S','now','localtime')")},
+                {_value_or_default('updated_at', "strftime('%Y-%m-%d %H:%M:%S','now','localtime')")},
+                {_value_or_default('is_deleted', '0')}
+            FROM customers
+            '''
         )
-        SELECT
-            id, name, id_card, phone, address, gender, age, birth_date, identity_type, military_rank,
-            record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status,
-            therapy_contraindications, created_at, updated_at, COALESCE(is_deleted, 0)
-        FROM customers
-        '''
-    )
-    cursor.execute('DROP TABLE customers')
-    cursor.execute('ALTER TABLE customers_new RENAME TO customers')
+        cursor.execute('DROP TABLE customers')
+        cursor.execute('ALTER TABLE customers_new RENAME TO customers')
+    finally:
+        if foreign_keys_enabled:
+            cursor.execute('PRAGMA foreign_keys=ON')
 
 
 def table_exists(cursor, table_name):
@@ -543,6 +579,7 @@ def migrate_appointments_equipment_nullable(cursor):
     # PRAGMA table_info: (cid, name, type, notnull, dflt_value, pk)
     if equipment_col[3] == 0:
         return
+    cursor.execute('DROP TABLE IF EXISTS appointments_new')
 
     cursor.execute(
         '''
