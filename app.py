@@ -5210,6 +5210,20 @@ def api_dashboard_health_portrait():
     exercise_counter = Counter()
     demand_counter = Counter()
 
+    def build_ratio_payload(count, denominator, denominator_label='有效数据人数'):
+        ratio = round((count * 100.0 / denominator), 1) if denominator else 0
+        return {
+            'count': count,
+            'ratio': ratio,
+            'denominator': denominator,
+            'denominator_label': denominator_label,
+        }
+
+    def calc_missing_rate(valid_count, total_count):
+        missing = max((total_count or 0) - (valid_count or 0), 0)
+        rate = round((missing * 100.0 / total_count), 1) if total_count else 0
+        return {'valid_count': valid_count, 'missing_count': missing, 'missing_rate': rate}
+
     smoking_people = 0
     drinking_people = 0
     smoking_drinking_people = 0
@@ -5226,6 +5240,11 @@ def api_dashboard_health_portrait():
     blood_lipid_abnormal_people = 0
     blood_sugar_abnormal_people = 0
     sleep_issue_people = 0
+    valid_bmi_count = 0
+    valid_bp_count = 0
+    valid_blood_lipid_count = 0
+    valid_blood_sugar_count = 0
+    valid_sleep_count = 0
 
 
     for row in records:
@@ -5255,6 +5274,7 @@ def api_dashboard_health_portrait():
 
         _, bmi_level = classify_bmi(row.get('height_cm'), row.get('weight_kg'))
         if bmi_level:
+            valid_bmi_count += 1
             bmi_levels[bmi_level] += 1
             if bmi_level != '正常':
                 bmi_abnormal += 1
@@ -5264,6 +5284,22 @@ def api_dashboard_health_portrait():
         blood_sugar_test = str(row.get('blood_sugar_test') or '')
         sleep_hours_text = str(row.get('sleep_hours') or '')
         sleep_quality_text = str(row.get('sleep_quality') or '')
+
+        bp_valid = blood_pressure_test in ('监测：正常', '监测：偏低', '监测：偏高')
+        lipid_valid = blood_lipid_test in ('监测：正常', '监测：偏高')
+        sugar_valid = blood_sugar_test in ('监测：正常', '监测：偏低', '监测：偏高')
+        sleep_hours_valid = sleep_hours_text in ('<6小时', '6-8小时', '9-10小时', '>10小时')
+        sleep_quality_valid = sleep_quality_text in ('很差', '差', '一般', '良好')
+        sleep_valid = sleep_hours_valid or sleep_quality_valid
+
+        if bp_valid:
+            valid_bp_count += 1
+        if lipid_valid:
+            valid_blood_lipid_count += 1
+        if sugar_valid:
+            valid_blood_sugar_count += 1
+        if sleep_valid:
+            valid_sleep_count += 1
 
         bp_abnormal = ('偏高' in blood_pressure_test) or ('偏低' in blood_pressure_test)
         lipid_abnormal = '偏高' in blood_lipid_test
@@ -5522,37 +5558,50 @@ def api_dashboard_health_portrait():
             else '统计口径：未设置时间范围，默认每位客户取全量数据中的最新一条健康评估。'
         ),
         'total_customers': total,
+        'meta': {
+            'sample_size': total,
+            'total_customers': total,
+            'valid_bmi_count': valid_bmi_count,
+            'valid_bp_count': valid_bp_count,
+            'valid_blood_lipid_count': valid_blood_lipid_count,
+            'valid_blood_sugar_count': valid_blood_sugar_count,
+            'valid_sleep_count': valid_sleep_count,
+            'missing_rate_summary': {
+                'bmi': calc_missing_rate(valid_bmi_count, total),
+                'blood_pressure': calc_missing_rate(valid_bp_count, total),
+                'blood_lipid': calc_missing_rate(valid_blood_lipid_count, total),
+                'blood_sugar': calc_missing_rate(valid_blood_sugar_count, total),
+                'sleep': calc_missing_rate(valid_sleep_count, total),
+            },
+            'indicator_caliber_note': '异常率口径统一为：异常人数 / 对应指标有效数据人数；缺失率口径为：1 - 有效数据人数 / 样本量。',
+        },
         'abnormal_indicators': [
             {
                 'name': '血压异常人数',
-                'count': blood_pressure_abnormal_people,
-                'ratio': round((blood_pressure_abnormal_people * 100.0 / total), 1) if total else 0,
+                **build_ratio_payload(blood_pressure_abnormal_people, valid_bp_count),
             },
             {
                 'name': '血脂异常人数',
-                'count': blood_lipid_abnormal_people,
-                'ratio': round((blood_lipid_abnormal_people * 100.0 / total), 1) if total else 0,
+                **build_ratio_payload(blood_lipid_abnormal_people, valid_blood_lipid_count),
             },
             {
                 'name': '血糖异常人数',
-                'count': blood_sugar_abnormal_people,
-                'ratio': round((blood_sugar_abnormal_people * 100.0 / total), 1) if total else 0,
+                **build_ratio_payload(blood_sugar_abnormal_people, valid_blood_sugar_count),
             },
             {
                 'name': 'BMI异常人数',
-                'count': bmi_abnormal,
-                'ratio': round((bmi_abnormal * 100.0 / total), 1) if total else 0,
+                **build_ratio_payload(bmi_abnormal, valid_bmi_count),
             },
             {
                 'name': '睡眠异常人数',
-                'count': sleep_issue_people,
-                'ratio': round((sleep_issue_people * 100.0 / total), 1) if total else 0,
+                **build_ratio_payload(sleep_issue_people, valid_sleep_count),
             },
         ],
         'dimension1': {
             'cards': {
                 'total_people': total,
-                'bmi_abnormal_rate': round((bmi_abnormal * 100.0 / total), 1) if total else 0,
+                'bmi_abnormal_rate': round((bmi_abnormal * 100.0 / valid_bmi_count), 1) if valid_bmi_count else 0,
+                'bmi_abnormal_denominator': valid_bmi_count,
                 'senior_ratio': round((senior_count * 100.0 / total), 1) if total else 0,
             },
             'gender_distribution': [{'name': k, 'count': v} for k, v in genders.items()],
@@ -5589,8 +5638,10 @@ def api_dashboard_health_portrait():
             'smoking_ratio': round((smoking_people * 100.0 / total), 1) if total else 0,
             'drinking_ratio': round((drinking_people * 100.0 / total), 1) if total else 0,
             'smoking_drinking_ratio': round((smoking_drinking_people * 100.0 / total), 1) if total else 0,
-            'sleep_abnormal_ratio': round((sleep_abnormal_people * 100.0 / total), 1) if total else 0,
-            'poor_sleep_quality_ratio': round((poor_sleep_people * 100.0 / total), 1) if total else 0,
+            'sleep_abnormal_ratio': round((sleep_abnormal_people * 100.0 / valid_sleep_count), 1) if valid_sleep_count else 0,
+            'sleep_abnormal_denominator': valid_sleep_count,
+            'poor_sleep_quality_ratio': round((poor_sleep_people * 100.0 / valid_sleep_count), 1) if valid_sleep_count else 0,
+            'poor_sleep_quality_denominator': valid_sleep_count,
             'low_exercise_bad_habit_people': low_exercise_bad_habit_people,
             'exercise_top10': [{'name': k, 'count': v} for k, v in exercise_counter.most_common(10)],
             'health_needs_top10': [{'name': k, 'count': v} for k, v in demand_counter.most_common(10)],

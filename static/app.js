@@ -1953,15 +1953,35 @@
       var d1 = res.dimension1 || {};
       var d2 = res.dimension2 || {};
       var d3 = res.dimension3 || {};
+      var meta = res.meta || {};
       var abnormalIndicators = toList(res.abnormal_indicators);
       var scopeText = (res.filter_applied ? '按所选时间范围' : '按全量最新档案');
-      showMsg('portrait-msg', '已' + scopeText + '生成画像，当前统计样本量：' + (res.total_customers || 0) + ' 人');
+      showMsg('portrait-msg', '已' + scopeText + '生成画像，当前统计样本量：' + ((meta.sample_size != null ? meta.sample_size : res.total_customers) || 0) + ' 人');
       var noteBox = document.getElementById('portrait-caliber-note');
-      if (noteBox) noteBox.textContent = res.sampling_note || '';
+      if (noteBox) noteBox.textContent = (res.sampling_note || '') + ((meta.indicator_caliber_note ? '；' + meta.indicator_caliber_note : ''));
+      var missingWarningEl = document.getElementById('portrait-missing-warning');
+      var missingList = [];
+      var missingRateSummary = meta.missing_rate_summary || {};
+      var missingLabelMap = {
+        bmi: 'BMI',
+        blood_pressure: '血压',
+        blood_lipid: '血脂',
+        blood_sugar: '血糖',
+        sleep: '睡眠'
+      };
+      Object.keys(missingLabelMap).forEach(function (key) {
+        var info = missingRateSummary[key] || {};
+        if ((info.missing_rate || 0) >= 30) {
+          missingList.push(missingLabelMap[key] + '缺失率' + (info.missing_rate || 0) + '%');
+        }
+      });
+      if (missingWarningEl) {
+        missingWarningEl.textContent = missingList.length ? ('提示：当前数据完整性较低（' + missingList.join('；') + '），相关异常率解读请结合分母人数。') : '';
+      }
       renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
         return {
           name: item.name || '-',
-          value: (item.count || 0) + '人 / ' + (item.ratio || 0) + '%'
+          value: (item.count || 0) + '人 | ' + (item.ratio || 0) + '% | 分母' + (item.denominator || 0) + '人'
         };
       }), {
         onClick: function (item) {
@@ -1978,7 +1998,7 @@
       });
       renderKpiCards('portrait-kpi-cards', [
         { name: '总人数', value: (d1.cards || {}).total_people || 0 },
-        { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%' },
+        { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%（分母' + ((d1.cards || {}).bmi_abnormal_denominator || 0) + '人）' },
         { name: '66岁以上占比', value: ((d1.cards || {}).senior_ratio || 0) + '%' }
       ]);
       renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
@@ -2011,8 +2031,8 @@
       renderKpiCards('portrait-habit-kpi', [
         { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
         { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
-        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' },
-        { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%' },
+        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%（分母' + (d3.sleep_abnormal_denominator || 0) + '人）' },
+        { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%（分母' + (d3.poor_sleep_quality_denominator || 0) + '人）' },
         { name: '烟酒叠加占比', value: (d3.smoking_drinking_ratio || 0) + '%' }
       ]);
       renderHorizontalBars('portrait-habit-risk-bars', [
