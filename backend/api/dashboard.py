@@ -277,6 +277,7 @@ def api_dashboard_health_portrait():
     blood_lipid_abnormal_people = 0
     blood_sugar_abnormal_people = 0
     sleep_issue_people = 0
+    bone_joint_issue_people = 0
     valid_bmi_count = 0
     valid_bp_count = 0
     valid_blood_lipid_count = 0
@@ -376,6 +377,8 @@ def api_dashboard_health_portrait():
         recent_symptom_items = normalize_multi_text(row.get('recent_symptoms'))
         exercise_items = normalize_multi_text(row.get('exercise_methods'))
         demand_items = normalize_multi_text(row.get('health_needs'))
+        bone_joint_keywords = ('膝', '关节', '肩颈', '腰', '颈椎', '腰椎', '骨', '肌肉')
+        bone_joint_issue = any(any(keyword in str(item) for keyword in bone_joint_keywords) for item in (recent_symptom_items + past_history_items + family_history_items))
 
         for item in past_history_items:
             past_disease_counter[item] += 1
@@ -408,6 +411,8 @@ def api_dashboard_health_portrait():
             smoking_drinking_people += 1
         if sleep_abnormal:
             sleep_abnormal_people += 1
+        if bone_joint_issue:
+            bone_joint_issue_people += 1
         if poor_sleep:
             poor_sleep_people += 1
             behavior_tag_counter['熬夜族'] += 1
@@ -626,8 +631,8 @@ def api_dashboard_health_portrait():
                 **build_ratio_payload(blood_sugar_abnormal_people, valid_blood_sugar_count),
             },
             {
-                'name': 'BMI异常人数',
-                **build_ratio_payload(bmi_abnormal, valid_bmi_count),
+                'name': '骨关节问题人数',
+                **build_ratio_payload(bone_joint_issue_people, total, '总人数'),
             },
             {
                 'name': '睡眠异常人数',
@@ -750,7 +755,7 @@ def api_dashboard_health_portrait_drilldown():
         return error_response('开始日期不能晚于结束日期')
     if metric not in {
         'blood_pressure_abnormal', 'blood_lipid_abnormal', 'blood_sugar_abnormal',
-        'bmi_abnormal', 'sleep_abnormal', 'high_risk',
+        'bmi_abnormal', 'sleep_abnormal', 'bone_joint_problem', 'high_risk',
         'age_group', 'health_need_tag', 'past_history_tag'
     }:
         conn.close()
@@ -781,6 +786,10 @@ def api_dashboard_health_portrait_drilldown():
         risk_info = calculate_lightweight_risk(row)
         health_need_items = normalize_multi_text(row.get('health_needs'))
         past_history_items = normalize_multi_text(row.get('past_medical_history'))
+        family_history_items = normalize_multi_text(row.get('family_history'))
+        recent_symptom_items = normalize_multi_text(row.get('recent_symptoms'))
+        bone_joint_keywords = ('膝', '关节', '肩颈', '腰', '颈椎', '腰椎', '骨', '肌肉')
+        bone_joint_issue = any(any(keyword in str(item) for keyword in bone_joint_keywords) for item in (recent_symptom_items + past_history_items + family_history_items))
 
         matched = False
         if metric == 'blood_pressure_abnormal':
@@ -793,6 +802,8 @@ def api_dashboard_health_portrait_drilldown():
             matched = bmi_level not in ('', '正常')
         elif metric == 'sleep_abnormal':
             matched = sleep_abnormal
+        elif metric == 'bone_joint_problem':
+            matched = bone_joint_issue
         elif metric == 'high_risk':
             matched = risk_info.get('risk_level') == '高风险'
         elif metric == 'age_group':
