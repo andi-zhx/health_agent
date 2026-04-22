@@ -2054,7 +2054,6 @@
         if ((item.name || '') === '高风险人数') openPortraitDrilldown('高风险客户', 'high_risk', '');
       }
     });
-    renderHighRiskTopList('portrait-high-risk-top', highRiskTop);
     renderHorizontalBars('portrait-risk-reasons', buildRiskReasonOverview(highRiskTop), '#f97316', { maxItems: 10 });
   }
 
@@ -2172,30 +2171,6 @@
     return Object.keys(counter).map(function (key) {
       return { name: key, count: counter[key] };
     }).sort(function (a, b) { return b.count - a.count; });
-  }
-
-  function renderHighRiskTopList(elId, list) {
-    var box = document.getElementById(elId);
-    if (!box) return;
-    var rows = toList(list).slice(0, 8);
-    if (!rows.length) {
-      box.innerHTML = '<p style="color:#666">暂无高风险客户</p>';
-      return;
-    }
-    box.innerHTML = rows.map(function (item, idx) {
-      var reasons = toList(item.risk_reasons).slice(0, 2).join('、') || '无';
-      return '<div class="top-item" data-risk-customer="' + escapeHtml(item.customer_id || '') + '">' +
-        '<div class="top-rank">' + (idx + 1) + '</div>' +
-        '<div class="top-main"><div class="top-title">' + escapeHtml(item.customer_name || ('客户' + (idx + 1))) + '</div>' +
-        '<div class="top-meta">风险因子：' + escapeHtml(reasons) + '</div></div>' +
-        '<div class="top-risk">高风险</div>' +
-      '</div>';
-    }).join('');
-    box.querySelectorAll('[data-risk-customer]').forEach(function (el) {
-      el.addEventListener('click', function () {
-        openPortraitDrilldown('高风险客户明细', 'high_risk', '');
-      });
-    });
   }
 
   function buildPortraitDrilldownQuery() {

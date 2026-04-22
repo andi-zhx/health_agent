@@ -184,20 +184,3 @@ def api_customer_delete(cid):
     return success_response({'id': cid}, '已删除')
 
 
-# ========== 健康档案 ==========
-@bp.route('/api/customers/integrated-view', methods=['GET'])
-def api_customers_integrated_view():
-    keyword = (request.args.get('search') or '').strip()
-    section_keys = ['basic', 'health', 'appointments', 'home_appointments', 'improvement']
-    conn = get_db()
-    c = conn.cursor()
-    where_sql, params = _build_customer_integrated_filter(keyword)
-    data = {'search': keyword}
-    for key in section_keys:
-        page = max(1, int(request.args.get(f'{key}_page', 1) or 1))
-        page_size = min(max(int(request.args.get(f'{key}_page_size', 5) or 5), 1), 100)
-        data[key] = _query_customer_integrated_dataset(c, key, where_sql, params, page, page_size, keyword=keyword)
-    conn.close()
-    return success_response(data)
-
-
