@@ -1963,19 +1963,8 @@
       showMsg('portrait-msg', '已' + scopeText + '生成画像，当前统计样本量：' + ((meta.sample_size != null ? meta.sample_size : res.total_customers) || 0) + ' 人');
       renderPortraitMeta(res);
       renderPortraitOverviewLayer(res);
-      renderPortraitRiskLayer(res);
       renderPortraitBehaviorLayer(res);
       renderPortraitInterventionLayer(res);
-    });
-    var trendQuery = buildPortraitRangeQuery();
-    var period = getPortraitTrendPeriod();
-    trendQuery += trendQuery ? ('&period=' + encodeURIComponent(period)) : ('?period=' + encodeURIComponent(period));
-    get('/api/dashboard/health-portrait/trends' + trendQuery).then(function (trendRes) {
-      if (trendRes.error) {
-        renderPortraitTrendLayer({ error: trendRes.error });
-        return;
-      }
-      renderPortraitTrendLayer(trendRes || {});
     });
   }
 
@@ -2006,11 +1995,13 @@
 
   function renderPortraitOverviewLayer(res) {
     var d1 = res.dimension1 || {};
-    var abnormalIndicators = toList(res.abnormal_indicators);
+    var abnormalIndicators = toList(res.abnormal_indicators).filter(function (item) {
+      return ['血压异常人数', '血脂异常人数', '血糖异常人数', '骨关节问题人数', '睡眠异常人数'].indexOf(item.name || '') >= 0;
+    });
     renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
         return {
           name: item.name || '-',
-          value: (item.count || 0) + '人 | ' + (item.ratio || 0) + '% | 分母' + (item.denominator || 0) + '人'
+          value: (item.count || 0) + '人'
         };
       }), {
         onClick: function (item) {
@@ -2018,7 +2009,7 @@
             '血压异常人数': 'blood_pressure_abnormal',
             '血脂异常人数': 'blood_lipid_abnormal',
             '血糖异常人数': 'blood_sugar_abnormal',
-            'BMI异常人数': 'bmi_abnormal',
+            '骨关节问题人数': 'bone_joint_problem',
             '睡眠异常人数': 'sleep_abnormal'
           };
           var metric = metricMap[item.name || ''];
@@ -2026,15 +2017,8 @@
         }
       });
     renderKpiCards('portrait-kpi-cards', [
-      { name: '总样本', value: (d1.cards || {}).total_people || 0 },
-      { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%（分母' + ((d1.cards || {}).bmi_abnormal_denominator || 0) + '人）' },
-      { name: '66岁以上占比', value: ((d1.cards || {}).senior_ratio || 0) + '%' }
+      { name: '总人数', value: (d1.cards || {}).total_people || 0 }
     ]);
-    renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
-    renderLegend('portrait-gender-legend', toList(d1.gender_distribution));
-    renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
-    renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-    renderHorizontalBars('portrait-age-distribution', toList(d1.age_distribution), '#7c3aed');
     renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution), {
       onClick: function (ageGroup) {
         if (ageGroup) openPortraitDrilldown('年龄段：' + ageGroup, 'age_group', ageGroup);
@@ -2042,62 +2026,60 @@
     });
   }
 
-  function renderPortraitRiskLayer(res) {
-    var d2 = res.dimension2 || {};
-    var highRiskTop = toList(res.high_risk_customers_top);
-    renderHorizontalBars('portrait-risk-distribution', toList(d2.risk_distribution), '#ef4444');
-    renderKpiCards('portrait-high-risk-kpi', [
-      { name: '低风险人数', value: ((res.high_risk_summary || {}).low || 0) + '人' },
-      { name: '中风险人数', value: ((res.high_risk_summary || {}).medium || 0) + '人' },
-      { name: '高风险人数', value: ((res.high_risk_summary || {}).high || 0) + '人' }
-    ], {
-      onClick: function (item) {
-        if ((item.name || '') === '高风险人数') openPortraitDrilldown('高风险客户', 'high_risk', '');
-      }
-    });
-    renderHorizontalBars('portrait-risk-reasons', buildRiskReasonOverview(highRiskTop), '#f97316', { maxItems: 10 });
-  }
-
   function renderPortraitBehaviorLayer(res) {
     var d2 = res.dimension2 || {};
     var d3 = res.dimension3 || {};
-    renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', {
-        maxItems: 10,
-        onClick: function (item) {
-          if (item && item.name) openPortraitDrilldown('既往病史：' + item.name, 'past_history_tag', item.name);
-        }
-      });
-    renderHorizontalBars('portrait-family-top10', toList(d2.family_history_distribution), '#fb7185', { maxItems: 10 });
-    renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
+    var diseaseTop = toList(d2.past_disease_distribution).slice(0, 10);
+    var familyTop = toList(d2.family_history_distribution).slice(0, 10);
+    var symptomTop = toList(d2.recent_symptom_distribution).slice(0, 10);
+    var exerciseTop = toList(d3.exercise_top10).slice(0, 10);
+    var needsTop = toList(d3.health_needs_top10).slice(0, 10);
+    renderCircleChart('portrait-disease-top10', diseaseTop, false);
+    renderLegend('portrait-disease-top10-legend', diseaseTop);
+    renderCircleChart('portrait-family-top10', familyTop, false);
+    renderLegend('portrait-family-top10-legend', familyTop);
+    renderCircleChart('portrait-recent-symptom-bars', symptomTop, false);
+    renderLegend('portrait-recent-symptom-bars-legend', symptomTop);
     renderKpiCards('portrait-habit-kpi', [
       { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
       { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
-      { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%（分母' + (d3.sleep_abnormal_denominator || 0) + '人）' },
-      { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%（分母' + (d3.poor_sleep_quality_denominator || 0) + '人）' },
+      { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%' },
       { name: '烟酒叠加占比', value: (d3.smoking_drinking_ratio || 0) + '%' }
     ]);
-    renderHorizontalBars('portrait-habit-risk-bars', [
-      { name: '吸烟', value: d3.smoking_ratio || 0 },
-      { name: '饮酒', value: d3.drinking_ratio || 0 },
-      { name: '睡眠异常', value: d3.sleep_abnormal_ratio || 0 },
-      { name: '睡眠质量差', value: d3.poor_sleep_quality_ratio || 0 },
-      { name: '烟酒叠加', value: d3.smoking_drinking_ratio || 0 }
-    ].map(function (item) {
-      return { name: item.name, count: item.value };
-    }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
-    renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
-    renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9', {
-        onClick: function (item) {
-          if (item && item.name) openPortraitDrilldown('健康需求：' + item.name, 'health_need_tag', item.name);
-        }
-      });
+    var habitTop = [
+      { name: '吸烟', count: d3.smoking_ratio || 0 },
+      { name: '饮酒', count: d3.drinking_ratio || 0 },
+      { name: '睡眠异常', count: d3.sleep_abnormal_ratio || 0 },
+      { name: '烟酒叠加', count: d3.smoking_drinking_ratio || 0 }
+    ];
+    renderCircleChart('portrait-habit-risk-pie', habitTop, false);
+    renderLegend('portrait-habit-risk-legend', habitTop);
+    renderCircleChart('portrait-exercise-top10', exerciseTop, false);
+    renderLegend('portrait-exercise-top10-legend', exerciseTop);
+    renderCircleChart('portrait-needs-top10', needsTop, false);
+    renderLegend('portrait-needs-top10-legend', needsTop);
+    bindLegendDrilldown('portrait-needs-top10-legend', needsTop, function (item) {
+      if (item && item.name) openPortraitDrilldown('健康需求：' + item.name, 'health_need_tag', item.name);
+    });
+    bindLegendDrilldown('portrait-disease-top10-legend', diseaseTop, function (item) {
+      if (item && item.name) openPortraitDrilldown('既往病史：' + item.name, 'past_history_tag', item.name);
+    });
   }
 
   function renderPortraitInterventionLayer(res) {
-    renderServiceFunnelCards('portrait-service-funnel', toList((res.dimension4 || {}).service_funnel));
-    renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
     portraitImprovementRankingRaw = toList((res.dimension4 || {}).improvement_project_ranking);
     renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, (document.getElementById('portrait-improvement-ranking-sort') || {}).value || 'improvement_rate');
+  }
+
+  function bindLegendDrilldown(elId, list, callback) {
+    var box = document.getElementById(elId);
+    if (!box || typeof callback !== 'function') return;
+    box.querySelectorAll('[data-legend-index]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var idx = Number(el.getAttribute('data-legend-index') || 0);
+        callback(list[idx] || {}, idx);
+      });
+    });
   }
 
   function renderPortraitTrendLayer(res) {
@@ -2304,7 +2286,7 @@
     box.innerHTML = list.map(function (item, idx) {
       var color = chartColor(idx);
       var ratio = Math.round(((item.count || 0) * 100) / total);
-      return '<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';margin-right:6px"></span>' + (item.name || '-') + '：' + (item.count || 0) + '（' + ratio + '%）</div>';
+      return '<div class="drilldown-trigger" data-legend-index="' + idx + '"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + color + ';margin-right:6px"></span>' + (item.name || '-') + '：' + (item.count || 0) + '（' + ratio + '%）</div>';
     }).join('');
   }
 
