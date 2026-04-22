@@ -139,7 +139,6 @@ EXPORT_FIELD_ZH = {
     'name': '姓名',
     'id_card': '身份证号',
     'phone': '手机号',
-    'email': '邮箱',
     'address': '地址',
     'gender': '性别',
     'birth_date': '出生日期',
@@ -203,12 +202,12 @@ EXPORT_FIELD_ZH = {
 }
 
 EXPORT_COLUMNS_BY_KEY = {
-    'basic': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
+    'basic': ['id', 'name', 'id_card', 'phone', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
     'health': ['id', 'customer_id', 'assessment_date', 'assessor', 'age', 'height_cm', 'weight_kg', 'address', 'past_medical_history', 'family_history', 'allergy_history', 'allergy_details', 'smoking_status', 'smoking_years', 'cigarettes_per_day', 'drinking_status', 'drinking_years', 'fatigue_last_month', 'sleep_quality', 'sleep_hours', 'blood_pressure_test', 'blood_lipid_test', 'chronic_pain', 'pain_details', 'exercise_methods', 'weekly_exercise_freq', 'health_needs', 'notes', 'created_at', 'customer_name', 'customer_phone'],
     'appointments': ['id', 'customer_id', 'equipment_id', 'appointment_date', 'start_time', 'end_time', 'status', 'has_companion', 'notes', 'created_at', 'project_id', 'staff_id', 'updated_at', 'customer_name', 'customer_phone', 'equipment_name', 'project_name'],
     'home_appointments': ['id', 'customer_id', 'project_id', 'staff_id', 'customer_name', 'phone', 'home_time', 'home_address', 'service_project', 'staff_name', 'appointment_date', 'start_time', 'end_time', 'location', 'contact_person', 'contact_phone', 'has_companion', 'notes', 'status', 'created_at', 'updated_at', 'project_name'],
     'improvement': ['id', 'customer_id', 'service_project', 'service_time', 'improvement_summary', 'followup_time', 'followup_method', 'notes', 'created_at', 'updated_at', 'customer_name', 'customer_phone'],
-    'customers': ['id', 'name', 'id_card', 'phone', 'email', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
+    'customers': ['id', 'name', 'id_card', 'phone', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
 }
 
 

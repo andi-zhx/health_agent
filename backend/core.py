@@ -436,6 +436,58 @@ def migrate_service_improvement_service_type_values(cursor):
     )
 
 
+def migrate_customers_drop_email(cursor):
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='customers'")
+    if not cursor.fetchone():
+        return
+    cursor.execute('PRAGMA table_info(customers)')
+    columns = [row[1] for row in cursor.fetchall()]
+    if 'email' not in columns:
+        return
+    cursor.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS customers_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            id_card TEXT UNIQUE,
+            phone TEXT NOT NULL,
+            address TEXT,
+            gender TEXT,
+            age INTEGER,
+            birth_date TEXT,
+            identity_type TEXT,
+            military_rank TEXT,
+            record_creator TEXT,
+            medical_history TEXT,
+            allergies TEXT,
+            diet_habits TEXT,
+            chronic_diseases TEXT,
+            health_status TEXT,
+            therapy_contraindications TEXT,
+            created_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            updated_at TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime')),
+            is_deleted INTEGER DEFAULT 0
+        )
+        '''
+    )
+    cursor.execute(
+        '''
+        INSERT INTO customers_new (
+            id, name, id_card, phone, address, gender, age, birth_date, identity_type, military_rank,
+            record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status,
+            therapy_contraindications, created_at, updated_at, is_deleted
+        )
+        SELECT
+            id, name, id_card, phone, address, gender, age, birth_date, identity_type, military_rank,
+            record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status,
+            therapy_contraindications, created_at, updated_at, COALESCE(is_deleted, 0)
+        FROM customers
+        '''
+    )
+    cursor.execute('DROP TABLE customers')
+    cursor.execute('ALTER TABLE customers_new RENAME TO customers')
+
+
 def table_exists(cursor, table_name):
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
     return cursor.fetchone() is not None
@@ -1883,6 +1935,7 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
     migrate_appointments_equipment_nullable(c)
+    migrate_customers_drop_email(c)
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS customers (
@@ -1890,7 +1943,6 @@ def init_db():
             name TEXT NOT NULL,
             id_card TEXT UNIQUE,
             phone TEXT NOT NULL,
-            email TEXT,
             address TEXT,
             gender TEXT,
             age INTEGER,

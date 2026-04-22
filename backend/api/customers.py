@@ -119,10 +119,10 @@ def api_customer_create():
         age = calculate_age_by_birth_year(d.get('birth_date'))
         ts = now_local_str()
         c.execute('''
-            INSERT INTO customers (name, id_card, phone, email, address, gender, age, birth_date, identity_type, military_rank, record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications, created_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO customers (name, id_card, phone, address, gender, age, birth_date, identity_type, military_rank, record_creator, medical_history, allergies, diet_habits, chronic_diseases, health_status, therapy_contraindications, created_at, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
-            d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('email'), d.get('address'),
+            d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('address'),
             d.get('gender'), age, d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
             d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
             d.get('health_status'), d.get('therapy_contraindications'), ts, ts
@@ -155,9 +155,9 @@ def api_customer_update(cid):
         conn.close()
         return error_response('客户不存在', 404, 'NOT_FOUND')
     c.execute('''
-        UPDATE customers SET name=?, id_card=?, phone=?, email=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=? WHERE id=?
+        UPDATE customers SET name=?, id_card=?, phone=?, address=?, gender=?, age=?, birth_date=?, identity_type=?, military_rank=?, record_creator=?, medical_history=?, allergies=?, diet_habits=?, chronic_diseases=?, health_status=?, therapy_contraindications=?, updated_at=? WHERE id=?
     ''', (
-        d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('email'), d.get('address'),
+        d.get('name'), (str(d.get('id_card') or '').strip().upper() or None), d.get('phone'), d.get('address'),
         d.get('gender'), calculate_age_by_birth_year(d.get('birth_date')), d.get('birth_date'), identity_type, d.get('military_rank'), d.get('record_creator'),
         d.get('medical_history'), d.get('allergies'), d.get('diet_habits'), d.get('chronic_diseases'),
         d.get('health_status'), d.get('therapy_contraindications'), now_local_str(), cid
@@ -182,5 +182,4 @@ def api_customer_delete(cid):
     conn.close()
     audit_log('删除客户', 'customers', cid, '软删除客户')
     return success_response({'id': cid}, '已删除')
-
 
