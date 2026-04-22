@@ -765,6 +765,24 @@ def api_dashboard_health_portrait_drilldown():
     records = build_health_portrait_sample_records(c, date_from=date_from, date_to=date_to)
     conn.close()
 
+    def age_group_matches(selected_group, computed_group, age_value):
+        selected = (selected_group or '').strip()
+        computed = (computed_group or '').strip()
+        age_num = safe_int(age_value)
+        if not selected:
+            return False
+        if selected == computed:
+            return True
+        if age_num is None:
+            return False
+        if selected == '60-70岁':
+            return 60 <= age_num < 70
+        if selected == '70-80岁':
+            return 70 <= age_num < 80
+        if selected == '80岁以上':
+            return age_num >= 80
+        return False
+
     detail_rows = []
     for row in records:
         age = safe_int(row.get('age'))
@@ -807,7 +825,7 @@ def api_dashboard_health_portrait_drilldown():
         elif metric == 'high_risk':
             matched = risk_info.get('risk_level') == '高风险'
         elif metric == 'age_group':
-            matched = bool(metric_value) and (age_segment == metric_value)
+            matched = age_group_matches(metric_value, age_segment, age)
         elif metric == 'health_need_tag':
             matched = bool(metric_value) and metric_value in health_need_items
         elif metric == 'past_history_tag':

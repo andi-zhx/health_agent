@@ -1998,12 +1998,26 @@
     var abnormalIndicators = toList(res.abnormal_indicators).filter(function (item) {
       return ['血压异常人数', '血脂异常人数', '血糖异常人数', '骨关节问题人数', '睡眠异常人数'].indexOf(item.name || '') >= 0;
     });
-    renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
+    var abnormalCards = abnormalIndicators.map(function (item) {
         return {
           name: item.name || '-',
           value: (item.count || 0) + '人'
         };
-      }), {
+      });
+    renderKpiCards('portrait-abnormal-kpi-cards-top', abnormalCards.slice(0, 3), {
+        onClick: function (item) {
+          var metricMap = {
+            '血压异常人数': 'blood_pressure_abnormal',
+            '血脂异常人数': 'blood_lipid_abnormal',
+            '血糖异常人数': 'blood_sugar_abnormal',
+            '骨关节问题人数': 'bone_joint_problem',
+            '睡眠异常人数': 'sleep_abnormal'
+          };
+          var metric = metricMap[item.name || ''];
+          if (metric) openPortraitDrilldown(item.name || '异常明细', metric, '');
+        }
+      });
+    renderKpiCards('portrait-abnormal-kpi-cards-bottom', abnormalCards.slice(3, 5), {
         onClick: function (item) {
           var metricMap = {
             '血压异常人数': 'blood_pressure_abnormal',
