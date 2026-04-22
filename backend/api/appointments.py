@@ -39,10 +39,10 @@ def api_appointments_list():
         base_sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
         params.extend([like, like])
     if date_from:
-        base_sql += ' AND date(a.appointment_date) >= date(?)'
+        base_sql += ' AND a.appointment_date >= ?'
         params.append(date_from)
     if date_to:
-        base_sql += ' AND date(a.appointment_date) <= date(?)'
+        base_sql += ' AND a.appointment_date <= ?'
         params.append(date_to)
     c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
     total = c.fetchone()['n']

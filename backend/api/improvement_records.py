@@ -72,11 +72,11 @@ def api_improvement_records_all():
         sql += ' AND r.improvement_status=?'
         params.append(improvement_status)
     if service_start:
-        sql += ' AND date(substr(r.service_time, 1, 10)) >= date(?)'
-        params.append(service_start)
+        sql += ' AND r.service_time >= ?'
+        params.append(service_start + ' 00:00')
     if service_end:
-        sql += ' AND date(substr(r.service_time, 1, 10)) <= date(?)'
-        params.append(service_end)
+        sql += ' AND r.service_time <= ?'
+        params.append(service_end + ' 23:59:59')
     c.execute(f'SELECT COUNT(1) as cnt {sql}', params)
     count_row = c.fetchone()
     total = int(count_row['cnt']) if count_row and count_row['cnt'] is not None else 0
