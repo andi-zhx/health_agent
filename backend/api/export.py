@@ -117,13 +117,21 @@ def api_export_query_download():
 
 def _build_customer_integrated_filter(search_text):
     keyword = (search_text or '').strip()
-    where_sql = 'WHERE c.is_deleted=0'
+    where_sql = 'WHERE 1=1'
     params = []
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('PRAGMA table_info(customers)')
+    customer_cols = {row['name'] for row in c.fetchall()}
+    conn.close()
+    has_deleted_flag = 'is_deleted' in customer_cols
+    if has_deleted_flag:
+        where_sql += ' AND c.is_deleted=0'
     if keyword:
         where_sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
         keyword_like = f'%{keyword}%'
         params.extend([keyword_like, keyword_like])
-    return where_sql, params
+    return where_sql, params, has_deleted_flag
 
 
 EXPORT_FIELD_ZH = {
@@ -251,7 +259,7 @@ def _init_export_workbook(writer):
         wb.remove(std)
 
 
-def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, page, page_size, keyword='', customer_id=None):
+def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, page, page_size, keyword='', customer_id=None, has_deleted_flag=False):
     offset = (page - 1) * page_size
     query_map = {
         'basic': {
@@ -303,7 +311,7 @@ def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, p
                 SELECT COUNT(*) as n
                 FROM home_appointments h
                 LEFT JOIN customers c ON h.customer_id=c.id
-                WHERE c.is_deleted=0 {keyword_clause} {customer_clause}
+                WHERE 1=1 {deleted_clause} {keyword_clause} {customer_clause}
             ''',
             'data_sql': '''
                 SELECT
@@ -317,7 +325,7 @@ def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, p
                 LEFT JOIN customers c ON h.customer_id=c.id
                 LEFT JOIN therapy_projects p ON h.project_id=p.id
                 LEFT JOIN staff s ON h.staff_id=s.id
-                WHERE c.is_deleted=0 {keyword_clause} {customer_clause}
+                WHERE 1=1 {deleted_clause} {keyword_clause} {customer_clause}
                 ORDER BY h.appointment_date DESC, h.start_time DESC, h.id DESC
                 LIMIT ? OFFSET ?
             ''',
@@ -344,18 +352,30 @@ def _query_customer_integrated_dataset(cursor, dataset_key, where_sql, params, p
     if dataset_key == 'home_appointments':
         keyword_clause = ' AND (c.name LIKE ? OR c.phone LIKE ?)' if keyword else ''
         customer_clause = ' AND h.customer_id=?' if customer_id else ''
+        deleted_clause = ' AND c.is_deleted=0' if has_deleted_flag else ''
         home_params = []
         if keyword:
             home_params.extend([f'%{keyword}%', f'%{keyword}%'])
         if customer_id:
             home_params.append(customer_id)
-        count_sql = conf['count_sql'].format(keyword_clause=keyword_clause, customer_clause=customer_clause)
-        data_sql = conf['data_sql'].format(keyword_clause=keyword_clause, customer_clause=customer_clause)
+        count_sql = conf['count_sql'].format(
+            deleted_clause=deleted_clause,
+            keyword_clause=keyword_clause,
+            customer_clause=customer_clause
+        )
+        data_sql = conf['data_sql'].format(
+            deleted_clause=deleted_clause,
+            keyword_clause=keyword_clause,
+            customer_clause=customer_clause
+        )
         cursor.execute(count_sql, home_params)
         total = int(cursor.fetchone()['n'])
         cursor.execute(data_sql, home_params + [page_size, offset])
         rows = row_list(cursor.fetchall())
         return paginate_result(rows, total, page, page_size)
+
+    if dataset_key == 'improvement' and not table_exists(cursor, 'service_improvement_records'):
+        return paginate_result([], 0, page, page_size)
 
     count_sql = conf['count_sql']
     data_sql = conf['data_sql']
@@ -374,12 +394,14 @@ def api_customers_integrated_view():
     section_keys = ['basic', 'health', 'appointments', 'home_appointments', 'improvement']
     conn = get_db()
     c = conn.cursor()
-    where_sql, params = _build_customer_integrated_filter(keyword)
+    where_sql, params, has_deleted_flag = _build_customer_integrated_filter(keyword)
     data = {'search': keyword}
     for key in section_keys:
         page = max(1, int(request.args.get(f'{key}_page', 1) or 1))
         page_size = min(max(int(request.args.get(f'{key}_page_size', 5) or 5), 1), 100)
-        data[key] = _query_customer_integrated_dataset(c, key, where_sql, params, page, page_size, keyword=keyword)
+        data[key] = _query_customer_integrated_dataset(
+            c, key, where_sql, params, page, page_size, keyword=keyword, has_deleted_flag=has_deleted_flag
+        )
     conn.close()
     return success_response(data)
 
@@ -393,9 +415,11 @@ def api_export_customer_integrated_form():
         return error_response('表单类型不合法')
     conn = get_db()
     c = conn.cursor()
-    where_sql, params = _build_customer_integrated_filter(search)
+    where_sql, params, has_deleted_flag = _build_customer_integrated_filter(search)
     page_size = min(max(limit or 10000, 1), 10000)
-    rows = _query_customer_integrated_dataset(c, form_key, where_sql, params, 1, page_size, keyword=search).get('items') or []
+    rows = _query_customer_integrated_dataset(
+        c, form_key, where_sql, params, 1, page_size, keyword=search, has_deleted_flag=has_deleted_flag
+    ).get('items') or []
     conn.close()
     fn = f'customer_{form_key}_{now_local().strftime("%Y%m%d_%H%M%S")}.xlsx'
     fp = os.path.join(UPLOAD_FOLDER, fn)
@@ -416,7 +440,7 @@ def api_export_customer_integrated_all():
 
     conn = get_db()
     c = conn.cursor()
-    where_sql, params = _build_customer_integrated_filter(search)
+    where_sql, params, has_deleted_flag = _build_customer_integrated_filter(search)
     selected_customer_id = None
     if scope == 'personal':
         c.execute(f'SELECT c.id FROM customers c {where_sql} ORDER BY c.id ASC LIMIT 1', params)
@@ -425,7 +449,9 @@ def api_export_customer_integrated_all():
             conn.close()
             return error_response('未找到对应客户')
         selected_customer_id = selected['id']
-        where_sql = 'WHERE c.is_deleted=0 AND c.id=?'
+        where_sql = 'WHERE c.id=?'
+        if has_deleted_flag:
+            where_sql += ' AND c.is_deleted=0'
         params = [selected_customer_id]
 
     fn = f'customer_integrated_{scope}_{now_local().strftime("%Y%m%d_%H%M%S")}.xlsx'
@@ -448,6 +474,7 @@ def api_export_customer_integrated_all():
                 10000,
                 keyword=search if scope == 'all' else '',
                 customer_id=selected_customer_id,
+                has_deleted_flag=has_deleted_flag,
             ).get('items') or []
             _write_bilingual_sheet(writer, sheet_name, rows, EXPORT_COLUMNS_BY_KEY.get(key))
     conn.close()
@@ -481,5 +508,3 @@ def api_export_appointments():
         _write_bilingual_dataframe(writer, '预约记录', df, list(df.columns))
     audit_log('导出数据', 'export', 'appointments', f'file={fn}')
     return jsonify({'filename': fn, 'download_url': '/api/download/' + fn})
-
-
