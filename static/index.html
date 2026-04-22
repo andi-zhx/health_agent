@@ -710,6 +710,14 @@
               <label style="display:block;color:#64748b;font-size:12px;margin-bottom:4px">评估结束日期</label>
               <input type="date" id="portrait-date-to">
             </div>
+            <div>
+              <label style="display:block;color:#64748b;font-size:12px;margin-bottom:4px">趋势周期</label>
+              <select id="portrait-trend-period" style="width:120px">
+                <option value="auto">自动</option>
+                <option value="week">按周</option>
+                <option value="month">按月</option>
+              </select>
+            </div>
             <button class="btn btn-primary" id="btn-portrait-query">查询</button>
             <button class="btn btn-secondary" id="btn-portrait-reset">重置</button>
           </div>
@@ -802,7 +810,30 @@
 
             <section class="portrait-layer">
               <div class="portrait-layer-head">
-                <h3 class="portrait-layer-title">4. 干预与改善效果</h3>
+                <h3 class="portrait-layer-title">4. 趋势分析</h3>
+                <div class="portrait-layer-sub">高风险/指标异常 + 需求标签变化 + 服务改善率趋势</div>
+              </div>
+              <div id="portrait-trend-warning" style="font-size:12px;color:#b45309;margin:0 0 10px"></div>
+              <div id="portrait-trend-note" style="font-size:12px;color:#64748b;margin:0 0 10px"></div>
+              <div class="portrait-grid">
+                <div class="portrait-panel portrait-panel-half">
+                  <h3>核心指标趋势</h3>
+                  <div id="portrait-trend-core-metrics"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-half">
+                  <h3>健康需求 Top 标签变化</h3>
+                  <div id="portrait-trend-need-tags"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-wide">
+                  <h3>服务项目改善率趋势</h3>
+                  <div id="portrait-trend-improvement-rates"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">5. 干预与改善效果</h3>
                 <div class="portrait-layer-sub">服务漏斗 + 改善矩阵 + 改善率排行</div>
               </div>
               <div class="portrait-grid">

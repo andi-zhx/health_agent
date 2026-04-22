@@ -1027,6 +1027,213 @@ def build_health_portrait_sample_records(cursor, date_from='', date_to=''):
     return records
 
 
+def resolve_portrait_trend_period(period, date_from='', date_to=''):
+    mode = str(period or '').strip().lower()
+    if mode in ('week', 'month'):
+        return mode, False
+    if date_from and date_to:
+        try:
+            start = datetime.strptime(date_from, '%Y-%m-%d').date()
+            end = datetime.strptime(date_to, '%Y-%m-%d').date()
+            span_days = (end - start).days + 1
+            return ('week' if span_days <= 120 else 'month'), True
+        except ValueError:
+            pass
+    return 'month', True
+
+
+def compute_period_key_and_label(date_text, period_mode):
+    raw = str(date_text or '').strip()
+    if not raw:
+        return None, None
+    try:
+        day = datetime.strptime(raw[:10], '%Y-%m-%d').date()
+    except ValueError:
+        return None, None
+    if period_mode == 'week':
+        week_start = day - timedelta(days=day.weekday())
+        week_end = week_start + timedelta(days=6)
+        return week_start.strftime('%Y-%m-%d'), f'{week_start.strftime("%Y-%m-%d")}~{week_end.strftime("%Y-%m-%d")}'
+    month_key = day.strftime('%Y-%m')
+    return month_key, month_key
+
+
+def build_health_portrait_trends(cursor, date_from='', date_to='', period='auto'):
+    period_mode, period_auto_selected = resolve_portrait_trend_period(period, date_from=date_from, date_to=date_to)
+    where_clauses = []
+    params = []
+    if date_from:
+        where_clauses.append('assessment_date >= ?')
+        params.append(date_from)
+    if date_to:
+        where_clauses.append('assessment_date <= ?')
+        params.append(date_to)
+    where_sql = ('WHERE ' + ' AND '.join(where_clauses)) if where_clauses else ''
+    cursor.execute(
+        f'''
+        SELECT *
+        FROM health_assessments
+        {where_sql}
+        ORDER BY assessment_date DESC, id DESC
+        ''',
+        params,
+    )
+    assessment_rows = row_list(cursor.fetchall())
+    dedup_rows = {}
+    for row in assessment_rows:
+        customer_id = safe_int(row.get('customer_id'))
+        period_key, period_label = compute_period_key_and_label(row.get('assessment_date'), period_mode)
+        if customer_id is None or not period_key:
+            continue
+        dedup_key = (period_key, customer_id)
+        if dedup_key in dedup_rows:
+            continue
+        copied = dict(row)
+        copied['period_key'] = period_key
+        copied['period_label'] = period_label
+        dedup_rows[dedup_key] = copied
+
+    period_buckets = {}
+    need_counters = {}
+    for row in dedup_rows.values():
+        period_key = row.get('period_key')
+        period_label = row.get('period_label')
+        bucket = period_buckets.setdefault(period_key, {
+            'period_key': period_key,
+            'period_label': period_label,
+            'sample_size': 0,
+            'high_risk_people': 0,
+            'blood_pressure_abnormal_people': 0,
+            'blood_sugar_abnormal_people': 0,
+            'sleep_abnormal_people': 0,
+        })
+        bucket['sample_size'] += 1
+        blood_pressure_test = str(row.get('blood_pressure_test') or '')
+        blood_sugar_test = str(row.get('blood_sugar_test') or '')
+        sleep_hours_text = str(row.get('sleep_hours') or '')
+        sleep_quality_text = str(row.get('sleep_quality') or '')
+        if ('偏高' in blood_pressure_test) or ('偏低' in blood_pressure_test):
+            bucket['blood_pressure_abnormal_people'] += 1
+        if ('偏高' in blood_sugar_test) or ('偏低' in blood_sugar_test):
+            bucket['blood_sugar_abnormal_people'] += 1
+        if (sleep_hours_text in ('<6小时', '>10小时')) or (sleep_quality_text in ('很差', '差')):
+            bucket['sleep_abnormal_people'] += 1
+        if (calculate_lightweight_risk(row) or {}).get('risk_level') == '高风险':
+            bucket['high_risk_people'] += 1
+        counter = need_counters.setdefault(period_key, Counter())
+        for tag in normalize_multi_text(row.get('health_needs')):
+            if tag != '无':
+                counter[tag] += 1
+
+    sorted_periods = sorted(period_buckets.values(), key=lambda item: item.get('period_key') or '')
+    period_keys = [item.get('period_key') for item in sorted_periods]
+    needs_total_counter = Counter()
+    for period_key in period_keys:
+        needs_total_counter.update(need_counters.get(period_key, Counter()))
+    top_need_tags = [name for name, _count in needs_total_counter.most_common(5)]
+
+    def build_metric_series(metric_key):
+        return [{
+            'period_key': item['period_key'],
+            'period_label': item['period_label'],
+            'value': safe_int(item.get(metric_key)) or 0,
+            'sample_size': safe_int(item.get('sample_size')) or 0,
+        } for item in sorted_periods]
+
+    health_need_top_trends = []
+    for tag in top_need_tags:
+        series = []
+        for item in sorted_periods:
+            period_key = item['period_key']
+            period_counter = need_counters.get(period_key, Counter())
+            series.append({
+                'period_key': period_key,
+                'period_label': item['period_label'],
+                'count': safe_int(period_counter.get(tag)) or 0,
+            })
+        health_need_top_trends.append({'tag': tag, 'series': series})
+
+    where_clauses = []
+    improvement_params = []
+    if date_from:
+        where_clauses.append("date(r.service_time) >= ?")
+        improvement_params.append(date_from)
+    if date_to:
+        where_clauses.append("date(r.service_time) <= ?")
+        improvement_params.append(date_to)
+    where_sql = ('WHERE ' + ' AND '.join(where_clauses)) if where_clauses else ''
+    cursor.execute(
+        f'''
+        SELECT r.service_project, r.service_time, r.improvement_status
+        FROM service_improvement_records r
+        {where_sql}
+        ORDER BY r.service_time ASC, r.id ASC
+        ''',
+        improvement_params,
+    )
+    improvement_rows = row_list(cursor.fetchall())
+    improvement_counter = {}
+    project_total_counter = Counter()
+    for row in improvement_rows:
+        period_key, period_label = compute_period_key_and_label(row.get('service_time'), period_mode)
+        if not period_key:
+            continue
+        project = str(row.get('service_project') or '').strip() or '未标注项目'
+        project_total_counter[project] += 1
+        project_bucket = improvement_counter.setdefault((period_key, project), {
+            'period_key': period_key,
+            'period_label': period_label,
+            'service_project': project,
+            'total_services': 0,
+            'improved_services': 0,
+        })
+        project_bucket['total_services'] += 1
+        if str(row.get('improvement_status') or '').strip() in ('明显改善', '部分改善'):
+            project_bucket['improved_services'] += 1
+
+    top_projects = [name for name, _count in project_total_counter.most_common(5)]
+    improvement_rate_trends = []
+    for project in top_projects:
+        series = []
+        for item in sorted_periods:
+            period_key = item['period_key']
+            stat = improvement_counter.get((period_key, project), {})
+            total_services = safe_int(stat.get('total_services')) or 0
+            improved_services = safe_int(stat.get('improved_services')) or 0
+            rate = round((improved_services * 100.0 / total_services), 1) if total_services else 0
+            series.append({
+                'period_key': period_key,
+                'period_label': item['period_label'],
+                'total_services': total_services,
+                'improved_services': improved_services,
+                'improvement_rate_percent': rate,
+            })
+        improvement_rate_trends.append({'service_project': project, 'series': series})
+
+    sample_sizes = [safe_int(item.get('sample_size')) or 0 for item in sorted_periods]
+    insufficient_data = len(sorted_periods) < 2 or max(sample_sizes or [0]) < 5
+    return {
+        'period': period_mode,
+        'period_auto_selected': period_auto_selected,
+        'sampling_note': '同一客户在同一统计周期仅取最新一条健康评估记录。',
+        'period_points': [{'period_key': item['period_key'], 'period_label': item['period_label']} for item in sorted_periods],
+        'sample_size_series': [
+            {'period_key': item['period_key'], 'period_label': item['period_label'], 'sample_size': safe_int(item.get('sample_size')) or 0}
+            for item in sorted_periods
+        ],
+        'metrics': {
+            'high_risk_people_trend': build_metric_series('high_risk_people'),
+            'blood_pressure_abnormal_people_trend': build_metric_series('blood_pressure_abnormal_people'),
+            'blood_sugar_abnormal_people_trend': build_metric_series('blood_sugar_abnormal_people'),
+            'sleep_abnormal_people_trend': build_metric_series('sleep_abnormal_people'),
+            'health_need_top_tag_trends': health_need_top_trends,
+            'service_improvement_rate_trends': improvement_rate_trends,
+        },
+        'insufficient_data': insufficient_data,
+        'insufficient_data_message': '当前样本不足以形成趋势' if insufficient_data else '',
+    }
+
+
 def validate_improvement_payload(d, cursor=None):
     required_fields = ('customer_id', 'service_time', 'service_project', 'improvement_status')
     if not all(str(d.get(k) or '').strip() for k in required_fields):
@@ -5661,6 +5868,36 @@ def api_dashboard_health_portrait():
                 {'key': 'significant_improved', 'label': '明显改善人数', 'count': len(obvious_improved_customer_ids)},
             ],
         }
+    })
+
+
+@app.route('/api/dashboard/health-portrait/trends', methods=['GET'])
+def api_dashboard_health_portrait_trends():
+    conn = get_db()
+    c = conn.cursor()
+    date_from = (request.args.get('date_from') or '').strip()
+    date_to = (request.args.get('date_to') or '').strip()
+    period = (request.args.get('period') or 'auto').strip().lower()
+    if date_from and not is_valid_date(date_from):
+        conn.close()
+        return jsonify({'error': '开始日期格式必须为 YYYY-MM-DD'}), 400
+    if date_to and not is_valid_date(date_to):
+        conn.close()
+        return jsonify({'error': '结束日期格式必须为 YYYY-MM-DD'}), 400
+    if date_from and date_to and date_from > date_to:
+        conn.close()
+        return jsonify({'error': '开始日期不能晚于结束日期'}), 400
+    if period not in ('auto', 'week', 'month'):
+        conn.close()
+        return jsonify({'error': 'period 仅支持 auto/week/month'}), 400
+
+    result = build_health_portrait_trends(c, date_from=date_from, date_to=date_to, period=period)
+    conn.close()
+    return jsonify({
+        'date_from': date_from,
+        'date_to': date_to,
+        'filter_applied': bool(date_from or date_to),
+        **result,
     })
 
 

@@ -236,6 +236,13 @@
     return params.length ? ('?' + params.join('&')) : '';
   }
 
+  function getPortraitTrendPeriod() {
+    var sel = document.getElementById('portrait-trend-period');
+    var value = (sel && sel.value) ? sel.value : 'auto';
+    if (value !== 'week' && value !== 'month') return 'auto';
+    return value;
+  }
+
   function renderEquipmentUsageTop(list) {
     var tbody = document.getElementById('equipment-usage-top');
     if (!tbody) return;
@@ -1959,6 +1966,16 @@
       renderPortraitBehaviorLayer(res);
       renderPortraitInterventionLayer(res);
     });
+    var trendQuery = buildPortraitRangeQuery();
+    var period = getPortraitTrendPeriod();
+    trendQuery += trendQuery ? ('&period=' + encodeURIComponent(period)) : ('?period=' + encodeURIComponent(period));
+    get('/api/dashboard/health-portrait/trends' + trendQuery).then(function (trendRes) {
+      if (trendRes.error) {
+        renderPortraitTrendLayer({ error: trendRes.error });
+        return;
+      }
+      renderPortraitTrendLayer(trendRes || {});
+    });
   }
 
   function renderPortraitMeta(res) {
@@ -2081,6 +2098,65 @@
     renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
     portraitImprovementRankingRaw = toList((res.dimension4 || {}).improvement_project_ranking);
     renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, (document.getElementById('portrait-improvement-ranking-sort') || {}).value || 'improvement_rate');
+  }
+
+  function renderPortraitTrendLayer(res) {
+    var warningEl = document.getElementById('portrait-trend-warning');
+    if (warningEl) warningEl.textContent = res.insufficient_data ? (res.insufficient_data_message || '当前样本不足以形成趋势') : '';
+    var noteEl = document.getElementById('portrait-trend-note');
+    if (noteEl) {
+      var cycleText = (res.period === 'week') ? '按周' : '按月';
+      noteEl.textContent = (res.sampling_note || '') + (res.period ? (' 当前周期：' + cycleText + (res.period_auto_selected ? '（自动判定）' : '（手动指定）')) : '');
+    }
+    renderPortraitTrendMetricGroup('portrait-trend-core-metrics', [
+      { name: '高风险人数', series: ((res.metrics || {}).high_risk_people_trend || []), key: 'value' },
+      { name: '血压异常人数', series: ((res.metrics || {}).blood_pressure_abnormal_people_trend || []), key: 'value' },
+      { name: '血糖异常人数', series: ((res.metrics || {}).blood_sugar_abnormal_people_trend || []), key: 'value' },
+      { name: '睡眠异常人数', series: ((res.metrics || {}).sleep_abnormal_people_trend || []), key: 'value' }
+    ]);
+    var needTagRows = toList((res.metrics || {}).health_need_top_tag_trends).map(function (item) {
+      return { name: item.tag || '-', series: toList(item.series), key: 'count' };
+    });
+    renderPortraitTrendMetricGroup('portrait-trend-need-tags', needTagRows);
+    renderPortraitImprovementRateTrend('portrait-trend-improvement-rates', toList((res.metrics || {}).service_improvement_rate_trends));
+  }
+
+  function renderPortraitTrendMetricGroup(elId, rows) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var list = toList(rows).filter(function (row) { return toList(row.series).length; });
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#64748b">暂无趋势数据</p>';
+      return;
+    }
+    box.innerHTML = list.map(function (row) {
+      var values = toList(row.series).map(function (x) { return Number(x[row.key || 'value'] || 0); });
+      var maxValue = Math.max.apply(null, values.concat([1]));
+      var bars = toList(row.series).map(function (point) {
+        var val = Number(point[row.key || 'value'] || 0);
+        var ratio = Math.round((val / maxValue) * 100);
+        return '<div class="trend-bar"><div class="date">' + escapeHtml(point.period_label || '-') + '</div><div class="bar"><span style="width:' + ratio + '%"></span></div><div class="value">' + val + '</div></div>';
+      }).join('');
+      return '<div style="margin-bottom:12px"><h4 style="margin:0 0 6px;color:#334155">' + escapeHtml(row.name || '-') + '</h4>' + bars + '</div>';
+    }).join('');
+  }
+
+  function renderPortraitImprovementRateTrend(elId, rows) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var list = toList(rows).filter(function (item) { return toList(item.series).length; });
+    if (!list.length) {
+      box.innerHTML = '<p style="color:#64748b">暂无改善率趋势数据</p>';
+      return;
+    }
+    var header = '<tr><th>服务项目</th><th>周期趋势</th></tr>';
+    var body = list.map(function (item) {
+      var lines = toList(item.series).map(function (point) {
+        return '<span class="tag-item">' + escapeHtml(point.period_label || '-') + '：' + (point.improvement_rate_percent || 0) + '%（' + (point.improved_services || 0) + '/' + (point.total_services || 0) + '）</span>';
+      }).join('');
+      return '<tr><td>' + escapeHtml(item.service_project || '-') + '</td><td><div class="tag-cloud">' + lines + '</div></td></tr>';
+    }).join('');
+    box.innerHTML = '<div class="portrait-ranking-table-wrap"><table class="portrait-ranking-table"><thead>' + header + '</thead><tbody>' + body + '</tbody></table></div>';
   }
 
   function buildRiskReasonOverview(highRiskTop) {
@@ -3069,8 +3145,10 @@
   document.getElementById('btn-portrait-reset').addEventListener('click', function () {
     var start = document.getElementById('portrait-date-from');
     var end = document.getElementById('portrait-date-to');
+    var period = document.getElementById('portrait-trend-period');
     if (start) start.value = '';
     if (end) end.value = '';
+    if (period) period.value = 'auto';
     listState.portraitDrilldown.page = 1;
     loadPortraitPage();
   });
