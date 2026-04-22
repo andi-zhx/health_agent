@@ -78,15 +78,24 @@
     .health-item.full { width: 100%; overflow-x: auto; }
     .health-item .item-title { font-weight: 600; color: #111; margin-right: 4px; }
     .health-item input[type="text"], .health-item input[type="date"], .health-item select { min-width: 90px; }
-    .portrait-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: start; }
-    .portrait-panel { border: 1px solid #eee; border-radius: 8px; padding: 14px; }
-    .portrait-panel h3 { margin: 0 0 10px; font-size: 15px; }
+    .portrait-layout { display: flex; flex-direction: column; gap: 20px; }
+    .portrait-layer { border: 1px solid #e7edf5; border-radius: 12px; background: #fff; padding: 16px; }
+    .portrait-layer-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px dashed #dbe7f5; }
+    .portrait-layer-title { margin: 0; font-size: 17px; color: #0f172a; }
+    .portrait-layer-sub { color: #64748b; font-size: 12px; }
+    .portrait-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
+    .portrait-panel { grid-column: span 4; border: 1px solid #edf2f7; border-radius: 10px; padding: 14px; background: #fcfdff; }
+    .portrait-panel h3 { margin: 0 0 8px; font-size: 15px; color: #1e293b; }
+    .portrait-panel h4 { margin: 10px 0 8px; font-size: 13px; color: #334155; }
     .portrait-panel-wide { grid-column: 1 / -1; }
+    .portrait-panel-emphasis { border-color: #cde0ff; background: linear-gradient(180deg, #f8fbff 0%, #f2f7ff 100%); box-shadow: 0 6px 14px rgba(37, 99, 235, 0.08); }
+    .portrait-panel-half { grid-column: span 6; }
+    .portrait-panel-third { grid-column: span 4; }
     @media (max-width: 1200px) {
-      .portrait-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .portrait-panel, .portrait-panel-third { grid-column: span 6; }
     }
     @media (max-width: 900px) {
-      .portrait-grid { grid-template-columns: 1fr; }
+      .portrait-panel, .portrait-panel-half, .portrait-panel-third { grid-column: 1 / -1; }
     }
     .chart-row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
     .pie-svg, .donut-svg { width: 160px; height: 160px; }
@@ -117,6 +126,13 @@
     .compare-legend .female::before { background: #ffb6c1; }
     .portrait-risk-bars.hbar .label { width: 130px; color: #334155; }
     .portrait-risk-bars.hbar .value { width: 52px; color: #111827; }
+    .top-list { display: flex; flex-direction: column; gap: 8px; }
+    .top-item { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center; border: 1px solid #e5eaf2; border-radius: 8px; padding: 8px 10px; background: #fff; }
+    .top-rank { width: 22px; height: 22px; border-radius: 999px; background: #dbeafe; color: #1d4ed8; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px; }
+    .top-main { min-width: 0; }
+    .top-title { font-size: 13px; color: #0f172a; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-meta { font-size: 12px; color: #64748b; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-risk { font-weight: 700; color: #b91c1c; font-size: 12px; }
     .heatmap-wrap { overflow-x: auto; }
     .heatmap-table { border-collapse: collapse; min-width: 720px; width: 100%; }
     .heatmap-table th, .heatmap-table td { border: 1px solid #e2e8f0; padding: 8px; vertical-align: middle; text-align: center; font-size: 12px; }
@@ -700,64 +716,119 @@
           <div id="portrait-msg"></div>
           <div id="portrait-caliber-note" style="font-size:12px;color:#64748b;margin:6px 0 10px"></div>
           <div id="portrait-missing-warning" style="font-size:12px;color:#b45309;margin:0 0 10px"></div>
-          <h3>关键健康异常指标</h3>
-          <div id="portrait-abnormal-kpi-cards" class="kpi-row"></div>
-          <div class="portrait-grid">
-            <div class="portrait-panel">
-              <h3>维度1：人口学属性画像（基础分层）</h3>
-              <div id="portrait-kpi-cards" class="kpi-row"></div>
-              <div class="chart-row">
-                <div id="portrait-gender-pie"></div>
-                <div id="portrait-gender-legend" class="legend"></div>
+          <div class="portrait-layout">
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">1. 人群概览</h3>
+                <div class="portrait-layer-sub">基础样本 + 结构分布 + 异常总览</div>
               </div>
-              <h4>年龄段男女人数对比</h4>
-              <div id="portrait-age-gender-bars" class="vbar-compare" style="margin-top:12px"></div>
-              <div class="chart-row" style="margin-top:12px">
-                <div id="portrait-bmi-pie"></div>
-                <div id="portrait-bmi-legend" class="legend"></div>
+              <div id="portrait-abnormal-kpi-cards" class="kpi-row"></div>
+              <div class="portrait-grid">
+                <div class="portrait-panel portrait-panel-third">
+                  <h3>总样本与关键指标</h3>
+                  <div id="portrait-kpi-cards" class="kpi-row"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-third">
+                  <h3>性别分布</h3>
+                  <div class="chart-row">
+                    <div id="portrait-gender-pie"></div>
+                    <div id="portrait-gender-legend" class="legend"></div>
+                  </div>
+                </div>
+                <div class="portrait-panel portrait-panel-third">
+                  <h3>BMI分布</h3>
+                  <div class="chart-row">
+                    <div id="portrait-bmi-pie"></div>
+                    <div id="portrait-bmi-legend" class="legend"></div>
+                  </div>
+                </div>
+                <div class="portrait-panel portrait-panel-wide">
+                  <h3>年龄分布（含性别对比）</h3>
+                  <div id="portrait-age-distribution" class="hbar"></div>
+                  <div id="portrait-age-gender-bars" class="vbar-compare" style="margin-top:12px"></div>
+                </div>
               </div>
-            </div>
-            <div class="portrait-panel">
-              <h3>维度2：疾病风险与遗传画像（核心）</h3>
-              <h4>过去确诊疾病（Top10）</h4>
-              <div id="portrait-disease-top10" class="hbar"></div>
-              <h4>家族病史（Top10）</h4>
-              <div id="portrait-family-top10" class="hbar"></div>
-              <h4>近期症状（近半年）</h4>
-              <div id="portrait-recent-symptom-bars" class="hbar"></div>
-              <h4>风险分层人数</h4>
-              <div id="portrait-high-risk-kpi" class="kpi-row"></div>
-            </div>
-            <div class="portrait-panel">
-              <h3>维度3：生活方式行为画像（可干预）</h3>
-              <div id="portrait-habit-kpi" class="kpi-row"></div>
-              <h4>行为风险指标（占比）</h4>
-              <div id="portrait-habit-risk-bars" class="hbar portrait-risk-bars"></div>
-              <h4>运动方式</h4>
-              <div id="portrait-exercise-top10" class="hbar"></div>
-              <h4>健康服务需求</h4>
-              <div id="portrait-needs-top10" class="hbar"></div>
-            </div>
-            <div class="portrait-panel portrait-panel-wide">
-              <h3>维度4：干部健康改善情况</h3>
-              <h4>服务闭环漏斗分析（建档→改善）</h4>
-              <div id="portrait-service-funnel" class="service-funnel"></div>
-            </div>
-            <div class="portrait-panel portrait-panel-wide">
-              <h4>维度5：改善状态分层（按服务项目）</h4>
-              <div id="portrait-improvement-stacked"></div>
-              <h4>服务项目改善率排行榜</h4>
-              <div class="portrait-ranking-head">
-                <div style="color:#64748b;font-size:12px">比较不同服务项目的改善效果（明显改善 + 部分改善）/ 总服务次数</div>
-                <label>排序方式
-                  <select id="portrait-improvement-ranking-sort" style="width:170px">
-                    <option value="improvement_rate">按改善率</option>
-                    <option value="total_services">按总服务次数</option>
-                  </select>
-                </label>
+            </section>
+
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">2. 风险分层</h3>
+                <div class="portrait-layer-sub">风险等级 + 高风险名单 + 风险原因</div>
               </div>
-              <div id="portrait-improvement-ranking"></div>
-            </div>
+              <div class="portrait-grid">
+                <div class="portrait-panel portrait-panel-third">
+                  <h3>风险等级分布</h3>
+                  <div id="portrait-risk-distribution" class="hbar"></div>
+                  <div id="portrait-high-risk-kpi" class="kpi-row" style="margin-top:10px"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-third portrait-panel-emphasis">
+                  <h3>高风险客户 Top</h3>
+                  <div id="portrait-high-risk-top" class="top-list"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-third">
+                  <h3>风险原因概览（Top10）</h3>
+                  <div id="portrait-risk-reasons" class="hbar"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">3. 行为与需求分析</h3>
+                <div class="portrait-layer-sub">行为习惯 + 既往病史 + 家族史 + 症状 + 服务需求</div>
+              </div>
+              <div class="portrait-grid">
+                <div class="portrait-panel portrait-panel-half">
+                  <h3>吸烟 / 饮酒 / 睡眠 / 运动</h3>
+                  <div id="portrait-habit-kpi" class="kpi-row"></div>
+                  <div id="portrait-habit-risk-bars" class="hbar portrait-risk-bars"></div>
+                  <h4>运动方式 Top10</h4>
+                  <div id="portrait-exercise-top10" class="hbar"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-half">
+                  <h3>既往病史（Top10）</h3>
+                  <div id="portrait-disease-top10" class="hbar"></div>
+                  <h4>家族史（Top10）</h4>
+                  <div id="portrait-family-top10" class="hbar"></div>
+                  <h4>近期症状（近半年）</h4>
+                  <div id="portrait-recent-symptom-bars" class="hbar"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-wide">
+                  <h3>健康需求 Top10</h3>
+                  <div id="portrait-needs-top10" class="hbar"></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">4. 干预与改善效果</h3>
+                <div class="portrait-layer-sub">服务漏斗 + 改善矩阵 + 改善率排行</div>
+              </div>
+              <div class="portrait-grid">
+                <div class="portrait-panel portrait-panel-wide portrait-panel-emphasis">
+                  <h3>服务漏斗（建档 → 改善）</h3>
+                  <div id="portrait-service-funnel" class="service-funnel"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-half">
+                  <h3>改善矩阵（按服务项目）</h3>
+                  <div id="portrait-improvement-stacked"></div>
+                </div>
+                <div class="portrait-panel portrait-panel-half portrait-panel-emphasis">
+                  <h3>项目改善率排行</h3>
+                  <div class="portrait-ranking-head">
+                    <div style="color:#64748b;font-size:12px">（明显改善 + 部分改善）/ 总服务次数</div>
+                    <label>排序方式
+                      <select id="portrait-improvement-ranking-sort" style="width:170px">
+                        <option value="improvement_rate">按改善率</option>
+                        <option value="total_services">按总服务次数</option>
+                      </select>
+                    </label>
+                  </div>
+                  <div id="portrait-improvement-ranking"></div>
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>

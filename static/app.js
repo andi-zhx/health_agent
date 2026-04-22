@@ -1950,35 +1950,46 @@
         showMsg('portrait-msg', res.error, true);
         return;
       }
-      var d1 = res.dimension1 || {};
-      var d2 = res.dimension2 || {};
-      var d3 = res.dimension3 || {};
-      var meta = res.meta || {};
-      var abnormalIndicators = toList(res.abnormal_indicators);
       var scopeText = (res.filter_applied ? '按所选时间范围' : '按全量最新档案');
+      var meta = res.meta || {};
       showMsg('portrait-msg', '已' + scopeText + '生成画像，当前统计样本量：' + ((meta.sample_size != null ? meta.sample_size : res.total_customers) || 0) + ' 人');
-      var noteBox = document.getElementById('portrait-caliber-note');
-      if (noteBox) noteBox.textContent = (res.sampling_note || '') + ((meta.indicator_caliber_note ? '；' + meta.indicator_caliber_note : ''));
-      var missingWarningEl = document.getElementById('portrait-missing-warning');
-      var missingList = [];
-      var missingRateSummary = meta.missing_rate_summary || {};
-      var missingLabelMap = {
-        bmi: 'BMI',
-        blood_pressure: '血压',
-        blood_lipid: '血脂',
-        blood_sugar: '血糖',
-        sleep: '睡眠'
-      };
-      Object.keys(missingLabelMap).forEach(function (key) {
-        var info = missingRateSummary[key] || {};
-        if ((info.missing_rate || 0) >= 30) {
-          missingList.push(missingLabelMap[key] + '缺失率' + (info.missing_rate || 0) + '%');
-        }
-      });
-      if (missingWarningEl) {
-        missingWarningEl.textContent = missingList.length ? ('提示：当前数据完整性较低（' + missingList.join('；') + '），相关异常率解读请结合分母人数。') : '';
+      renderPortraitMeta(res);
+      renderPortraitOverviewLayer(res);
+      renderPortraitRiskLayer(res);
+      renderPortraitBehaviorLayer(res);
+      renderPortraitInterventionLayer(res);
+    });
+  }
+
+  function renderPortraitMeta(res) {
+    var meta = res.meta || {};
+    var noteBox = document.getElementById('portrait-caliber-note');
+    if (noteBox) noteBox.textContent = (res.sampling_note || '') + ((meta.indicator_caliber_note ? '；' + meta.indicator_caliber_note : ''));
+    var missingWarningEl = document.getElementById('portrait-missing-warning');
+    var missingList = [];
+    var missingRateSummary = meta.missing_rate_summary || {};
+    var missingLabelMap = {
+      bmi: 'BMI',
+      blood_pressure: '血压',
+      blood_lipid: '血脂',
+      blood_sugar: '血糖',
+      sleep: '睡眠'
+    };
+    Object.keys(missingLabelMap).forEach(function (key) {
+      var info = missingRateSummary[key] || {};
+      if ((info.missing_rate || 0) >= 30) {
+        missingList.push(missingLabelMap[key] + '缺失率' + (info.missing_rate || 0) + '%');
       }
-      renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
+    });
+    if (missingWarningEl) {
+      missingWarningEl.textContent = missingList.length ? ('提示：当前数据完整性较低（' + missingList.join('；') + '），相关异常率解读请结合分母人数。') : '';
+    }
+  }
+
+  function renderPortraitOverviewLayer(res) {
+    var d1 = res.dimension1 || {};
+    var abnormalIndicators = toList(res.abnormal_indicators);
+    renderKpiCards('portrait-abnormal-kpi-cards', abnormalIndicators.map(function (item) {
         return {
           name: item.name || '-',
           value: (item.count || 0) + '人 | ' + (item.ratio || 0) + '% | 分母' + (item.denominator || 0) + '人'
@@ -1996,64 +2007,118 @@
           if (metric) openPortraitDrilldown(item.name || '异常明细', metric, '');
         }
       });
-      renderKpiCards('portrait-kpi-cards', [
-        { name: '总人数', value: (d1.cards || {}).total_people || 0 },
-        { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%（分母' + ((d1.cards || {}).bmi_abnormal_denominator || 0) + '人）' },
-        { name: '66岁以上占比', value: ((d1.cards || {}).senior_ratio || 0) + '%' }
-      ]);
-      renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
-      renderLegend('portrait-gender-legend', toList(d1.gender_distribution));
-      renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution), {
-        onClick: function (ageGroup) {
-          if (ageGroup) openPortraitDrilldown('年龄段：' + ageGroup, 'age_group', ageGroup);
-        }
-      });
-      renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
-      renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
-      renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', {
+    renderKpiCards('portrait-kpi-cards', [
+      { name: '总样本', value: (d1.cards || {}).total_people || 0 },
+      { name: 'BMI异常率', value: ((d1.cards || {}).bmi_abnormal_rate || 0) + '%（分母' + ((d1.cards || {}).bmi_abnormal_denominator || 0) + '人）' },
+      { name: '66岁以上占比', value: ((d1.cards || {}).senior_ratio || 0) + '%' }
+    ]);
+    renderCircleChart('portrait-gender-pie', toList(d1.gender_distribution), false);
+    renderLegend('portrait-gender-legend', toList(d1.gender_distribution));
+    renderCircleChart('portrait-bmi-pie', toList(d1.bmi_distribution), false);
+    renderLegend('portrait-bmi-legend', toList(d1.bmi_distribution));
+    renderHorizontalBars('portrait-age-distribution', toList(d1.age_distribution), '#7c3aed');
+    renderAgeGenderCompare('portrait-age-gender-bars', toList(d1.age_gender_distribution), {
+      onClick: function (ageGroup) {
+        if (ageGroup) openPortraitDrilldown('年龄段：' + ageGroup, 'age_group', ageGroup);
+      }
+    });
+  }
+
+  function renderPortraitRiskLayer(res) {
+    var d2 = res.dimension2 || {};
+    var highRiskTop = toList(res.high_risk_customers_top);
+    renderHorizontalBars('portrait-risk-distribution', toList(d2.risk_distribution), '#ef4444');
+    renderKpiCards('portrait-high-risk-kpi', [
+      { name: '低风险人数', value: ((res.high_risk_summary || {}).low || 0) + '人' },
+      { name: '中风险人数', value: ((res.high_risk_summary || {}).medium || 0) + '人' },
+      { name: '高风险人数', value: ((res.high_risk_summary || {}).high || 0) + '人' }
+    ], {
+      onClick: function (item) {
+        if ((item.name || '') === '高风险人数') openPortraitDrilldown('高风险客户', 'high_risk', '');
+      }
+    });
+    renderHighRiskTopList('portrait-high-risk-top', highRiskTop);
+    renderHorizontalBars('portrait-risk-reasons', buildRiskReasonOverview(highRiskTop), '#f97316', { maxItems: 10 });
+  }
+
+  function renderPortraitBehaviorLayer(res) {
+    var d2 = res.dimension2 || {};
+    var d3 = res.dimension3 || {};
+    renderHorizontalBars('portrait-disease-top10', toList(d2.past_disease_distribution), '#f59e0b', {
         maxItems: 10,
         onClick: function (item) {
           if (item && item.name) openPortraitDrilldown('既往病史：' + item.name, 'past_history_tag', item.name);
         }
       });
-      renderHorizontalBars('portrait-family-top10', toList(d2.family_history_distribution), '#fb7185', { maxItems: 10 });
-      renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
-      renderKpiCards('portrait-high-risk-kpi', [
-        { name: '低风险人数', value: ((res.high_risk_summary || {}).low || 0) + '人' },
-        { name: '中风险人数', value: ((res.high_risk_summary || {}).medium || 0) + '人' },
-        { name: '高风险人数', value: ((res.high_risk_summary || {}).high || 0) + '人' }
-      ], {
-        onClick: function (item) {
-          if ((item.name || '') === '高风险人数') openPortraitDrilldown('高风险客户', 'high_risk', '');
-        }
-      });
-
-      renderKpiCards('portrait-habit-kpi', [
-        { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
-        { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
-        { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%（分母' + (d3.sleep_abnormal_denominator || 0) + '人）' },
-        { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%（分母' + (d3.poor_sleep_quality_denominator || 0) + '人）' },
-        { name: '烟酒叠加占比', value: (d3.smoking_drinking_ratio || 0) + '%' }
-      ]);
-      renderHorizontalBars('portrait-habit-risk-bars', [
-        { name: '吸烟', value: d3.smoking_ratio || 0 },
-        { name: '饮酒', value: d3.drinking_ratio || 0 },
-        { name: '睡眠异常', value: d3.sleep_abnormal_ratio || 0 },
-        { name: '睡眠质量差', value: d3.poor_sleep_quality_ratio || 0 },
-        { name: '烟酒叠加', value: d3.smoking_drinking_ratio || 0 }
-      ].map(function (item) {
-        return { name: item.name, count: item.value };
-      }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
-      renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
-      renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9', {
+    renderHorizontalBars('portrait-family-top10', toList(d2.family_history_distribution), '#fb7185', { maxItems: 10 });
+    renderHorizontalBars('portrait-recent-symptom-bars', toList(d2.recent_symptom_distribution), '#0ea5e9');
+    renderKpiCards('portrait-habit-kpi', [
+      { name: '吸烟占比', value: (d3.smoking_ratio || 0) + '%' },
+      { name: '饮酒占比', value: (d3.drinking_ratio || 0) + '%' },
+      { name: '睡眠异常占比', value: (d3.sleep_abnormal_ratio || 0) + '%（分母' + (d3.sleep_abnormal_denominator || 0) + '人）' },
+      { name: '睡眠质量差占比', value: (d3.poor_sleep_quality_ratio || 0) + '%（分母' + (d3.poor_sleep_quality_denominator || 0) + '人）' },
+      { name: '烟酒叠加占比', value: (d3.smoking_drinking_ratio || 0) + '%' }
+    ]);
+    renderHorizontalBars('portrait-habit-risk-bars', [
+      { name: '吸烟', value: d3.smoking_ratio || 0 },
+      { name: '饮酒', value: d3.drinking_ratio || 0 },
+      { name: '睡眠异常', value: d3.sleep_abnormal_ratio || 0 },
+      { name: '睡眠质量差', value: d3.poor_sleep_quality_ratio || 0 },
+      { name: '烟酒叠加', value: d3.smoking_drinking_ratio || 0 }
+    ].map(function (item) {
+      return { name: item.name, count: item.value };
+    }), '#6366f1', { valueSuffix: '%', maxItems: 5 });
+    renderHorizontalBars('portrait-exercise-top10', toList(d3.exercise_top10), '#16a085');
+    renderHorizontalBars('portrait-needs-top10', toList(d3.health_needs_top10), '#2980b9', {
         onClick: function (item) {
           if (item && item.name) openPortraitDrilldown('健康需求：' + item.name, 'health_need_tag', item.name);
         }
       });
-      renderServiceFunnelCards('portrait-service-funnel', toList((res.dimension4 || {}).service_funnel));
-      renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
-      portraitImprovementRankingRaw = toList((res.dimension4 || {}).improvement_project_ranking);
-      renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, (document.getElementById('portrait-improvement-ranking-sort') || {}).value || 'improvement_rate');
+  }
+
+  function renderPortraitInterventionLayer(res) {
+    renderServiceFunnelCards('portrait-service-funnel', toList((res.dimension4 || {}).service_funnel));
+    renderImprovementStackedBars('portrait-improvement-stacked', toList((res.dimension4 || {}).improvement_matrix));
+    portraitImprovementRankingRaw = toList((res.dimension4 || {}).improvement_project_ranking);
+    renderImprovementProjectRanking('portrait-improvement-ranking', portraitImprovementRankingRaw, (document.getElementById('portrait-improvement-ranking-sort') || {}).value || 'improvement_rate');
+  }
+
+  function buildRiskReasonOverview(highRiskTop) {
+    var counter = {};
+    toList(highRiskTop).forEach(function (row) {
+      toList(row.risk_reasons).forEach(function (reason) {
+        var key = String(reason || '').trim();
+        if (!key) return;
+        if (!counter[key]) counter[key] = 0;
+        counter[key] += 1;
+      });
+    });
+    return Object.keys(counter).map(function (key) {
+      return { name: key, count: counter[key] };
+    }).sort(function (a, b) { return b.count - a.count; });
+  }
+
+  function renderHighRiskTopList(elId, list) {
+    var box = document.getElementById(elId);
+    if (!box) return;
+    var rows = toList(list).slice(0, 8);
+    if (!rows.length) {
+      box.innerHTML = '<p style="color:#666">暂无高风险客户</p>';
+      return;
+    }
+    box.innerHTML = rows.map(function (item, idx) {
+      var reasons = toList(item.risk_reasons).slice(0, 2).join('、') || '无';
+      return '<div class="top-item" data-risk-customer="' + escapeHtml(item.customer_id || '') + '">' +
+        '<div class="top-rank">' + (idx + 1) + '</div>' +
+        '<div class="top-main"><div class="top-title">' + escapeHtml(item.customer_name || ('客户' + (idx + 1))) + '</div>' +
+        '<div class="top-meta">风险因子：' + escapeHtml(reasons) + '</div></div>' +
+        '<div class="top-risk">高风险</div>' +
+      '</div>';
+    }).join('');
+    box.querySelectorAll('[data-risk-customer]').forEach(function (el) {
+      el.addEventListener('click', function () {
+        openPortraitDrilldown('高风险客户明细', 'high_risk', '');
+      });
     });
   }
 
