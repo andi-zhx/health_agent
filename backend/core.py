@@ -210,6 +210,138 @@ def ensure_columns(cursor, table_name, columns):
             cursor.execute(f'ALTER TABLE {table_name} ADD COLUMN {col} {col_type}')
 
 
+def ensure_query_indexes(cursor):
+    """为核心查询场景补充必要索引，并清理已知历史重复索引。"""
+    # 历史版本可能存在命名不规范但列相同的索引，先做幂等清理。
+    legacy_indexes = [
+        'idx_ha_customer_date',
+        'idx_appointments_customer_date',
+        'idx_appointments_equipment_date',
+        'idx_home_appointments_customer_date',
+        'idx_home_appointments_staff_date',
+        'idx_improvement_customer_time',
+        'idx_improvement_project_status',
+        'idx_audit_created_at',
+        'idx_audit_operator_time',
+    ]
+    for index_name in legacy_indexes:
+        cursor.execute(f'DROP INDEX IF EXISTS {index_name}')
+
+    # 1) 健康评估：按 customer_id + assessment_date 取最新。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_health_assessments_customer_date_id
+        ON health_assessments(customer_id, assessment_date DESC, id DESC)
+        '''
+    )
+
+    # 2) 门店预约：冲突校验（客户/设备 + 日期 + 状态 + 时间重叠）。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_appointments_conflict_customer
+        ON appointments(customer_id, appointment_date, status, start_time, end_time)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_appointments_conflict_equipment
+        ON appointments(equipment_id, appointment_date, status, start_time, end_time)
+        WHERE equipment_id IS NOT NULL
+        '''
+    )
+
+    # 3) 门店预约：列表分页与日期筛选（含按时间倒序）。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_appointments_list_date_time
+        ON appointments(appointment_date DESC, start_time DESC, id DESC)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_appointments_status_customer
+        ON appointments(status, customer_id)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_appointments_checkin_customer
+        ON appointments(checkin_status, customer_id)
+        '''
+    )
+
+    # 4) 上门预约：冲突校验（客户/人员 + 日期 + 状态 + 时间重叠）。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_home_appointments_conflict_customer
+        ON home_appointments(customer_id, appointment_date, status, start_time, end_time)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_home_appointments_conflict_staff
+        ON home_appointments(staff_id, appointment_date, status, start_time, end_time)
+        WHERE staff_id IS NOT NULL
+        '''
+    )
+
+    # 5) 上门预约：列表分页与日期筛选。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_home_appointments_list_date_time
+        ON home_appointments(appointment_date DESC, start_time DESC, id DESC)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_home_appointments_status_customer
+        ON home_appointments(status, customer_id)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_home_appointments_checkin_customer
+        ON home_appointments(checkin_status, customer_id)
+        '''
+    )
+
+    # 6) 改善记录：按客户、项目、状态、服务时间查询与列表排序。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_improvement_records_customer_time
+        ON service_improvement_records(customer_id, service_time DESC, id DESC)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_improvement_records_project_status_time
+        ON service_improvement_records(service_project, improvement_status, service_time DESC, id DESC)
+        '''
+    )
+    # pending-fill 的 NOT EXISTS 关联键。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_improvement_records_service_ref
+        ON service_improvement_records(service_type, service_id)
+        WHERE service_id IS NOT NULL
+        '''
+    )
+
+    # 7) 审计日志：时间范围、操作人筛选 + 时间倒序分页。
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_created_id
+        ON audit_logs(created_at DESC, id DESC)
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_username_created
+        ON audit_logs(username, created_at DESC, id DESC)
+        '''
+    )
+
+
 def normalize_appointment_status_data(cursor, table_name):
     cursor.execute(f"UPDATE {table_name} SET status='scheduled' WHERE LOWER(COALESCE(status,'')) NOT IN ('scheduled','cancelled','completed')")
     cursor.execute(f"UPDATE {table_name} SET checkin_status='pending' WHERE LOWER(COALESCE(status,''))='scheduled' AND LOWER(COALESCE(checkin_status,'')) IN ('', 'none')")
@@ -2499,6 +2631,7 @@ def init_db():
             )
 
     purge_legacy_equipment_and_store_massage(c)
+    ensure_query_indexes(c)
 
     conn.commit()
     conn.close()

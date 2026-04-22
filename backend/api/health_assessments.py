@@ -28,10 +28,10 @@ def api_health_assessments_list():
         sql += ' AND (c.name LIKE ? OR c.phone LIKE ?)'
         params.extend([f'%{search}%', f'%{search}%'])
     if date_from:
-        sql += ' AND date(h.assessment_date) >= date(?)'
+        sql += ' AND h.assessment_date >= ?'
         params.append(date_from)
     if date_to:
-        sql += ' AND date(h.assessment_date) <= date(?)'
+        sql += ' AND h.assessment_date <= ?'
         params.append(date_to)
     c.execute(f'SELECT COUNT(*) as n {sql}', params)
     total = c.fetchone()['n']

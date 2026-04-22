@@ -39,10 +39,10 @@ def api_home_appointments_list():
         base_sql += ' AND (COALESCE(h.customer_name, c.name) LIKE ? OR COALESCE(h.phone, c.phone) LIKE ?)'
         params.extend([like, like])
     if date_from:
-        base_sql += ' AND date(h.appointment_date) >= date(?)'
+        base_sql += ' AND h.appointment_date >= ?'
         params.append(date_from)
     if date_to:
-        base_sql += ' AND date(h.appointment_date) <= date(?)'
+        base_sql += ' AND h.appointment_date <= ?'
         params.append(date_to)
     c.execute(f'SELECT COUNT(*) as n {base_sql}', params)
     total = c.fetchone()['n']
@@ -481,5 +481,4 @@ def api_home_appointments_update(hid):
     conn.close()
     audit_log('修改上门预约', 'home_appointments', hid, d.get('appointment_date'))
     return success_response({'id': hid}, '更新成功')
-
 

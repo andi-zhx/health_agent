@@ -534,11 +534,11 @@ def api_dashboard_health_portrait():
         '''
         SELECT DISTINCT customer_id
         FROM appointments
-        WHERE LOWER(COALESCE(status, '')) <> 'cancelled'
+        WHERE COALESCE(status, 'scheduled') <> 'cancelled'
         UNION
         SELECT DISTINCT customer_id
         FROM home_appointments
-        WHERE LOWER(COALESCE(status, '')) <> 'cancelled'
+        WHERE COALESCE(status, 'scheduled') <> 'cancelled'
         '''
     )
     booked_customer_ids = {safe_int(row['customer_id']) for row in c.fetchall() if safe_int(row['customer_id']) is not None}
@@ -548,11 +548,11 @@ def api_dashboard_health_portrait():
         '''
         SELECT DISTINCT customer_id
         FROM appointments
-        WHERE LOWER(COALESCE(checkin_status, ''))='checked_in'
+        WHERE COALESCE(checkin_status, 'pending')='checked_in'
         UNION
         SELECT DISTINCT customer_id
         FROM home_appointments
-        WHERE LOWER(COALESCE(checkin_status, ''))='checked_in'
+        WHERE COALESCE(checkin_status, 'pending')='checked_in'
         '''
     )
     checked_in_customer_ids = {safe_int(row['customer_id']) for row in c.fetchall() if safe_int(row['customer_id']) is not None}
