@@ -452,7 +452,7 @@
             <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="health">健康档案</button>
             <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="appointments">预约服务记录</button>
             <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="home_appointments">上门预约记录</button>
-            <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="improvement">改善记录</button>
+            <button type="button" class="integrated-tab-btn" data-integrated-tab-btn="improvement">理疗记录</button>
           </div>
           <div class="integrated-section" data-integrated-tab-panel="basic">
             <div class="integrated-section-head">
@@ -491,7 +491,7 @@
           </div>
           <div class="integrated-section hide" data-integrated-tab-panel="improvement">
             <div class="integrated-section-head">
-              <h3>健康改善记录</h3>
+              <h3>理疗记录</h3>
               <div><input type="number" id="export-limit-improvement" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="improvement">下载</button></div>
             </div>
             <table><thead><tr><th>客户</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>操作</th></tr></thead><tbody id="integrated-improvement-list"></tbody></table>
@@ -544,8 +544,8 @@
                 </div>
               </div>
               <div class="base-info-item base-info-item-full">
-                <label>身份证</label>
-                <input type="text" id="ha-id-card" maxlength="18" placeholder="可选填写">
+                <label>身份证<span class="required-mark">*</span></label>
+                <input type="text" id="ha-id-card" maxlength="18" placeholder="请输入身份证号">
               </div>
               <div class="base-info-item">
                 <label>电话<span class="required-mark">*</span></label>
