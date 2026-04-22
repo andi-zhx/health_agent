@@ -115,8 +115,8 @@ def api_search():
     result = {}
 
     if kind in ('all', 'customers'):
-        c.execute('SELECT * FROM customers WHERE is_deleted=0 AND (name LIKE ? OR id_card LIKE ? OR phone LIKE ? OR email LIKE ? OR address LIKE ?) ORDER BY created_at DESC LIMIT 100',
-                  (like, like, like, like, like))
+        c.execute('SELECT * FROM customers WHERE is_deleted=0 AND (name LIKE ? OR id_card LIKE ? OR phone LIKE ? OR address LIKE ?) ORDER BY created_at DESC LIMIT 100',
+                  (like, like, like, like))
         result['customers'] = row_list(c.fetchall())
 
     if kind in ('all', 'health'):
