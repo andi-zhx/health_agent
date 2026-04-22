@@ -20,7 +20,7 @@
 
 ## 2. 技术栈与运行环境
 
-- **后端**：Python 3.8+、Flask 3.x
+- **后端**：Python 3.8+、Flask 3.x（模块化蓝图结构）
 - **数据库**：SQLite（默认 `medical_system.db`）
 - **前端**：`static/index.html` + `static/app.js`（无前端构建流程）
 - **数据导出**：pandas + openpyxl
@@ -165,7 +165,21 @@ python app.py
 
 ```text
 health_agent/
-├─ app.py                              # Flask 主程序（路由、数据库初始化、业务逻辑）
+├─ app.py                              # Flask 入口（创建应用、注册蓝图）
+├─ backend/
+│  ├─ core.py                          # 数据库初始化、通用钩子、中间逻辑
+│  └─ api/
+│     ├─ auth.py                       # 登录与密码更新
+│     ├─ customers.py                  # 客户档案接口
+│     ├─ health_assessments.py         # 健康评估接口
+│     ├─ appointments.py               # 门店预约接口
+│     ├─ home_appointments.py          # 上门预约接口
+│     ├─ improvement_records.py        # 服务改进记录接口
+│     ├─ dashboard.py                  # 首页看板接口
+│     ├─ system.py                     # 设备/项目/人员与系统配置接口
+│     ├─ system_misc.py                # 其他系统接口（备份等）
+│     ├─ export.py                     # 导出接口
+│     └─ audit_logs.py                 # 审计日志接口
 ├─ launch.py                           # 桌面启动器（自动打开浏览器 + GUI 提示）
 ├─ seed_sample_data.py                 # 清理旧业务数据并生成 50 位客户全链路样本
 ├─ requirements.txt                    # Python 依赖
@@ -203,9 +217,9 @@ health_agent/
 
 ---
 
-## 8. 生成测试样本数据（50位客户，全表单覆盖）
+## 8. 生成测试样本数据（50位客户，全链路覆盖）
 
-为便于联调和功能测试，项目内置脚本 `seed_sample_data.py`，可执行以下动作：
+为便于联调和功能测试，项目内置脚本 `seed_sample_data.py`，会基于 `backend/core.py` 的最新数据结构执行：
 
 1. 清理历史业务数据（客户、健康评估、健康记录、到访签到、门店预约、上门预约、服务改进、改进附件等）；
 2. 重新生成 **50 位客户** 的完整测试样本；
@@ -215,6 +229,8 @@ health_agent/
    - 理疗/服务改进记录（`service_improvement_records`）
    - 健康评估、健康记录、签到及附件记录等。
 
+脚本执行前会自动调用 `init_db()`，确保基础主数据（`therapy_projects`、`equipment`、`staff`）已初始化；若基础数据缺失会直接报错提醒。
+
 执行命令：
 
 ```bash
@@ -222,6 +238,8 @@ python seed_sample_data.py
 ```
 
 脚本会输出各业务表最终记录数，便于快速校验。
+
+> 提示：脚本会清空业务数据表，请勿在生产环境直接执行。
 
 > 说明：为避免代码评审平台对二进制文件的限制，建议仅提交脚本与文档，不提交 `medical_system.db` 的二进制差异；开发/测试环境请本地执行上述命令生成样本数据。
 

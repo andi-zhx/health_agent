@@ -5,7 +5,7 @@ import random
 import sqlite3
 from datetime import datetime, timedelta
 
-from app import DB_PATH, init_db
+from backend.core import DB_PATH, init_db, now_local
 
 SAMPLE_CUSTOMER_COUNT = 50
 RANDOM_SEED = 20260415
@@ -155,11 +155,11 @@ IMPROVEMENT_STATUS_OPTIONS = ['持续改善', '波动改善', '需持续跟进',
 
 
 def fmt_day(offset_days: int) -> str:
-    return (datetime.now() - timedelta(days=offset_days)).strftime('%Y-%m-%d')
+    return (now_local() - timedelta(days=offset_days)).strftime('%Y-%m-%d')
 
 
 def fmt_ts(offset_days: int, hour: int, minute: int) -> str:
-    dt = datetime.now() - timedelta(days=offset_days)
+    dt = now_local() - timedelta(days=offset_days)
     return dt.replace(hour=hour, minute=minute, second=0, microsecond=0).strftime('%Y-%m-%d %H:%M:%S')
 
 
@@ -226,7 +226,7 @@ def seed_samples() -> dict:
         name = random.choice(LAST_NAMES) + random.choice(FIRST_NAMES)
         gender = '男' if idx % 2 else '女'
         age = random.randint(28, 76)
-        birth_year = datetime.now().year - age
+        birth_year = now_local().year - age
         birth_date = f'{birth_year}-{random.randint(1, 12):02d}-{random.randint(1, 28):02d}'
         id_card = f'11010119{random.randint(60, 99):02d}{random.randint(1, 12):02d}{random.randint(1, 28):02d}{idx:04d}'
         phone = f'13{random.randint(100000000, 999999999)}'
