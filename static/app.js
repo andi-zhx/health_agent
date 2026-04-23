@@ -306,6 +306,7 @@
   var customerEditSnapshot = null;
   var selectedHealthDetailId = '';
   var editingHealthSnapshot = null;
+  var healthFormMode = 'create';
   var appointmentEditId = null;
   var appointmentSlotPanel = null;
   var selectedAppointmentSlot = null;
@@ -761,6 +762,7 @@
 
   function clearHealthEditState() {
     editingHealthSnapshot = null;
+    healthFormMode = 'create';
     setHealthEditMode(false);
   }
 
@@ -1121,14 +1123,14 @@
     var qs = [
       'page=' + listState.health.page,
       'page_size=' + listState.health.page_size,
-      'sort_by=date_desc'
+      'sort_by=name_asc'
     ];
     if (q) qs.push('search=' + encodeURIComponent(q));
     get('/api/health-assessments?' + qs.join('&')).then(function (list) {
       var tbody = document.getElementById('health-list');
       tbody.innerHTML = toList(list).map(function (h) {
         var diagnosed = h.past_medical_history && String(h.past_medical_history).trim() ? '是' : '否';
-        return '<tr><td>' + (h.customer_name || '') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + diagnosed + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-health-edit="' + h.id + '">编辑</button> <button class="btn btn-small btn-primary" data-health-improvement-customer="' + h.customer_id + '">查看改善记录</button></td></tr>';
+        return '<tr><td>' + (h.customer_name || '') + '</td><td>' + (h.assessment_date || '-') + '</td><td>' + (h.age == null ? '-' : h.age) + '</td><td>' + diagnosed + '</td><td>' + (h.recent_symptoms || '-') + '</td><td>' + (h.sleep_quality || '-') + '</td><td><button class="btn btn-small btn-secondary" data-health-detail="' + h.id + '">详细信息</button> <button class="btn btn-small btn-primary" data-health-edit="' + h.id + '">编辑</button> <button class="btn btn-small btn-primary" data-health-update="' + h.id + '">更新</button> <button class="btn btn-small btn-primary" data-health-improvement-customer="' + h.customer_id + '">查看改善记录</button></td></tr>';
       }).join('');
       tbody.querySelectorAll('[data-health-detail]').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -1144,14 +1146,31 @@
               get('/api/customers/' + data.customer_id).then(function (customer) {
                 var merged = Object.assign({}, data || {}, customer || {});
                 editingHealthSnapshot = merged && merged.id ? JSON.parse(JSON.stringify(merged)) : null;
+                healthFormMode = 'edit';
                 setHealthEditMode(!!(merged && merged.id));
                 fillHealthForm(merged);
               });
               return;
             }
             editingHealthSnapshot = data && data.id ? JSON.parse(JSON.stringify(data)) : null;
+            healthFormMode = 'edit';
             setHealthEditMode(!!(data && data.id));
             fillHealthForm(data || {});
+          });
+        });
+      });
+      tbody.querySelectorAll('[data-health-update]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          get('/api/health-assessments/' + btn.dataset.healthUpdate).then(function (data) {
+            if (!data || !data.id) return;
+            var nextData = Object.assign({}, data);
+            delete nextData.id;
+            nextData.assessment_date = today;
+            editingHealthSnapshot = data && data.id ? JSON.parse(JSON.stringify(data)) : null;
+            healthFormMode = 'update';
+            setHealthEditMode(true);
+            fillHealthForm(nextData);
+            showMsg('health-msg', '已进入更新模式：将基于原记录新增一条今天的健康档案', false);
           });
         });
       });
@@ -2971,10 +2990,10 @@
     }
 
     function saveHealthAssessment() {
-      if (!hid) {
+      if (!hid || healthFormMode === 'update') {
         post('/api/health-assessments', body).then(function (res) {
           if (res.error) { showMsg('health-msg', res.error, true); return; }
-          showMsg('health-msg', res.message);
+          showMsg('health-msg', healthFormMode === 'update' ? '健康档案更新成功，已新增历史记录' : res.message);
           resetHealthPageAfterSave();
         });
         return;
