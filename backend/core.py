@@ -1169,6 +1169,8 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to='', filter_on_
     if filter_on_latest:
         filter_clause = ''
         params = []
+        newer_filter_clause = ''
+        newer_filter_params = []
         latest_filter_clause = '''
             WHERE (? = '' OR latest_h.assessment_date >= ?)
               AND (? = '' OR latest_h.assessment_date <= ?)
@@ -1180,6 +1182,11 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to='', filter_on_
               AND (? = '' OR h.assessment_date <= ?)
         '''
         params = [date_from, date_from, date_to, date_to]
+        newer_filter_clause = '''
+              AND (? = '' OR newer.assessment_date >= ?)
+              AND (? = '' OR newer.assessment_date <= ?)
+        '''
+        newer_filter_params = [date_from, date_from, date_to, date_to]
         latest_filter_clause = ''
         latest_filter_params = []
     window_sql = '''
@@ -1204,8 +1211,7 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to='', filter_on_
             SELECT 1
             FROM health_assessments newer
             WHERE newer.customer_id = h.customer_id
-              AND (? = '' OR newer.assessment_date >= ?)
-              AND (? = '' OR newer.assessment_date <= ?)
+              {newer_filter_clause}
               AND (
                     newer.assessment_date > h.assessment_date
                  OR (newer.assessment_date = h.assessment_date AND newer.id > h.id)
@@ -1214,11 +1220,11 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to='', filter_on_
           AND (? = '' OR h.assessment_date >= ?)
           AND (? = '' OR h.assessment_date <= ?)
         ORDER BY h.customer_id ASC
-    '''
+    '''.format(newer_filter_clause=newer_filter_clause)
     try:
         cursor.execute(window_sql, params + latest_filter_params)
     except sqlite3.OperationalError:
-        cursor.execute(fallback_sql, latest_filter_params + latest_filter_params)
+        cursor.execute(fallback_sql, newer_filter_params + params + latest_filter_params)
     return row_list(cursor.fetchall())
 
 
