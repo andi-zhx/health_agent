@@ -329,6 +329,8 @@
   var portraitImprovementRankingRaw = [];
   var portraitDrilldownContext = { metric: '', metric_value: '', title: '' };
   var portraitCurrentRangeDays = 30;
+  var portraitLatestPayload = null;
+  var portraitLayoutResizeTimer = null;
   var deviceManagementModalState = { mode: 'appointment', editId: '' };
   var customerExportConfigState = {
     form: 'basic',
@@ -2098,6 +2100,7 @@
         return;
       }
       loadPortraitPreviousPeriod().then(function (previous) {
+      portraitLatestPayload = res;
       var scopeText = (res.filter_applied ? '按所选时间范围' : '按全量最新档案');
       var meta = res.meta || {};
       showMsg('portrait-msg', '已' + scopeText + '生成画像，当前统计样本量：' + ((meta.sample_size != null ? meta.sample_size : res.total_customers) || 0) + ' 人');
@@ -2213,6 +2216,13 @@
     renderAgeGenderCompare('portrait-age-gender-bars', toList((res.dimension1 || {}).age_gender_distribution), {
       onClick: function (ageGroup) { if (ageGroup) openPortraitDrilldown('年龄段：' + ageGroup, 'age_group', ageGroup); }
     });
+  }
+
+  function refreshPortraitLayoutCharts() {
+    if (!portraitLatestPayload) return;
+    var page = document.getElementById('page-portrait');
+    if (!page || page.classList.contains('hide')) return;
+    renderPortraitBehaviorLayer(portraitLatestPayload);
   }
 
   function renderPortraitInterventionLayer(res) {
@@ -3372,6 +3382,12 @@
   });
   document.getElementById('btn-portrait-export').addEventListener('click', function () {
     window.print();
+  });
+  window.addEventListener('resize', function () {
+    if (portraitLayoutResizeTimer) window.clearTimeout(portraitLayoutResizeTimer);
+    portraitLayoutResizeTimer = window.setTimeout(function () {
+      refreshPortraitLayoutCharts();
+    }, 120);
   });
   function applyPortraitQuickRange(rangeKey, shouldReload) {
     var daysMap = { '7d': 7, '1m': 30, '3m': 90, '6m': 180 };
