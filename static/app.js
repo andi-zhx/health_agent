@@ -328,6 +328,125 @@
   var portraitImprovementRankingRaw = [];
   var portraitDrilldownContext = { metric: '', metric_value: '', title: '' };
   var deviceManagementModalState = { mode: 'appointment', editId: '' };
+  var customerExportConfigState = {
+    form: 'basic',
+    meta: null,
+    selections: {}
+  };
+  var CUSTOMER_EXPORT_FORM_ORDER = ['basic', 'health', 'appointments', 'home_appointments', 'improvement'];
+  var CUSTOMER_EXPORT_FORM_LABELS = {
+    basic: '基础信息',
+    health: '健康档案',
+    appointments: '预约服务记录',
+    home_appointments: '上门预约记录',
+    improvement: '理疗/改善记录'
+  };
+
+  function normalizeCustomerExportMeta(raw) {
+    var result = {};
+    CUSTOMER_EXPORT_FORM_ORDER.forEach(function (key) {
+      var cols = (raw && raw[key] && Array.isArray(raw[key].columns)) ? raw[key].columns : [];
+      result[key] = {
+        form: key,
+        form_label: (raw && raw[key] && raw[key].form_label) || CUSTOMER_EXPORT_FORM_LABELS[key] || key,
+        columns: cols.map(function (col) {
+          return {
+            key: col.key,
+            label: col.label || col.key,
+            checked: col.checked !== false
+          };
+        })
+      };
+    });
+    return result;
+  }
+
+  function ensureCustomerExportMeta() {
+    if (customerExportConfigState.meta) {
+      return Promise.resolve(customerExportConfigState.meta);
+    }
+    return get('/api/export/customer-integrated-config-meta').then(function (res) {
+      if (!res || res.error) return { error: (res && res.error) || '导出配置加载失败' };
+      customerExportConfigState.meta = normalizeCustomerExportMeta(res);
+      return customerExportConfigState.meta;
+    });
+  }
+
+  function renderCustomerExportColumns(formKey) {
+    var meta = customerExportConfigState.meta || {};
+    var formMeta = meta[formKey];
+    var box = document.getElementById('customer-export-columns');
+    if (!box) return;
+    if (!formMeta || !Array.isArray(formMeta.columns) || !formMeta.columns.length) {
+      box.innerHTML = '<div style="color:#ef4444">当前表单暂无可导出字段</div>';
+      return;
+    }
+    var selectedMap = customerExportConfigState.selections[formKey] || {};
+    box.innerHTML = formMeta.columns.map(function (col) {
+      var checked = Object.prototype.hasOwnProperty.call(selectedMap, col.key) ? !!selectedMap[col.key] : !!col.checked;
+      return '<label><input type="checkbox" data-export-config-column="' + col.key + '"' + (checked ? ' checked' : '') + '> ' + col.label + '</label>';
+    }).join('');
+  }
+
+  function getSelectedExportColumns() {
+    var checked = [];
+    document.querySelectorAll('#customer-export-columns [data-export-config-column]:checked').forEach(function (el) {
+      checked.push(el.getAttribute('data-export-config-column'));
+    });
+    return checked;
+  }
+
+  function closeCustomerExportConfigModal() {
+    var modal = document.getElementById('modal-export-config');
+    if (modal) modal.classList.add('hide');
+  }
+
+  function openCustomerExportConfigModal(formKey) {
+    var targetForm = CUSTOMER_EXPORT_FORM_ORDER.indexOf(formKey) >= 0 ? formKey : 'basic';
+    ensureCustomerExportMeta().then(function (meta) {
+      if (!meta || meta.error) {
+        showMsg('customer-msg', (meta && meta.error) || '导出配置加载失败', true);
+        return;
+      }
+      var select = document.getElementById('customer-export-form-select');
+      if (!select) return;
+      select.innerHTML = CUSTOMER_EXPORT_FORM_ORDER.map(function (key) {
+        var formMeta = meta[key] || {};
+        var label = formMeta.form_label || CUSTOMER_EXPORT_FORM_LABELS[key] || key;
+        return '<option value="' + key + '">' + label + '</option>';
+      }).join('');
+      customerExportConfigState.form = targetForm;
+      select.value = targetForm;
+      renderCustomerExportColumns(targetForm);
+      document.getElementById('modal-export-config').classList.remove('hide');
+    });
+  }
+
+  function submitCustomerExportConfig() {
+    var formKey = customerExportConfigState.form || ((document.getElementById('customer-export-form-select') || {}).value || 'basic');
+    var selectedColumns = getSelectedExportColumns();
+    if (!selectedColumns.length) {
+      showMsg('customer-msg', '请至少选择一个导出字段', true);
+      return;
+    }
+    var selectedMap = {};
+    selectedColumns.forEach(function (key) { selectedMap[key] = true; });
+    customerExportConfigState.selections[formKey] = selectedMap;
+
+    var limitInput = document.getElementById('export-limit-' + formKey);
+    var limit = limitInput ? parseInt(limitInput.value || '', 10) : '';
+    var search = (document.getElementById('customer-search').value || '').trim();
+    var url = '/api/export/customer-integrated-configurable?form=' + encodeURIComponent(formKey)
+      + '&search=' + encodeURIComponent(search)
+      + '&columns=' + encodeURIComponent(selectedColumns.join(','));
+    if (limit && limit > 0) url += '&limit=' + encodeURIComponent(limit);
+    get(url).then(function (res) {
+      if (!res || res.error) { showMsg('customer-msg', (res && res.error) || '下载失败', true); return; }
+      if (res.download_url) window.open(res.download_url, '_blank');
+      showMsg('customer-msg', '已触发下载：' + (res.filename || ''));
+      closeCustomerExportConfigModal();
+    });
+  }
 
   function equipmentStatusLabel(status) {
     return status === 'maintenance' ? '维修' : '可用';
@@ -2631,6 +2750,35 @@
       });
     });
   });
+  document.querySelectorAll('[data-export-config]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      openCustomerExportConfigModal(btn.getAttribute('data-export-config') || 'basic');
+    });
+  });
+  document.getElementById('customer-export-form-select').addEventListener('change', function (e) {
+    var formKey = e.target.value || 'basic';
+    var selected = getSelectedExportColumns();
+    var selectedMap = {};
+    selected.forEach(function (key) { selectedMap[key] = true; });
+    customerExportConfigState.selections[customerExportConfigState.form] = selectedMap;
+    customerExportConfigState.form = formKey;
+    renderCustomerExportColumns(formKey);
+  });
+  document.getElementById('btn-export-columns-select-all').addEventListener('click', function () {
+    document.querySelectorAll('#customer-export-columns [data-export-config-column]').forEach(function (el) {
+      el.checked = true;
+    });
+  });
+  document.getElementById('btn-export-columns-invert').addEventListener('click', function () {
+    document.querySelectorAll('#customer-export-columns [data-export-config-column]').forEach(function (el) {
+      el.checked = !el.checked;
+    });
+  });
+  document.getElementById('btn-export-columns-default').addEventListener('click', function () {
+    renderCustomerExportColumns(customerExportConfigState.form || 'basic');
+  });
+  document.getElementById('btn-export-config-cancel').addEventListener('click', closeCustomerExportConfigModal);
+  document.getElementById('btn-export-config-submit').addEventListener('click', submitCustomerExportConfig);
 
   document.getElementById('btn-health-search').addEventListener('click', function () {
     listState.health.page = 1;

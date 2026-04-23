@@ -49,6 +49,12 @@
     .modal { background: #fff; border-radius: 8px; max-width: 520px; width: 100%; max-height: 90vh; overflow: auto; padding: 24px; }
     .modal h3 { margin: 0 0 16px; }
     .modal-actions { margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end; }
+    .export-config-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 10px; max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; background: #fafafa; }
+    .export-config-columns label { min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #334155; }
+    .export-config-tools { display: flex; gap: 8px; margin: 8px 0 0; }
+    @media (max-width: 900px) {
+      .export-config-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     .drilldown-trigger { cursor: pointer; }
     .drilldown-trigger:hover { box-shadow: 0 8px 20px rgba(59,130,246,.12); transform: translateY(-1px); transition: all .2s; }
     .drilldown-table-wrap { max-height: 420px; overflow: auto; border: 1px solid #eef2f7; border-radius: 8px; }
@@ -480,6 +486,7 @@
               <div>
                 <input type="number" id="export-limit-basic" min="1" placeholder="导出条数(默认全部)" style="width:150px">
                 <button class="btn btn-secondary btn-small" data-export-form="basic">下载</button>
+                <button class="btn btn-secondary btn-small" data-export-config="basic">下载配置</button>
               </div>
             </div>
             <table><thead><tr><th>姓名</th><th>年龄</th><th>身份</th><th>电话</th><th>建档时间</th></tr></thead><tbody id="customer-list"></tbody></table>
@@ -488,7 +495,7 @@
           <div class="integrated-section hide" data-integrated-tab-panel="health">
             <div class="integrated-section-head">
               <h3>健康档案</h3>
-              <div><input type="number" id="export-limit-health" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="health">下载</button></div>
+              <div><input type="number" id="export-limit-health" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="health">下载</button> <button class="btn btn-secondary btn-small" data-export-config="health">下载配置</button></div>
             </div>
             <table><thead><tr><th>客户</th><th>评估日期</th><th>年龄</th><th>近期症状</th><th>睡眠</th><th>操作</th></tr></thead><tbody id="integrated-health-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="health"></div>
@@ -496,7 +503,7 @@
           <div class="integrated-section hide" data-integrated-tab-panel="appointments">
             <div class="integrated-section-head">
               <h3>预约服务记录</h3>
-              <div><input type="number" id="export-limit-appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="appointments">下载</button></div>
+              <div><input type="number" id="export-limit-appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="appointments">下载</button> <button class="btn btn-secondary btn-small" data-export-config="appointments">下载配置</button></div>
             </div>
             <table><thead><tr><th>客户</th><th>项目</th><th>预约日期</th><th>时间</th><th>签到状态</th><th>操作</th></tr></thead><tbody id="integrated-appointments-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="appointments"></div>
@@ -504,7 +511,7 @@
           <div class="integrated-section hide" data-integrated-tab-panel="home_appointments">
             <div class="integrated-section-head">
               <h3>上门预约记录</h3>
-              <div><input type="number" id="export-limit-home_appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="home_appointments">下载</button></div>
+              <div><input type="number" id="export-limit-home_appointments" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="home_appointments">下载</button> <button class="btn btn-secondary btn-small" data-export-config="home_appointments">下载配置</button></div>
             </div>
             <table><thead><tr><th>客户</th><th>项目</th><th>预约日期</th><th>时间</th><th>签到状态</th><th>操作</th></tr></thead><tbody id="integrated-home-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="home_appointments"></div>
@@ -512,7 +519,7 @@
           <div class="integrated-section hide" data-integrated-tab-panel="improvement">
             <div class="integrated-section-head">
               <h3>理疗记录</h3>
-              <div><input type="number" id="export-limit-improvement" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="improvement">下载</button></div>
+              <div><input type="number" id="export-limit-improvement" min="1" placeholder="导出条数(默认全部)" style="width:150px"> <button class="btn btn-secondary btn-small" data-export-form="improvement">下载</button> <button class="btn btn-secondary btn-small" data-export-config="improvement">下载配置</button></div>
             </div>
             <table><thead><tr><th>客户</th><th>服务项目</th><th>服务时间</th><th>改善情况</th><th>随访时间</th><th>操作</th></tr></thead><tbody id="integrated-improvement-list"></tbody></table>
             <div class="section-pagination" data-section-pagination="improvement"></div>
@@ -1152,6 +1159,27 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" id="btn-confirm-cancel">取消</button>
         <button class="btn btn-primary" id="btn-confirm-submit">确认修改</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-export-config" class="modal-mask hide">
+    <div class="modal" style="max-width:760px">
+      <h3>下载配置</h3>
+      <div class="form-row">
+        <label>导出表单</label>
+        <select id="customer-export-form-select" style="min-width:220px"></select>
+      </div>
+      <div class="form-row" style="display:block">
+        <div id="customer-export-columns" class="export-config-columns"></div>
+        <div class="export-config-tools">
+          <button class="btn btn-secondary btn-small" id="btn-export-columns-select-all">全选</button>
+          <button class="btn btn-secondary btn-small" id="btn-export-columns-invert">反选</button>
+          <button class="btn btn-secondary btn-small" id="btn-export-columns-default">恢复默认</button>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="btn-export-config-cancel">取消</button>
+        <button class="btn btn-primary" id="btn-export-config-submit">开始导出</button>
       </div>
     </div>
   </div>
