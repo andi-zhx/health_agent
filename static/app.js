@@ -2803,14 +2803,11 @@
     loadHealthPage();
   });
   document.getElementById('btn-health-cancel-edit').addEventListener('click', function () {
-    if (editingHealthSnapshot && editingHealthSnapshot.id) {
-      fillHealthForm(editingHealthSnapshot);
-      showMsg('health-msg', '已退出编辑，原始记录未修改', false);
-    } else {
-      fillHealthForm({});
-      showMsg('health-msg', '', false);
-    }
+    fillHealthForm({});
     clearHealthEditState();
+    renderHealthDetail(null);
+    loadHealthPage();
+    showMsg('health-msg', '已退出编辑，已清空填写内容', false);
   });
   document.getElementById('btn-confirm-cancel').addEventListener('click', closeConfirmModal);
   document.getElementById('btn-confirm-submit').addEventListener('click', function () {
