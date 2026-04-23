@@ -2174,20 +2174,41 @@
     var diseaseTop = toList(d2.past_disease_distribution).slice(0, 10);
     var symptomTop = toList(d2.recent_symptom_distribution).slice(0, 10);
     var exerciseTop = toList(d3.exercise_top10).slice(0, 5);
-    renderCircleChart('portrait-disease-top10', diseaseTop, false);
+    renderCircleChart('portrait-disease-top10', diseaseTop, false, {
+      onClick: function (item) {
+        if (item && item.name) openPortraitDrilldown('既往病史：' + item.name, 'past_history_tag', item.name);
+      }
+    });
     renderLegend('portrait-disease-top10-legend', diseaseTop);
-    renderCircleChart('portrait-recent-symptom-bars', symptomTop, false);
+    renderCircleChart('portrait-recent-symptom-bars', symptomTop, false, {
+      onClick: function (item) {
+        if (item && item.name) openPortraitDrilldown('近期症状：' + item.name, 'recent_symptom_tag', item.name);
+      }
+    });
     renderLegend('portrait-recent-symptom-bars-legend', symptomTop);
     var habitTop = [
-      { name: '吸烟', count: d3.smoking_ratio || 0 },
-      { name: '饮酒', count: d3.drinking_ratio || 0 },
-      { name: '睡眠异常', count: d3.sleep_abnormal_ratio || 0 },
-      { name: '烟酒叠加', count: d3.smoking_drinking_ratio || 0 }
+      { name: '吸烟', count: d3.smoking_people || 0 },
+      { name: '饮酒', count: d3.drinking_people || 0 },
+      { name: '睡眠异常', count: d3.sleep_abnormal_people || 0 },
+      { name: '烟酒叠加', count: d3.smoking_drinking_people || 0 }
     ];
-    renderHorizontalBars('portrait-habit-bars', habitTop, '#3b82f6', { valueSuffix: '%' });
-    renderHorizontalBars('portrait-exercise-bars', exerciseTop, '#14b8a6');
+    renderHorizontalBars('portrait-habit-bars', habitTop, '#3b82f6', {
+      valueSuffix: '人',
+      onClick: function (item) {
+        if (item && item.name) openPortraitDrilldown('行为习惯：' + item.name, 'life_habit_tag', item.name);
+      }
+    });
+    renderHorizontalBars('portrait-exercise-bars', exerciseTop, '#14b8a6', {
+      valueSuffix: '人',
+      onClick: function (item) {
+        if (item && item.name) openPortraitDrilldown('运动方式：' + item.name, 'exercise_method_tag', item.name);
+      }
+    });
     bindLegendDrilldown('portrait-disease-top10-legend', diseaseTop, function (item) {
       if (item && item.name) openPortraitDrilldown('既往病史：' + item.name, 'past_history_tag', item.name);
+    });
+    bindLegendDrilldown('portrait-recent-symptom-bars-legend', symptomTop, function (item) {
+      if (item && item.name) openPortraitDrilldown('近期症状：' + item.name, 'recent_symptom_tag', item.name);
     });
     renderAgeGenderCompare('portrait-age-gender-bars', toList((res.dimension1 || {}).age_gender_distribution), {
       onClick: function (ageGroup) { if (ageGroup) openPortraitDrilldown('年龄段：' + ageGroup, 'age_group', ageGroup); }
@@ -2495,7 +2516,7 @@
     }).join('');
   }
 
-  function renderCircleChart(elId, list, donut) {
+  function renderCircleChart(elId, list, donut, options) {
     var box = document.getElementById(elId);
     if (!box) return;
     if (!list.length) {
@@ -2507,6 +2528,7 @@
       box.innerHTML = '<p style="color:#666">暂无数据</p>';
       return;
     }
+    var config = options || {};
     var current = 0;
     var cx = 80;
     var cy = 80;
@@ -2517,25 +2539,33 @@
       var start = current / total * Math.PI * 2;
       current += value;
       var end = current / total * Math.PI * 2;
-      return piePath(cx, cy, radius, innerRadius, start, end, chartColor(idx));
+      return piePath(cx, cy, radius, innerRadius, start, end, chartColor(idx), idx, !!config.onClick);
     }).join('');
     box.innerHTML = '<svg class="' + (donut ? 'donut-svg' : 'pie-svg') + '" viewBox="0 0 160 160">' + paths + '</svg>';
+    if (typeof config.onClick === 'function') {
+      box.querySelectorAll('[data-pie-index]').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var idx = Number(el.getAttribute('data-pie-index') || 0);
+          config.onClick(list[idx] || {}, idx);
+        });
+      });
+    }
   }
 
-  function piePath(cx, cy, rOuter, rInner, start, end, color) {
+  function piePath(cx, cy, rOuter, rInner, start, end, color, idx, clickable) {
     var x1 = cx + rOuter * Math.cos(start);
     var y1 = cy + rOuter * Math.sin(start);
     var x2 = cx + rOuter * Math.cos(end);
     var y2 = cy + rOuter * Math.sin(end);
     var largeArc = end - start > Math.PI ? 1 : 0;
     if (!rInner) {
-      return '<path d="M ' + cx + ' ' + cy + ' L ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' Z" fill="' + color + '"></path>';
+      return '<path class="' + (clickable ? 'drilldown-trigger' : '') + '" data-pie-index="' + (idx || 0) + '" d="M ' + cx + ' ' + cy + ' L ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' Z" fill="' + color + '"></path>';
     }
     var x3 = cx + rInner * Math.cos(end);
     var y3 = cy + rInner * Math.sin(end);
     var x4 = cx + rInner * Math.cos(start);
     var y4 = cy + rInner * Math.sin(start);
-    return '<path d="M ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' L ' + x3 + ' ' + y3 + ' A ' + rInner + ' ' + rInner + ' 0 ' + largeArc + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '"></path>';
+    return '<path class="' + (clickable ? 'drilldown-trigger' : '') + '" data-pie-index="' + (idx || 0) + '" d="M ' + x1 + ' ' + y1 + ' A ' + rOuter + ' ' + rOuter + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 + ' L ' + x3 + ' ' + y3 + ' A ' + rInner + ' ' + rInner + ' 0 ' + largeArc + ' 0 ' + x4 + ' ' + y4 + ' Z" fill="' + color + '"></path>';
   }
 
   function renderHorizontalBars(elId, list, color, options) {
