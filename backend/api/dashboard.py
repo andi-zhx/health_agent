@@ -594,8 +594,7 @@ def api_dashboard_health_portrait():
         'date_to': date_to,
         'filter_applied': bool(date_from or date_to),
         'sampling_note': (
-            f'统计口径：assessment_date 在 {date_from or "最早"} 至 {date_to or "最新"} 范围内，'
-            '每位客户仅取该范围内最新一条健康评估。'
+            f'统计口径：先取每位客户全量数据中的最新健康评估，再按 assessment_date 在 {date_from or "最早"} 至 {date_to or "最新"} 范围筛选。'
             if (date_from or date_to)
             else '统计口径：未设置时间范围，默认每位客户取全量数据中的最新一条健康评估。'
         ),
