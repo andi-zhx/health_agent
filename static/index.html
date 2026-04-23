@@ -210,28 +210,34 @@
     .trend-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; }
     .line-chart-svg { width:100%; height:280px; background:linear-gradient(180deg,#fff,#f8fbff); border:1px solid #e5eef8; border-radius:10px; }
     .portrait-third-row { display:flex; gap:20px; align-items:stretch; flex-wrap:wrap; }
-    .portrait-third-row > .portrait-panel { width: 100%; flex: 1; }
-    .portrait-third-left { min-width: 0; }
-    .portrait-third-right { min-width: 0; }
-    .portrait-age-panel .vbar-chart { min-width: 210px; width: 50%; }
-    .portrait-behavior-inline { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:20px; }
-    .portrait-behavior-item { border:1px solid #e5eef8; border-radius:8px; padding:10px; background:#fff; }
+    .portrait-third-row > .portrait-panel { flex: 1 1 0; width: auto; min-width: 320px; }
+    .portrait-third-left { min-width: 320px; min-height: 360px; display:flex; flex-direction:column; }
+    .portrait-third-right { min-width: 320px; min-height: 360px; display:flex; flex-direction:column; }
+    .portrait-age-panel .vbar-compare { flex: 1; min-height: 300px; display:flex; flex-direction:column; }
+    .portrait-age-panel .vbar-chart { min-width: 100%; width: 100%; height: 100%; min-height: 260px; }
+    .portrait-age-panel .vbar-bars { height: 100%; min-height: 220px; }
+    .portrait-behavior-inline { display:flex; flex-direction:column; gap:16px; height:100%; flex:1; }
+    .portrait-behavior-item { border:1px solid #e5eef8; border-radius:8px; padding:10px; background:#fff; min-height:160px; display:flex; flex-direction:column; }
     .portrait-behavior-item h4 { margin-top:0; }
+    .portrait-behavior-item .hbar { flex:1; }
     .portrait-behavior-item .hbar .label { width: 72px; }
     .portrait-behavior-item .hbar .value { width: 48px; }
-    .portrait-disease-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap:20px; }
-    .portrait-disease-card { background:#fff; border-radius:10px; padding:14px; }
-    .portrait-split-2 .chart-row { flex-wrap: nowrap; align-items: center; }
+    .portrait-disease-row { display:flex; gap:20px; flex-wrap:wrap; align-items:stretch; }
+    .portrait-disease-card { background:#fff; border-radius:10px; padding:14px; flex:1 1 calc(50% - 10px); min-width:320px; min-height:260px; display:flex; flex-direction:column; }
+    .portrait-disease-card .chart-row { flex:1; flex-wrap: nowrap; align-items: center; justify-content:space-between; }
+    .portrait-disease-card .chart-row > div:first-child { flex: 0 0 160px; display:flex; align-items:center; justify-content:center; }
+    .portrait-disease-card .legend { flex:1; min-width:180px; }
     @media (max-width: 1280px) { .overview-grid-six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 900px) {
       .portrait-split-2 { grid-template-columns: 1fr; }
       .overview-grid-six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .portrait-behavior-inline { grid-template-columns: 1fr; }
-      .portrait-age-panel .vbar-chart { width: 100%; }
-      .portrait-split-2 .chart-row { flex-wrap: wrap; }
-    }
-    @media (max-width: 768px) {
       .portrait-third-row > .portrait-panel { flex: 1 1 100%; }
+      .portrait-third-left, .portrait-third-right { min-height: auto; }
+      .portrait-age-panel .vbar-compare { min-height: auto; }
+      .portrait-behavior-inline { height: auto; }
+      .portrait-behavior-item { min-height: 140px; }
+      .portrait-disease-card { flex: 1 1 100%; }
+      .portrait-disease-card .chart-row { flex-wrap: wrap; }
     }
     .tag-cloud { display:flex; flex-wrap:wrap; gap:8px; }
     .tag-item { background:#eef6ff; color:#2f6da7; border-radius:999px; padding:4px 10px; font-size:12px; }
