@@ -221,25 +221,24 @@ CUSTOMER_EXPORT_FORM_LABELS = {
 def _parse_export_columns_arg():
     raw_values = request.args.getlist('columns')
     if not raw_values:
-        raw_text = (request.args.get('columns') or '').strip()
-        if raw_text:
-            raw_values = raw_text.split(',')
+        raw_values = [request.args.get('columns') or '']
     result = []
     seen = set()
     for raw in raw_values:
-        item = (raw or '').strip()
-        if not item or item in seen:
-            continue
-        seen.add(item)
-        result.append(item)
+        for chunk in (raw or '').split(','):
+            item = chunk.strip()
+            if not item or item in seen:
+                continue
+            seen.add(item)
+            result.append(item)
     return result
 
 
-def _write_bilingual_sheet(writer, sheet_name, rows=None, columns=None):
+def _write_bilingual_sheet(writer, sheet_name, rows=None, columns=None, include_row_extra_columns=True):
     data_rows = rows or []
     if columns is None:
         columns = list(data_rows[0].keys()) if data_rows else []
-    else:
+    elif include_row_extra_columns:
         merged_columns = list(columns)
         seen = set(merged_columns)
         for row in data_rows:
@@ -494,7 +493,13 @@ def api_export_customer_integrated_configurable():
     fp = os.path.join(UPLOAD_FOLDER, fn)
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
         _init_export_workbook(writer)
-        _write_bilingual_sheet(writer, '数据导出', rows, selected_columns)
+        _write_bilingual_sheet(
+            writer,
+            '数据导出',
+            rows,
+            selected_columns,
+            include_row_extra_columns=False,
+        )
     audit_log('自定义导出', 'export', form_key, f'form={form_key}, columns={",".join(selected_columns)}, search={search}, file={fn}')
     return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
 
