@@ -4,6 +4,11 @@ from backend.core import *
 bp = Blueprint('health_assessments', __name__)
 
 
+def is_health_assessment_unique_conflict(err):
+    text = str(err or '')
+    return 'uq_health_assessments_customer_date' in text or 'health_assessments.customer_id, health_assessments.assessment_date' in text
+
+
 def find_duplicate_assessment(cursor, customer_id, assessment_date, exclude_id=None):
     if not customer_id or not assessment_date:
         return None
@@ -77,21 +82,29 @@ def api_health_assessment_create():
         conn.close()
         return jsonify({'error': f"该客户在评估日期 {assessment_date} 已有档案记录，请勿重复新增"}), 400
 
-    c.execute('''
-        INSERT INTO health_assessments (customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
-         allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years,
-         sleep_quality, sleep_hours, recent_symptoms, recent_symptom_detail, life_impact_issues, blood_pressure_test, blood_lipid_test, blood_sugar_test, chronic_pain, pain_details,
-         exercise_methods, health_needs, notes)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ''', (
-        customer_id, d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
-        d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
-        d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-        d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
-        d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
-        parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes')
-    ))
-    conn.commit()
+    try:
+        c.execute('''
+            INSERT INTO health_assessments (customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
+             allergy_history, allergy_details, smoking_status, smoking_years, cigarettes_per_day, drinking_status, drinking_years,
+             sleep_quality, sleep_hours, recent_symptoms, recent_symptom_detail, life_impact_issues, blood_pressure_test, blood_lipid_test, blood_sugar_test, chronic_pain, pain_details,
+             exercise_methods, health_needs, notes)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ''', (
+            customer_id, d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
+            d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
+            d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
+            d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
+            d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
+            parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes')
+        ))
+        conn.commit()
+    except sqlite3.IntegrityError as err:
+        conn.rollback()
+        if is_health_assessment_unique_conflict(err):
+            conn.close()
+            return jsonify({'error': f"该客户在评估日期 {assessment_date} 已有档案记录，请勿重复新增"}), 400
+        conn.close()
+        raise
     rid = c.lastrowid
     conn.close()
     audit_log('创建健康评估', 'health_assessments', rid, f"customer_id={customer_id}")
@@ -144,22 +157,30 @@ def api_health_assessment_update(hid):
     if duplicate:
         conn.close()
         return jsonify({'error': f"该客户在评估日期 {assessment_date} 已有档案记录，请调整评估日期后再保存"}), 400
-    c.execute('''
-        UPDATE health_assessments
-        SET customer_id=?, assessment_date=?, assessor=?, age=?, height_cm=?, weight_kg=?, address=?, past_medical_history=?, family_history=?,
-            allergy_history=?, allergy_details=?, smoking_status=?, smoking_years=?, cigarettes_per_day=?, drinking_status=?, drinking_years=?,
-            sleep_quality=?, sleep_hours=?, recent_symptoms=?, recent_symptom_detail=?, life_impact_issues=?, blood_pressure_test=?, blood_lipid_test=?,
-            blood_sugar_test=?, chronic_pain=?, pain_details=?, exercise_methods=?, health_needs=?, notes=?
-        WHERE id=?
-    ''', (
-        customer_id, assessment_date, d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
-        d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
-        d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
-        d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
-        d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
-        parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes'), hid
-    ))
-    conn.commit()
+    try:
+        c.execute('''
+            UPDATE health_assessments
+            SET customer_id=?, assessment_date=?, assessor=?, age=?, height_cm=?, weight_kg=?, address=?, past_medical_history=?, family_history=?,
+                allergy_history=?, allergy_details=?, smoking_status=?, smoking_years=?, cigarettes_per_day=?, drinking_status=?, drinking_years=?,
+                sleep_quality=?, sleep_hours=?, recent_symptoms=?, recent_symptom_detail=?, life_impact_issues=?, blood_pressure_test=?, blood_lipid_test=?,
+                blood_sugar_test=?, chronic_pain=?, pain_details=?, exercise_methods=?, health_needs=?, notes=?
+            WHERE id=?
+        ''', (
+            customer_id, assessment_date, d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
+            d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
+            d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
+            d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
+            d.get('blood_pressure_test'), d.get('blood_lipid_test'), d.get('blood_sugar_test'), d.get('chronic_pain'), d.get('pain_details'),
+            parse_multi_value(d.get('exercise_methods')), parse_multi_value(d.get('health_needs')), d.get('notes'), hid
+        ))
+        conn.commit()
+    except sqlite3.IntegrityError as err:
+        conn.rollback()
+        if is_health_assessment_unique_conflict(err):
+            conn.close()
+            return jsonify({'error': f"该客户在评估日期 {assessment_date} 已有档案记录，请调整评估日期后再保存"}), 400
+        conn.close()
+        raise
     conn.close()
     audit_log('修改健康评估', 'health_assessments', hid, f"customer_id={d.get('customer_id')}")
     return jsonify({'message': '健康评估更新成功'})
