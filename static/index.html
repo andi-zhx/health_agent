@@ -194,7 +194,7 @@
     }
     .portrait-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
     .portrait-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .portrait-quick-range { display:flex; gap:6px; flex-wrap:wrap; }
+    .portrait-quick-range { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
     .btn-outline { border:1px solid #cbd5e1; background:#fff; color:#334155; }
     .btn-outline.active { border-color:#2563eb; color:#2563eb; background:#eff6ff; }
     .overview-grid-six { display:grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap:10px; }
@@ -205,15 +205,23 @@
     .overview-meta .n { font-size:24px; font-weight:700; color:#0f172a; line-height:1.2; }
     .overview-meta .c { font-size:12px; color:#16a34a; }
     .overview-meta .c.down { color:#dc2626; }
-    .portrait-split-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
-    .trend-legend { display:flex; gap:12px; margin-top:6px; font-size:12px; color:#475569; flex-wrap:wrap; }
+    .portrait-split-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:stretch; }
+    .trend-legend { display:flex; gap:12px; margin-bottom:8px; font-size:12px; color:#475569; flex-wrap:wrap; }
     .trend-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; }
-    .line-chart-svg { width:100%; height:260px; background:linear-gradient(180deg,#fff,#f8fbff); border:1px solid #e5eef8; border-radius:10px; }
-    .portrait-third-row { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    .line-chart-svg { width:100%; height:280px; background:linear-gradient(180deg,#fff,#f8fbff); border:1px solid #e5eef8; border-radius:10px; }
+    .portrait-third-row { display:grid; grid-template-columns: 1fr 1fr; gap:14px; align-items:stretch; }
+    .portrait-age-panel .vbar-chart { min-width: 210px; width: 50%; }
+    .portrait-behavior-inline { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+    .portrait-behavior-item { border:1px solid #e5eef8; border-radius:8px; padding:10px; background:#fff; }
+    .portrait-behavior-item h4 { margin-top:0; }
+    .portrait-split-2 .chart-row { flex-wrap: nowrap; align-items: center; }
     @media (max-width: 1280px) { .overview-grid-six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 900px) {
       .portrait-split-2, .portrait-third-row { grid-template-columns: 1fr; }
       .overview-grid-six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .portrait-behavior-inline { grid-template-columns: 1fr; }
+      .portrait-age-panel .vbar-chart { width: 100%; }
+      .portrait-split-2 .chart-row { flex-wrap: wrap; }
     }
     .tag-cloud { display:flex; flex-wrap:wrap; gap:8px; }
     .tag-item { background:#eef6ff; color:#2f6da7; border-radius:999px; padding:4px 10px; font-size:12px; }
@@ -757,12 +765,14 @@
               <span style="color:#64748b">~</span>
               <input type="date" id="portrait-date-to">
               <div class="portrait-quick-range">
-                <button class="btn btn-small btn-outline" data-portrait-quick="7d">近1周</button>
-                <button class="btn btn-small btn-outline" data-portrait-quick="30d">近30天</button>
-                <button class="btn btn-small btn-outline" data-portrait-quick="1m">近1个月</button>
-                <button class="btn btn-small btn-outline" data-portrait-quick="6m">近半年</button>
+                <select id="portrait-quick-range-select" style="width:120px;">
+                  <option value="7d">近1周</option>
+                  <option value="1m" selected>近1个月</option>
+                  <option value="3m">近3个月</option>
+                  <option value="6m">近半年</option>
+                </select>
               </div>
-              <button class="btn btn-secondary" id="btn-portrait-query">查询</button>
+              <button class="btn btn-primary" id="btn-portrait-query">查询</button>
               <button class="btn btn-primary" id="btn-portrait-export">导出报告</button>
             </div>
           </div>
@@ -788,12 +798,12 @@
                   </select>
                 </label>
               </div>
-              <div id="portrait-trend-chart"></div>
               <div class="trend-legend">
                 <span><i class="trend-dot" style="background:#2563eb"></i>三高异常率</span>
                 <span><i class="trend-dot" style="background:#f59e0b"></i>骨关节问题率</span>
                 <span><i class="trend-dot" style="background:#8b5cf6"></i>睡眠异常率</span>
               </div>
+              <div id="portrait-trend-chart"></div>
             </section>
 
             <section class="portrait-layer">
@@ -801,16 +811,22 @@
                 <h3 class="portrait-layer-title">人群结构 和 行为分析</h3>
               </div>
               <div class="portrait-third-row">
-                <div class="portrait-panel">
+                <div class="portrait-panel portrait-age-panel">
                   <h3>人群结构（年龄性别分布）</h3>
                   <div id="portrait-age-gender-bars" class="vbar-compare"></div>
                 </div>
                 <div class="portrait-panel">
                   <h3>行为分析</h3>
-                  <h4>行为习惯</h4>
-                  <div id="portrait-habit-bars" class="hbar"></div>
-                  <h4>运动方式（Top5）</h4>
-                  <div id="portrait-exercise-bars" class="hbar"></div>
+                  <div class="portrait-behavior-inline">
+                    <div class="portrait-behavior-item">
+                      <h4>行为习惯</h4>
+                      <div id="portrait-habit-bars" class="hbar"></div>
+                    </div>
+                    <div class="portrait-behavior-item">
+                      <h4>运动方式（Top5）</h4>
+                      <div id="portrait-exercise-bars" class="hbar"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
