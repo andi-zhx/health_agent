@@ -3,6 +3,24 @@ from backend.core import *
 
 bp = Blueprint('health_assessments', __name__)
 
+
+def find_duplicate_assessment(cursor, customer_id, assessment_date, exclude_id=None):
+    if not customer_id or not assessment_date:
+        return None
+    sql = '''
+        SELECT h.id, c.name AS customer_name, c.phone AS customer_phone
+        FROM health_assessments h
+        JOIN customers c ON h.customer_id = c.id
+        WHERE h.customer_id = ? AND h.assessment_date = ?
+    '''
+    params = [customer_id, assessment_date]
+    if exclude_id:
+        sql += ' AND h.id <> ?'
+        params.append(exclude_id)
+    sql += ' LIMIT 1'
+    cursor.execute(sql, params)
+    return cursor.fetchone()
+
 @bp.route('/api/health-assessments', methods=['GET'])
 def api_health_assessments_list():
     customer_id = request.args.get('customer_id', type=int)
@@ -53,6 +71,11 @@ def api_health_assessment_create():
     conn = get_db()
     c = conn.cursor()
     customer_id = d.get('customer_id')
+    assessment_date = d.get('assessment_date')
+    duplicate = find_duplicate_assessment(c, customer_id, assessment_date)
+    if duplicate:
+        conn.close()
+        return jsonify({'error': f"该客户在评估日期 {assessment_date} 已有档案记录，请勿重复新增"}), 400
 
     c.execute('''
         INSERT INTO health_assessments (customer_id, assessment_date, assessor, age, height_cm, weight_kg, address, past_medical_history, family_history,
@@ -115,6 +138,12 @@ def api_health_assessment_update(hid):
         return jsonify({'error': invalid_msg}), 400
     conn = get_db()
     c = conn.cursor()
+    customer_id = d.get('customer_id')
+    assessment_date = d.get('assessment_date')
+    duplicate = find_duplicate_assessment(c, customer_id, assessment_date, exclude_id=hid)
+    if duplicate:
+        conn.close()
+        return jsonify({'error': f"该客户在评估日期 {assessment_date} 已有档案记录，请调整评估日期后再保存"}), 400
     c.execute('''
         UPDATE health_assessments
         SET customer_id=?, assessment_date=?, assessor=?, age=?, height_cm=?, weight_kg=?, address=?, past_medical_history=?, family_history=?,
@@ -123,7 +152,7 @@ def api_health_assessment_update(hid):
             blood_sugar_test=?, chronic_pain=?, pain_details=?, exercise_methods=?, health_needs=?, notes=?
         WHERE id=?
     ''', (
-        d.get('customer_id'), d.get('assessment_date'), d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
+        customer_id, assessment_date, d.get('assessor'), d.get('age'), d.get('height_cm'), d.get('weight_kg'),
         d.get('address'), d.get('past_medical_history'), d.get('family_history'), d.get('allergy_history'), d.get('allergy_details'),
         d.get('smoking_status'), d.get('smoking_years'), d.get('cigarettes_per_day'), d.get('drinking_status'), d.get('drinking_years'),
         d.get('sleep_quality'), d.get('sleep_hours'), d.get('recent_symptoms'), d.get('recent_symptom_detail'), d.get('life_impact_issues'),
