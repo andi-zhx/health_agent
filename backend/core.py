@@ -1163,14 +1163,25 @@ def get_latest_assessment_summary(cursor, customer_id):
     return '；'.join(summary_parts)
 
 
-def fetch_latest_health_assessments(cursor, date_from='', date_to=''):
+def fetch_latest_health_assessments(cursor, date_from='', date_to='', filter_on_latest=False):
     date_from = str(date_from or '').strip()
     date_to = str(date_to or '').strip()
-    filter_clause = '''
-        WHERE (? = '' OR h.assessment_date >= ?)
-          AND (? = '' OR h.assessment_date <= ?)
-    '''
-    params = [date_from, date_from, date_to, date_to]
+    if filter_on_latest:
+        filter_clause = ''
+        params = []
+        latest_filter_clause = '''
+            WHERE (? = '' OR latest_h.assessment_date >= ?)
+              AND (? = '' OR latest_h.assessment_date <= ?)
+        '''
+        latest_filter_params = [date_from, date_from, date_to, date_to]
+    else:
+        filter_clause = '''
+            WHERE (? = '' OR h.assessment_date >= ?)
+              AND (? = '' OR h.assessment_date <= ?)
+        '''
+        params = [date_from, date_from, date_to, date_to]
+        latest_filter_clause = ''
+        latest_filter_params = []
     window_sql = '''
         SELECT latest_h.*
         FROM (
@@ -1183,13 +1194,13 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to=''):
             {filter_clause}
         ) latest_h
         WHERE latest_h.row_no = 1
+        {latest_filter_clause}
         ORDER BY latest_h.customer_id ASC
-    '''.format(filter_clause=filter_clause)
+    '''.format(filter_clause=filter_clause, latest_filter_clause=latest_filter_clause)
     fallback_sql = '''
         SELECT h.*
         FROM health_assessments h
-        {filter_clause}
-          AND NOT EXISTS (
+        WHERE NOT EXISTS (
             SELECT 1
             FROM health_assessments newer
             WHERE newer.customer_id = h.customer_id
@@ -1200,17 +1211,19 @@ def fetch_latest_health_assessments(cursor, date_from='', date_to=''):
                  OR (newer.assessment_date = h.assessment_date AND newer.id > h.id)
               )
         )
+          AND (? = '' OR h.assessment_date >= ?)
+          AND (? = '' OR h.assessment_date <= ?)
         ORDER BY h.customer_id ASC
-    '''.format(filter_clause=filter_clause)
+    '''
     try:
-        cursor.execute(window_sql, params)
+        cursor.execute(window_sql, params + latest_filter_params)
     except sqlite3.OperationalError:
-        cursor.execute(fallback_sql, params + params)
+        cursor.execute(fallback_sql, latest_filter_params + latest_filter_params)
     return row_list(cursor.fetchall())
 
 
 def build_health_portrait_sample_records(cursor, date_from='', date_to=''):
-    latest_rows = fetch_latest_health_assessments(cursor, date_from=date_from, date_to=date_to)
+    latest_rows = fetch_latest_health_assessments(cursor, date_from=date_from, date_to=date_to, filter_on_latest=True)
     records = []
     customer_ids = [safe_int(row.get('customer_id')) for row in latest_rows if safe_int(row.get('customer_id')) is not None]
     customer_map = {}

@@ -192,6 +192,29 @@
     @media (max-width: 900px) {
       .portrait-overview-layout { grid-template-columns: 1fr; }
     }
+    .portrait-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap; }
+    .portrait-toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .portrait-quick-range { display:flex; gap:6px; flex-wrap:wrap; }
+    .btn-outline { border:1px solid #cbd5e1; background:#fff; color:#334155; }
+    .btn-outline.active { border-color:#2563eb; color:#2563eb; background:#eff6ff; }
+    .overview-grid-six { display:grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap:10px; }
+    .overview-card { border:1px solid #e5eef8; border-radius:10px; padding:10px; background:#f8fbff; display:flex; gap:10px; }
+    .overview-icon { width:30px; height:30px; border-radius:50%; background:#dbeafe; color:#1d4ed8; display:flex; align-items:center; justify-content:center; font-size:16px; }
+    .overview-meta { min-width:0; }
+    .overview-meta .t { font-size:12px; color:#64748b; }
+    .overview-meta .n { font-size:24px; font-weight:700; color:#0f172a; line-height:1.2; }
+    .overview-meta .c { font-size:12px; color:#16a34a; }
+    .overview-meta .c.down { color:#dc2626; }
+    .portrait-split-2 { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    .trend-legend { display:flex; gap:12px; margin-top:6px; font-size:12px; color:#475569; flex-wrap:wrap; }
+    .trend-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:4px; }
+    .line-chart-svg { width:100%; height:260px; background:linear-gradient(180deg,#fff,#f8fbff); border:1px solid #e5eef8; border-radius:10px; }
+    .portrait-third-row { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    @media (max-width: 1280px) { .overview-grid-six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 900px) {
+      .portrait-split-2, .portrait-third-row { grid-template-columns: 1fr; }
+      .overview-grid-six { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
     .tag-cloud { display:flex; flex-wrap:wrap; gap:8px; }
     .tag-item { background:#eef6ff; color:#2f6da7; border-radius:999px; padding:4px 10px; font-size:12px; }
     .mini-risk-table { width:100%; margin-top:8px; font-size:12px; }
@@ -727,18 +750,21 @@
       </div>
       <div id="page-portrait" class="page hide">
         <div class="card">
-          <h2>健康画像</h2>
-          <div class="search-bar" style="align-items:flex-end;gap:10px;flex-wrap:wrap">
-            <div>
-              <label style="display:block;color:#64748b;font-size:12px;margin-bottom:4px">评估开始日期</label>
+          <div class="portrait-toolbar">
+            <h2 style="margin:0">健康画像</h2>
+            <div class="portrait-toolbar-right">
               <input type="date" id="portrait-date-from">
-            </div>
-            <div>
-              <label style="display:block;color:#64748b;font-size:12px;margin-bottom:4px">评估结束日期</label>
+              <span style="color:#64748b">~</span>
               <input type="date" id="portrait-date-to">
+              <div class="portrait-quick-range">
+                <button class="btn btn-small btn-outline" data-portrait-quick="7d">近1周</button>
+                <button class="btn btn-small btn-outline" data-portrait-quick="30d">近30天</button>
+                <button class="btn btn-small btn-outline" data-portrait-quick="1m">近1个月</button>
+                <button class="btn btn-small btn-outline" data-portrait-quick="6m">近半年</button>
+              </div>
+              <button class="btn btn-secondary" id="btn-portrait-query">查询</button>
+              <button class="btn btn-primary" id="btn-portrait-export">导出报告</button>
             </div>
-            <button class="btn btn-primary" id="btn-portrait-query">查询</button>
-            <button class="btn btn-secondary" id="btn-portrait-reset">重置</button>
           </div>
           <div id="portrait-msg"></div>
           <div id="portrait-caliber-note" style="font-size:12px;color:#64748b;margin:6px 0 10px"></div>
@@ -746,93 +772,80 @@
           <div class="portrait-layout">
             <section class="portrait-layer">
               <div class="portrait-layer-head">
-                <h3 class="portrait-layer-title">1. 人群概览</h3>
-                <div class="portrait-layer-sub">总人数 + 异常人数 + 年龄性别分布</div>
+                <h3 class="portrait-layer-title">健康总览</h3>
               </div>
-              <div class="portrait-overview-layout">
-                <div class="portrait-overview-left">
-                  <div id="portrait-kpi-cards" class="kpi-row portrait-overview-total"></div>
-                  <div id="portrait-abnormal-kpi-cards-top" class="kpi-row portrait-overview-abnormal portrait-overview-abnormal-3"></div>
-                  <div id="portrait-abnormal-kpi-cards-bottom" class="kpi-row portrait-overview-abnormal portrait-overview-abnormal-2"></div>
+              <div id="portrait-overview-cards" class="overview-grid-six"></div>
+            </section>
+
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">健康趋势分析</h3>
+                <label style="min-width:auto;">周期
+                  <select id="portrait-trend-range" style="width:110px;">
+                    <option value="7">近7天</option>
+                    <option value="30" selected>近30天</option>
+                    <option value="90">近90天</option>
+                  </select>
+                </label>
+              </div>
+              <div id="portrait-trend-chart"></div>
+              <div class="trend-legend">
+                <span><i class="trend-dot" style="background:#2563eb"></i>三高异常率</span>
+                <span><i class="trend-dot" style="background:#f59e0b"></i>骨关节问题率</span>
+                <span><i class="trend-dot" style="background:#8b5cf6"></i>睡眠异常率</span>
+              </div>
+            </section>
+
+            <section class="portrait-layer">
+              <div class="portrait-layer-head">
+                <h3 class="portrait-layer-title">人群结构 和 行为分析</h3>
+              </div>
+              <div class="portrait-third-row">
+                <div class="portrait-panel">
+                  <h3>人群结构（年龄性别分布）</h3>
+                  <div id="portrait-age-gender-bars" class="vbar-compare"></div>
                 </div>
-                <div class="portrait-overview-right">
-                  <div class="portrait-panel">
-                    <h3>年龄性别分布</h3>
-                    <div id="portrait-age-gender-bars" class="vbar-compare" style="margin-top:8px"></div>
-                  </div>
+                <div class="portrait-panel">
+                  <h3>行为分析</h3>
+                  <h4>行为习惯</h4>
+                  <div id="portrait-habit-bars" class="hbar"></div>
+                  <h4>运动方式（Top5）</h4>
+                  <div id="portrait-exercise-bars" class="hbar"></div>
                 </div>
               </div>
             </section>
 
             <section class="portrait-layer">
               <div class="portrait-layer-head">
-                <h3 class="portrait-layer-title">2. 行为与需求分析</h3>
-                <div class="portrait-layer-sub">统一饼图 + 图例，紧凑展示重点结构</div>
+                <h3 class="portrait-layer-title">疾病分布</h3>
               </div>
-              <div class="portrait-grid">
-                <div class="portrait-panel portrait-panel-half">
-                  <h3>行为习惯结构</h3>
-                  <div id="portrait-habit-kpi" class="kpi-row"></div>
-                  <h4>吸烟 / 饮酒 / 睡眠 / 烟酒叠加</h4>
-                  <div class="chart-row">
-                    <div id="portrait-habit-risk-pie"></div>
-                    <div id="portrait-habit-risk-legend" class="legend"></div>
-                  </div>
+              <div class="portrait-split-2">
+                <div class="portrait-panel">
+                  <h3>既往病史（Top10）</h3>
+                  <div class="chart-row"><div id="portrait-disease-top10"></div><div id="portrait-disease-top10-legend" class="legend"></div></div>
                 </div>
-                <div class="portrait-panel portrait-panel-half">
-                  <h3>病史与症状结构（Top10）</h3>
-                  <h4>既往病史</h4>
-                  <div class="chart-row">
-                    <div id="portrait-disease-top10"></div>
-                    <div id="portrait-disease-top10-legend" class="legend"></div>
-                  </div>
-                  <h4>家族史</h4>
-                  <div class="chart-row">
-                    <div id="portrait-family-top10"></div>
-                    <div id="portrait-family-top10-legend" class="legend"></div>
-                  </div>
-                  <h4>近期症状</h4>
-                  <div class="chart-row">
-                    <div id="portrait-recent-symptom-bars"></div>
-                    <div id="portrait-recent-symptom-bars-legend" class="legend"></div>
-                  </div>
-                </div>
-                <div class="portrait-panel portrait-panel-half">
-                  <h3>运动方式 Top10</h3>
-                  <div class="chart-row">
-                    <div id="portrait-exercise-top10"></div>
-                    <div id="portrait-exercise-top10-legend" class="legend"></div>
-                  </div>
-                </div>
-                <div class="portrait-panel portrait-panel-half">
-                  <h3>健康需求 Top10</h3>
-                  <div class="chart-row">
-                    <div id="portrait-needs-top10"></div>
-                    <div id="portrait-needs-top10-legend" class="legend"></div>
-                  </div>
+                <div class="portrait-panel">
+                  <h3>近期症状（Top10）</h3>
+                  <div class="chart-row"><div id="portrait-recent-symptom-bars"></div><div id="portrait-recent-symptom-bars-legend" class="legend"></div></div>
                 </div>
               </div>
             </section>
 
             <section class="portrait-layer">
               <div class="portrait-layer-head">
-                <h3 class="portrait-layer-title">3. 干预与改善效果</h3>
-                <div class="portrait-layer-sub">仅保留项目改善率排行</div>
+                <h3 class="portrait-layer-title">项目改善率排行</h3>
               </div>
-              <div class="portrait-grid">
-                <div class="portrait-panel portrait-panel-half portrait-panel-emphasis">
-                  <h3>项目改善率排行</h3>
-                  <div class="portrait-ranking-head">
-                    <div style="color:#64748b;font-size:12px">（明显改善 + 部分改善）/ 总服务次数</div>
-                    <label>排序方式
-                      <select id="portrait-improvement-ranking-sort" style="width:170px">
-                        <option value="improvement_rate">按改善率</option>
-                        <option value="total_services">按总服务次数</option>
-                      </select>
-                    </label>
-                  </div>
-                  <div id="portrait-improvement-ranking"></div>
+              <div class="portrait-panel portrait-panel-emphasis">
+                <div class="portrait-ranking-head">
+                  <div style="color:#64748b;font-size:12px">（明显改善 + 部分改善）/ 总服务次数</div>
+                  <label>排序方式
+                    <select id="portrait-improvement-ranking-sort" style="width:170px">
+                      <option value="improvement_rate">按改善率</option>
+                      <option value="total_services">按总服务次数</option>
+                    </select>
+                  </label>
                 </div>
+                <div id="portrait-improvement-ranking"></div>
               </div>
             </section>
           </div>
