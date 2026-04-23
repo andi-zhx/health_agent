@@ -209,6 +209,30 @@ EXPORT_COLUMNS_BY_KEY = {
     'improvement': ['id', 'customer_id', 'service_project', 'service_time', 'improvement_summary', 'followup_time', 'followup_method', 'notes', 'created_at', 'updated_at', 'customer_name', 'customer_phone'],
     'customers': ['id', 'name', 'id_card', 'phone', 'address', 'gender', 'birth_date', 'medical_history', 'allergies', 'created_at', 'updated_at', 'diet_habits', 'chronic_diseases', 'health_status', 'therapy_contraindications'],
 }
+CUSTOMER_EXPORT_FORM_LABELS = {
+    'basic': '基础信息',
+    'health': '健康档案',
+    'appointments': '预约服务记录',
+    'home_appointments': '上门预约记录',
+    'improvement': '理疗/改善记录',
+}
+
+
+def _parse_export_columns_arg():
+    raw_values = request.args.getlist('columns')
+    if not raw_values:
+        raw_text = (request.args.get('columns') or '').strip()
+        if raw_text:
+            raw_values = raw_text.split(',')
+    result = []
+    seen = set()
+    for raw in raw_values:
+        item = (raw or '').strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
 
 
 def _write_bilingual_sheet(writer, sheet_name, rows=None, columns=None):
@@ -425,6 +449,53 @@ def api_export_customer_integrated_form():
     with pd.ExcelWriter(fp, engine='openpyxl') as writer:
         _init_export_workbook(writer)
         _write_bilingual_sheet(writer, '数据导出', rows, EXPORT_COLUMNS_BY_KEY.get(form_key))
+    return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
+
+
+@bp.route('/api/export/customer-integrated-config-meta', methods=['GET'])
+def api_export_customer_integrated_config_meta():
+    meta = {}
+    for key in ['basic', 'health', 'appointments', 'home_appointments', 'improvement']:
+        columns = EXPORT_COLUMNS_BY_KEY.get(key) or []
+        meta[key] = {
+            'form': key,
+            'form_label': CUSTOMER_EXPORT_FORM_LABELS.get(key, key),
+            'columns': [{'key': col, 'label': EXPORT_FIELD_ZH.get(col, col), 'checked': True} for col in columns],
+        }
+    return success_response(meta)
+
+
+@bp.route('/api/export/customer-integrated-configurable', methods=['GET'])
+def api_export_customer_integrated_configurable():
+    form_key = (request.args.get('form') or 'basic').strip()
+    search = (request.args.get('search') or '').strip()
+    limit = request.args.get('limit', type=int)
+    selected_columns = _parse_export_columns_arg()
+    if form_key not in {'basic', 'health', 'appointments', 'home_appointments', 'improvement'}:
+        return error_response('表单类型不合法')
+    if not selected_columns:
+        return error_response('请至少选择一个导出字段')
+
+    allowed_columns = EXPORT_COLUMNS_BY_KEY.get(form_key) or []
+    invalid_columns = [col for col in selected_columns if col not in allowed_columns]
+    if invalid_columns:
+        return error_response(f'存在非法导出字段: {", ".join(invalid_columns)}')
+
+    conn = get_db()
+    c = conn.cursor()
+    where_sql, params, has_deleted_flag = _build_customer_integrated_filter(search)
+    page_size = min(max(limit or 10000, 1), 10000)
+    rows = _query_customer_integrated_dataset(
+        c, form_key, where_sql, params, 1, page_size, keyword=search, has_deleted_flag=has_deleted_flag
+    ).get('items') or []
+    conn.close()
+
+    fn = f'customer_{form_key}_custom_{now_local().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    fp = os.path.join(UPLOAD_FOLDER, fn)
+    with pd.ExcelWriter(fp, engine='openpyxl') as writer:
+        _init_export_workbook(writer)
+        _write_bilingual_sheet(writer, '数据导出', rows, selected_columns)
+    audit_log('自定义导出', 'export', form_key, f'form={form_key}, columns={",".join(selected_columns)}, search={search}, file={fn}')
     return success_response({'filename': fn, 'download_url': '/api/download/' + fn})
 
 
