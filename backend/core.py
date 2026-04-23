@@ -227,7 +227,24 @@ def ensure_query_indexes(cursor):
     for index_name in legacy_indexes:
         cursor.execute(f'DROP INDEX IF EXISTS {index_name}')
 
-    # 1) 健康评估：按 customer_id + assessment_date 取最新。
+    # 1) 健康评估：按 customer_id + assessment_date 取最新，并确保同日唯一。
+    # 为兼容历史数据，先清理重复组合，仅保留 id 最大（最新）的一条。
+    cursor.execute(
+        '''
+        DELETE FROM health_assessments
+        WHERE id NOT IN (
+            SELECT MAX(id)
+            FROM health_assessments
+            GROUP BY customer_id, assessment_date
+        )
+        '''
+    )
+    cursor.execute(
+        '''
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_health_assessments_customer_date
+        ON health_assessments(customer_id, assessment_date)
+        '''
+    )
     cursor.execute(
         '''
         CREATE INDEX IF NOT EXISTS idx_health_assessments_customer_date_id
