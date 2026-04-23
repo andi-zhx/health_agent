@@ -676,6 +676,10 @@ def api_dashboard_health_portrait():
         },
         'high_risk_customers_top': high_risk_top,
         'dimension3': {
+            'smoking_people': smoking_people,
+            'drinking_people': drinking_people,
+            'smoking_drinking_people': smoking_drinking_people,
+            'sleep_abnormal_people': sleep_abnormal_people,
             'smoking_ratio': round((smoking_people * 100.0 / total), 1) if total else 0,
             'drinking_ratio': round((drinking_people * 100.0 / total), 1) if total else 0,
             'smoking_drinking_ratio': round((smoking_drinking_people * 100.0 / total), 1) if total else 0,
@@ -755,7 +759,8 @@ def api_dashboard_health_portrait_drilldown():
     if metric not in {
         'blood_pressure_abnormal', 'blood_lipid_abnormal', 'blood_sugar_abnormal',
         'bmi_abnormal', 'sleep_abnormal', 'bone_joint_problem', 'high_risk',
-        'age_group', 'health_need_tag', 'past_history_tag'
+        'age_group', 'health_need_tag', 'past_history_tag', 'recent_symptom_tag',
+        'exercise_method_tag', 'life_habit_tag'
     }:
         conn.close()
         return error_response('metric 参数不合法')
@@ -829,6 +834,19 @@ def api_dashboard_health_portrait_drilldown():
             matched = bool(metric_value) and metric_value in health_need_items
         elif metric == 'past_history_tag':
             matched = bool(metric_value) and metric_value in past_history_items
+        elif metric == 'recent_symptom_tag':
+            matched = bool(metric_value) and metric_value in recent_symptom_items
+        elif metric == 'exercise_method_tag':
+            matched = bool(metric_value) and metric_value in normalize_multi_text(row.get('exercise_methods'))
+        elif metric == 'life_habit_tag':
+            if metric_value == '吸烟':
+                matched = row.get('smoking_status') == '有'
+            elif metric_value == '饮酒':
+                matched = row.get('drinking_status') == '有'
+            elif metric_value == '睡眠异常':
+                matched = sleep_abnormal
+            elif metric_value == '烟酒叠加':
+                matched = row.get('smoking_status') == '有' and row.get('drinking_status') == '有'
         if not matched:
             continue
         detail_rows.append({
