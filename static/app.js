@@ -2236,17 +2236,76 @@
   function renderSimpleLineChart(elId, labels, series) {
     var box = document.getElementById(elId);
     if (!box) return;
-    var w = 820, h = 260, left = 40, right = 20, top = 20, bottom = 30;
+    var w = 900, h = 300, left = 56, right = 24, top = 20, bottom = 44;
     var max = 100;
-    function points(values) {
-      return values.map(function (v, i) {
-        var x = left + ((w - left - right) * i / Math.max(values.length - 1, 1));
-        var y = top + ((h - top - bottom) * (1 - (Number(v || 0) / max)));
-        return x.toFixed(1) + ',' + y.toFixed(1);
-      }).join(' ');
+    var innerW = w - left - right;
+    var innerH = h - top - bottom;
+    function xOf(i, total) {
+      return left + (innerW * i / Math.max(total - 1, 1));
     }
-    var lines = series.map(function (s) { return '<polyline fill="none" stroke="' + s.color + '" stroke-width="2.5" points="' + points(s.values) + '"/>'; }).join('');
-    box.innerHTML = '<svg class="line-chart-svg" viewBox="0 0 ' + w + ' ' + h + '"><line x1="' + left + '" y1="' + (h - bottom) + '" x2="' + (w - right) + '" y2="' + (h - bottom) + '" stroke="#cbd5e1"/><line x1="' + left + '" y1="' + top + '" x2="' + left + '" y2="' + (h - bottom) + '" stroke="#cbd5e1"/>' + lines + '</svg>';
+    function yOf(v) {
+      return top + innerH * (1 - (Number(v || 0) / max));
+    }
+    function smoothPath(values) {
+      var n = values.length;
+      if (!n) return '';
+      if (n === 1) return 'M ' + xOf(0, 1).toFixed(1) + ' ' + yOf(values[0]).toFixed(1);
+      var d = '';
+      for (var i = 0; i < n; i += 1) {
+        var x = xOf(i, n);
+        var y = yOf(values[i]);
+        if (i === 0) {
+          d += 'M ' + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+        } else {
+          var prevX = xOf(i - 1, n);
+          var prevY = yOf(values[i - 1]);
+          var cx1 = prevX + (x - prevX) * 0.45;
+          var cy1 = prevY;
+          var cx2 = prevX + (x - prevX) * 0.55;
+          var cy2 = y;
+          d += 'C ' + cx1.toFixed(1) + ' ' + cy1.toFixed(1) + ', ' + cx2.toFixed(1) + ' ' + cy2.toFixed(1) + ', ' + x.toFixed(1) + ' ' + y.toFixed(1) + ' ';
+        }
+      }
+      return d.trim();
+    }
+    function areaPath(values) {
+      var n = values.length;
+      if (!n) return '';
+      var d = smoothPath(values);
+      d += ' L ' + xOf(n - 1, n).toFixed(1) + ' ' + (h - bottom).toFixed(1);
+      d += ' L ' + xOf(0, n).toFixed(1) + ' ' + (h - bottom).toFixed(1) + ' Z';
+      return d;
+    }
+    function formatDateLabel(raw) {
+      var str = String(raw || '');
+      if (/^\d{2}-\d{2}$/.test(str)) return str;
+      var m = str.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return m[2] + '-' + m[3];
+      return str;
+    }
+    var yTicks = [0, 25, 50, 75, 100];
+    var grid = yTicks.map(function (tick) {
+      var y = yOf(tick);
+      return '<line x1="' + left + '" y1="' + y.toFixed(1) + '" x2="' + (w - right) + '" y2="' + y.toFixed(1) + '" stroke="#e2e8f0" stroke-dasharray="3 3"/>' +
+        '<text x="' + (left - 8) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" fill="#64748b" font-size="11">' + tick + '%</text>';
+    }).join('');
+    var xTicks = labels.map(function (label, idx) {
+      var x = xOf(idx, labels.length);
+      return '<line x1="' + x.toFixed(1) + '" y1="' + (h - bottom) + '" x2="' + x.toFixed(1) + '" y2="' + (h - bottom + 4) + '" stroke="#94a3b8"/>' +
+        '<text x="' + x.toFixed(1) + '" y="' + (h - bottom + 18) + '" text-anchor="middle" fill="#64748b" font-size="11">' + escapeHtml(formatDateLabel(label)) + '</text>';
+    }).join('');
+    var areas = series.map(function (s) {
+      return '<path d="' + areaPath(s.values) + '" fill="' + s.color + '" fill-opacity="0.12"></path>';
+    }).join('');
+    var lines = series.map(function (s) {
+      return '<path d="' + smoothPath(s.values) + '" fill="none" stroke="' + s.color + '" stroke-width="2.5"></path>';
+    }).join('');
+    box.innerHTML = '<svg class="line-chart-svg" viewBox="0 0 ' + w + ' ' + h + '">' +
+      grid +
+      '<line x1="' + left + '" y1="' + (h - bottom) + '" x2="' + (w - right) + '" y2="' + (h - bottom) + '" stroke="#94a3b8"/>' +
+      '<line x1="' + left + '" y1="' + top + '" x2="' + left + '" y2="' + (h - bottom) + '" stroke="#94a3b8"/>' +
+      areas + lines + xTicks +
+      '</svg>';
   }
 
   function renderPortraitTrendMetricGroup(elId, rows) {
@@ -3284,21 +3343,24 @@
   document.getElementById('btn-portrait-export').addEventListener('click', function () {
     window.print();
   });
-  document.querySelectorAll('[data-portrait-quick]').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var daysMap = { '7d': 7, '30d': 30, '1m': 30, '6m': 180 };
-      var days = daysMap[btn.getAttribute('data-portrait-quick')] || 30;
-      var end = new Date();
-      var start = new Date(end.getTime() - (days - 1) * 86400000);
-      var startEl = document.getElementById('portrait-date-from');
-      var endEl = document.getElementById('portrait-date-to');
-      if (startEl) startEl.value = start.toISOString().slice(0, 10);
-      if (endEl) endEl.value = end.toISOString().slice(0, 10);
-      document.querySelectorAll('[data-portrait-quick]').forEach(function (x) { x.classList.remove('active'); });
-      btn.classList.add('active');
-      loadPortraitPage();
+  function applyPortraitQuickRange(rangeKey, shouldReload) {
+    var daysMap = { '7d': 7, '1m': 30, '3m': 90, '6m': 180 };
+    var days = daysMap[rangeKey] || 30;
+    var end = new Date();
+    var start = new Date(end.getTime() - (days - 1) * 86400000);
+    var startEl = document.getElementById('portrait-date-from');
+    var endEl = document.getElementById('portrait-date-to');
+    if (startEl) startEl.value = start.toISOString().slice(0, 10);
+    if (endEl) endEl.value = end.toISOString().slice(0, 10);
+    if (shouldReload) loadPortraitPage();
+  }
+  var portraitQuickRangeSelect = document.getElementById('portrait-quick-range-select');
+  if (portraitQuickRangeSelect) {
+    portraitQuickRangeSelect.addEventListener('change', function () {
+      applyPortraitQuickRange(portraitQuickRangeSelect.value, true);
     });
-  });
+    applyPortraitQuickRange(portraitQuickRangeSelect.value, false);
+  }
   document.getElementById('btn-portrait-drilldown-close').addEventListener('click', function () {
     document.getElementById('modal-portrait-drilldown').classList.add('hide');
   });
