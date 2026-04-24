@@ -278,3 +278,21 @@ python -m pip install -r requirements.txt
   - 数据库切换至 MySQL/PostgreSQL
   - 服务端部署至 Linux + Gunicorn/uWSGI + Nginx
   - 增加更细粒度权限与审计策略
+
+---
+
+## 附录：为 `trade_agent`（贸促经贸企业信息管理平台）创建独立环境
+
+如果你需要在本机为另一个项目 `https://github.com/andi-zhx/trade_agent` 准备隔离环境，可直接执行：
+
+```bash
+bash scripts/setup_trade_agent_env.sh
+```
+
+默认会尝试把项目放到 `/workspace/projects/trade_agent` 并创建 `.venv`。你也可以传入自定义目录：
+
+```bash
+bash scripts/setup_trade_agent_env.sh /your/custom/path/trade_agent
+```
+
+> 若当前网络无法访问 GitHub，脚本会先创建目录和虚拟环境，后续网络恢复后再手动 `git clone` 即可。
