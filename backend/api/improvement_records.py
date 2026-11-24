@@ -1,5 +1,6 @@
 from flask import Blueprint
 from backend.core import *
+from backend.experience import EXPERIENCE_DIMENSIONS, experience_values, save_experience
 
 bp = Blueprint('improvement_records', __name__)
 
@@ -11,6 +12,7 @@ def api_improvement_records_meta():
     conn.close()
     return success_response({
         'service_projects': projects,
+        'experience_dimensions': EXPERIENCE_DIMENSIONS,
         'service_type_options': list(IMPROVEMENT_SERVICE_TYPE_OPTIONS),
         'improvement_status_options': IMPROVEMENT_STATUS_OPTIONS,
         'followup_method_options': FOLLOWUP_METHOD_OPTIONS,
@@ -180,6 +182,11 @@ def api_improvement_record_create():
     if err:
         conn.close()
         return error_response(err)
+    try:
+        experience = experience_values(d)
+    except ValueError as error:
+        conn.close()
+        return error_response(str(error))
     now_ts = now_local_str()
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     if not c.fetchone():
@@ -210,6 +217,7 @@ def api_improvement_record_create():
             ),
         )
         rid = c.lastrowid
+        save_experience(c, rid, experience)
         conn.commit()
     except sqlite3.IntegrityError:
         conn.rollback()
@@ -231,10 +239,16 @@ def api_improvement_record_update(rid):
         conn.close()
         return error_response(err)
     now_ts = now_local_str()
-    c.execute('SELECT id FROM service_improvement_records WHERE id=?', (rid,))
-    if not c.fetchone():
+    c.execute('SELECT * FROM service_improvement_records WHERE id=?', (rid,))
+    previous = c.fetchone()
+    if not previous:
         conn.close()
         return error_response('记录不存在', 404, 'NOT_FOUND')
+    try:
+        experience = experience_values(d, dict(previous))
+    except ValueError as error:
+        conn.close()
+        return error_response(str(error))
     c.execute('SELECT id FROM customers WHERE id=? AND is_deleted=0', (d.get('customer_id'),))
     if not c.fetchone():
         conn.close()
@@ -265,6 +279,7 @@ def api_improvement_record_update(rid):
                 rid,
             ),
         )
+        save_experience(c, rid, experience)
         conn.commit()
     except sqlite3.IntegrityError:
         conn.rollback()
@@ -466,3 +481,27 @@ def api_improvement_record_from_appointment():
 
 
 # ========== 预约 ==========
+
+
+@bp.route('/api/improvement-records/<int:rid>/followup', methods=['POST'])
+def api_improvement_followup(rid):
+    data = request.get_json(silent=True) or {}
+    conn = get_db()
+    try:
+        row = conn.execute('SELECT * FROM service_improvement_records WHERE id=?', (rid,)).fetchone()
+        if row is None:
+            return error_response('记录不存在', 404, 'NOT_FOUND')
+        payload = {key: data[key] for key in ('followup_status', 'followup_completed_at', 'followup_notes') if key in data}
+        if payload.get('followup_status') == '已回访' and not payload.get('followup_completed_at'):
+            payload['followup_completed_at'] = now_local_str()
+        try:
+            values = experience_values(payload, dict(row))
+        except ValueError as error:
+            return error_response(str(error))
+        save_experience(conn.cursor(), rid, values)
+        conn.execute('UPDATE service_improvement_records SET updated_at=? WHERE id=?', (now_local_str(), rid))
+        conn.commit()
+    finally:
+        conn.close()
+    audit_log('更新回访', 'service_improvement_records', rid, values['followup_status'])
+    return success_response({'id': rid}, '回访已更新')

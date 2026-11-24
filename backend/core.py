@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 import time
 from zoneinfo import ZoneInfo
+from backend.runtime import DATA_DIR
 
 try:
     import tkinter as tk
@@ -80,11 +81,11 @@ def ensure_secret_key_configured(app):
         return
     raise RuntimeError('未配置环境变量 SECRET_KEY，应用禁止启动。')
 
-DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
-LOCAL_FILE_UPLOAD_ROOT = os.path.join(BASE_DIR, 'uploads')
-BACKUP_FOLDER = os.path.join(BASE_DIR, 'database_backups')
-LOG_FOLDER = os.path.join(BASE_DIR, 'logs')
+DB_PATH = os.path.join(DATA_DIR, 'medical_system.db')
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'exports')
+LOCAL_FILE_UPLOAD_ROOT = os.path.join(DATA_DIR, 'uploads')
+BACKUP_FOLDER = os.path.join(DATA_DIR, 'database_backups')
+LOG_FOLDER = os.path.join(DATA_DIR, 'logs')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOCAL_FILE_UPLOAD_ROOT, exist_ok=True)
 os.makedirs(BACKUP_FOLDER, exist_ok=True)
@@ -92,6 +93,7 @@ os.makedirs(LOG_FOLDER, exist_ok=True)
 
 logging.basicConfig(
     filename=os.path.join(LOG_FOLDER, 'app.log'),
+    encoding='utf-8',
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
 )
@@ -809,6 +811,8 @@ def decode_multi_value(value):
 
 PUBLIC_API_PATHS = {
     '/api/auth/login',
+    '/api/auth/session',
+    '/api/health',
 }
 
 
@@ -891,6 +895,9 @@ DEFAULT_PROJECT_EQUIPMENT_MAP = {}
 
 APPOINTMENT_PROJECT_DEVICE_CONFIG = {
     '高压氧仓': ['高压氧仓01', '高压氧仓02'],
+    '高压氧舱': ['高压氧舱01', '高压氧舱02'],
+    '听力检测': ['听力检测01', '听力检测02'],
+    '按摩机器人': ['按摩机器人01', '按摩机器人02'],
     '毫米波理疗仪': ['毫米波理疗仪01', '毫米波理疗仪02'],
     '疼痛治疗仪': ['疼痛治疗仪01', '疼痛治疗仪02'],
     '听力检测仪': ['听力检测仪01', '听力检测仪02'],
@@ -2097,7 +2104,7 @@ def init_db():
     })
     normalize_appointment_status_data(c, 'appointments')
 
-    c.execute('DROP TABLE IF EXISTS equipment_usage')
+    # Preserve historical tables during upgrades, even when no longer used by the UI.
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_assessments (
@@ -2223,7 +2230,6 @@ def init_db():
         'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
-    c.execute('DROP TABLE IF EXISTS service_projects')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS staff (
@@ -2501,7 +2507,6 @@ def init_db():
             ],
         )
 
-    c.execute('DROP TABLE IF EXISTS satisfaction_surveys')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_records (
@@ -2574,6 +2579,8 @@ def init_db():
     })
     migrate_service_improvement_records_drop_followup_result(c)
     migrate_service_improvement_service_type_values(c)
+    from backend.experience import ensure_experience_columns
+    ensure_experience_columns(c)
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS improvement_record_files (
@@ -2732,12 +2739,12 @@ def init_db():
                 (project_name, staff_row['id'], 'enabled'),
             )
 
-    purge_legacy_equipment_and_store_massage(c)
+    # Existing equipment and mappings belong to the user; startup must not purge them.
     ensure_query_indexes(c)
 
     conn.commit()
     conn.close()
-    print('数据库初始化完成，数据文件: %s' % DB_PATH)
+    logging.info('数据库初始化完成，数据文件: %s', DB_PATH)
 
 
 # ========== 静态页面 ==========

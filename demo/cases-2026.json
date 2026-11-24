@@ -1,0 +1,6809 @@
+{
+  "schema_version": 1,
+  "year": 2026,
+  "as_of": "2026-11-24",
+  "fictional": true,
+  "notice": "100位完全虚构的军休干部案例，仅供体验和系统建设展示，不可作为真实工作业绩或临床疗效证据。",
+  "cases": [
+    {
+      "case_no": "DEMO-001",
+      "name": "演示干部001",
+      "gender": "男",
+      "birth_date": "1959-02-02",
+      "id_card": "00000019590202001X",
+      "phone": "19900000001",
+      "rank": "团职",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-05",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-19",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-02-17",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-03-03",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-01",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-04-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-002",
+      "name": "演示干部002",
+      "gender": "男",
+      "birth_date": "1952-03-03",
+      "id_card": "00000019520303002X",
+      "phone": "19900000002",
+      "rank": "营职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-01-08",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-01-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-20",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-03-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-04",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-18",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-18 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-003",
+      "name": "演示干部003",
+      "gender": "男",
+      "birth_date": "1945-04-04",
+      "id_card": "00000019450404003X",
+      "phone": "19900000003",
+      "rank": "专业技术",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-11",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-01-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-02-23",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-07",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-004",
+      "name": "演示干部004",
+      "gender": "女",
+      "birth_date": "1938-05-05",
+      "id_card": "00000019380505004X",
+      "phone": "19900000004",
+      "rank": "师职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-01-14",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-01-28",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-28 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-02-26",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-12",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-12 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-04-10",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-04-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-005",
+      "name": "演示干部005",
+      "gender": "男",
+      "birth_date": "1963-06-06",
+      "id_card": "00000019630606005X",
+      "phone": "19900000005",
+      "rank": "团职",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-17",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-31",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-03-01",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-13",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-04-27",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-006",
+      "name": "演示干部006",
+      "gender": "男",
+      "birth_date": "1956-07-07",
+      "id_card": "00000019560707006X",
+      "phone": "19900000006",
+      "rank": "营职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-01-20",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-02-03",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-03-04",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-03-18",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-16",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-30",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-007",
+      "name": "演示干部007",
+      "gender": "男",
+      "birth_date": "1949-08-08",
+      "id_card": "00000019490808007X",
+      "phone": "19900000007",
+      "rank": "专业技术",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-23",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-02-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-07",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-19",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-03",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-03 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-008",
+      "name": "演示干部008",
+      "gender": "女",
+      "birth_date": "1942-09-09",
+      "id_card": "00000019420909008X",
+      "phone": "19900000008",
+      "rank": "师职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-01-26",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-10",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-04-22",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-009",
+      "name": "演示干部009",
+      "gender": "男",
+      "birth_date": "1935-10-10",
+      "id_card": "00000019351010009X",
+      "phone": "19900000009",
+      "rank": "团职",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-29",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-12",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-12 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-03-13",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-03-27",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-27 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-25",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-010",
+      "name": "演示干部010",
+      "gender": "男",
+      "birth_date": "1960-11-11",
+      "id_card": "00000019601111010X",
+      "phone": "19900000010",
+      "rank": "营职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-02-01",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-03-16",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-30",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-28",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 0,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-12",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-011",
+      "name": "演示干部011",
+      "gender": "男",
+      "birth_date": "1953-12-12",
+      "id_card": "00000019531212011X",
+      "phone": "19900000011",
+      "rank": "专业技术",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-04",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-18",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-19",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 0,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-02",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-01",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-05-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-012",
+      "name": "演示干部012",
+      "gender": "女",
+      "birth_date": "1946-01-13",
+      "id_card": "00000019460113012X",
+      "phone": "19900000012",
+      "rank": "师职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-02-07",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 0,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-22",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-04-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-05-04",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-18",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-18 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-013",
+      "name": "演示干部013",
+      "gender": "男",
+      "birth_date": "1939-02-14",
+      "id_card": "00000019390214013X",
+      "phone": "19900000013",
+      "rank": "团职",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-02-10",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-02-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-03-25",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-07",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-014",
+      "name": "演示干部014",
+      "gender": "男",
+      "birth_date": "1964-03-15",
+      "id_card": "00000019640315014X",
+      "phone": "19900000014",
+      "rank": "营职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-02-13",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-02-27",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-27 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-03-28",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-11",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-11 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-10",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-015",
+      "name": "演示干部015",
+      "gender": "男",
+      "birth_date": "1957-04-16",
+      "id_card": "00000019570416015X",
+      "phone": "19900000015",
+      "rank": "专业技术",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-16",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-02",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-31",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-13",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-05-27",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-016",
+      "name": "演示干部016",
+      "gender": "女",
+      "birth_date": "1950-05-17",
+      "id_card": "00000019500517016X",
+      "phone": "19900000016",
+      "rank": "师职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-02-19",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-05",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-03",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-04-17",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-05-16",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-05-30",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-017",
+      "name": "演示干部017",
+      "gender": "男",
+      "birth_date": "1943-06-18",
+      "id_card": "00000019430618017X",
+      "phone": "19900000017",
+      "rank": "团职",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-02-22",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-03-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-04-06",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-19",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-02",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-02 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-018",
+      "name": "演示干部018",
+      "gender": "男",
+      "birth_date": "1936-07-19",
+      "id_card": "00000019360719018X",
+      "phone": "19900000018",
+      "rank": "营职",
+      "diseases": [],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-02-25",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-11",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-11 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-09",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-22",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-019",
+      "name": "演示干部019",
+      "gender": "男",
+      "birth_date": "1961-08-20",
+      "id_card": "00000019610820019X",
+      "phone": "19900000019",
+      "rank": "专业技术",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-28",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-14",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-14 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-12",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-26",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-26 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-25",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-020",
+      "name": "演示干部020",
+      "gender": "女",
+      "birth_date": "1954-09-21",
+      "id_card": "00000019540921020X",
+      "phone": "19900000020",
+      "rank": "师职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-03",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-17",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-15",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-05-28",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-11",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-021",
+      "name": "演示干部021",
+      "gender": "男",
+      "birth_date": "1947-10-22",
+      "id_card": "00000019471022021X",
+      "phone": "19900000021",
+      "rank": "团职",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-06",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-20",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-04-18",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-05-02",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-31",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-06-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-022",
+      "name": "演示干部022",
+      "gender": "男",
+      "birth_date": "1940-11-23",
+      "id_card": "00000019401123022X",
+      "phone": "19900000022",
+      "rank": "营职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-03-09",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-21",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-05-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-03",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-17",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-17 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-023",
+      "name": "演示干部023",
+      "gender": "男",
+      "birth_date": "1965-12-24",
+      "id_card": "00000019651224023X",
+      "phone": "19900000023",
+      "rank": "专业技术",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-03-12",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-03-26",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-26 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-24",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-06",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-024",
+      "name": "演示干部024",
+      "gender": "女",
+      "birth_date": "1958-01-25",
+      "id_card": "00000019580125024X",
+      "phone": "19900000024",
+      "rank": "师职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-15",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-29",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-29 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-27",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-11",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-11 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-06-09",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-06-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-025",
+      "name": "演示干部025",
+      "gender": "男",
+      "birth_date": "1951-02-26",
+      "id_card": "00000019510226025X",
+      "phone": "19900000025",
+      "rank": "团职",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-18",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-04-30",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-12",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-06-26",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-026",
+      "name": "演示干部026",
+      "gender": "男",
+      "birth_date": "1944-03-27",
+      "id_card": "00000019440327026X",
+      "phone": "19900000026",
+      "rank": "营职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-03-21",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-04-04",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-03",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-05-17",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-15",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-027",
+      "name": "演示干部027",
+      "gender": "男",
+      "birth_date": "1937-04-01",
+      "id_card": "00000019370401027X",
+      "phone": "19900000027",
+      "rank": "专业技术",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-03-24",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-04-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-06",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-18",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-02",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-02 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-028",
+      "name": "演示干部028",
+      "gender": "女",
+      "birth_date": "1962-05-02",
+      "id_card": "00000019620502028X",
+      "phone": "19900000028",
+      "rank": "师职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-27",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-09",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-06-21",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-029",
+      "name": "演示干部029",
+      "gender": "男",
+      "birth_date": "1955-06-03",
+      "id_card": "00000019550603029X",
+      "phone": "19900000029",
+      "rank": "团职",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-30",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-13",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-13 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-05-12",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-05-26",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-26 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-24",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-030",
+      "name": "演示干部030",
+      "gender": "男",
+      "birth_date": "1948-07-04",
+      "id_card": "00000019480704030X",
+      "phone": "19900000030",
+      "rank": "营职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-04-02",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-15",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-27",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 2,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-11",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-031",
+      "name": "演示干部031",
+      "gender": "男",
+      "birth_date": "1941-08-05",
+      "id_card": "00000019410805031X",
+      "phone": "19900000031",
+      "rank": "专业技术",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-05",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-19",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-18",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 2,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-30",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-07-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-032",
+      "name": "演示干部032",
+      "gender": "女",
+      "birth_date": "1966-09-06",
+      "id_card": "00000019660906032X",
+      "phone": "19900000032",
+      "rank": "师职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-08",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 2,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-04-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-21",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-06-04",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-04 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-07-03",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-17",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-17 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-033",
+      "name": "演示干部033",
+      "gender": "男",
+      "birth_date": "1959-10-07",
+      "id_card": "00000019591007033X",
+      "phone": "19900000033",
+      "rank": "团职",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-11",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-04-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-05-24",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-06",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-034",
+      "name": "演示干部034",
+      "gender": "男",
+      "birth_date": "1952-11-08",
+      "id_card": "00000019521108034X",
+      "phone": "19900000034",
+      "rank": "营职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-04-14",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-04-28",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-04-28 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-27",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-09",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-035",
+      "name": "演示干部035",
+      "gender": "男",
+      "birth_date": "1945-12-09",
+      "id_card": "00000019451209035X",
+      "phone": "19900000035",
+      "rank": "专业技术",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-17",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-30",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-13",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-12",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-07-26",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-036",
+      "name": "演示干部036",
+      "gender": "女",
+      "birth_date": "1938-01-10",
+      "id_card": "00000019380110036X",
+      "phone": "19900000036",
+      "rank": "师职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-04-20",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-04",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-02",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-06-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-07-15",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-07-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-037",
+      "name": "演示干部037",
+      "gender": "男",
+      "birth_date": "1963-02-11",
+      "id_card": "00000019630211037X",
+      "phone": "19900000037",
+      "rank": "团职",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-04-23",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-05-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-06-05",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-19",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-19 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-18",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-01",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-01 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-038",
+      "name": "演示干部038",
+      "gender": "男",
+      "birth_date": "1956-03-12",
+      "id_card": "00000019560312038X",
+      "phone": "19900000038",
+      "rank": "营职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-04-26",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-08",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-21",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-04",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-04 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-039",
+      "name": "演示干部039",
+      "gender": "男",
+      "birth_date": "1949-04-13",
+      "id_card": "00000019490413039X",
+      "phone": "19900000039",
+      "rank": "专业技术",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-04-29",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-13",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-13 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-11",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-24",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-040",
+      "name": "演示干部040",
+      "gender": "女",
+      "birth_date": "1942-05-14",
+      "id_card": "00000019420514040X",
+      "phone": "19900000040",
+      "rank": "师职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-02",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-14",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-28",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-07-27",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-10",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-041",
+      "name": "演示干部041",
+      "gender": "男",
+      "birth_date": "1935-06-15",
+      "id_card": "00000019350615041X",
+      "phone": "19900000041",
+      "rank": "团职",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-05",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-19",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-06-17",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-07-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-30",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-13",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-042",
+      "name": "演示干部042",
+      "gender": "男",
+      "birth_date": "1960-07-16",
+      "id_card": "00000019600716042X",
+      "phone": "19900000042",
+      "rank": "营职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-05-08",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-20",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-07-04",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-04 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-02",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-16",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-16 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-043",
+      "name": "演示干部043",
+      "gender": "男",
+      "birth_date": "1953-08-17",
+      "id_card": "00000019530817043X",
+      "phone": "19900000043",
+      "rank": "专业技术",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-11",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-05-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-23",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-05",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-19",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-19 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-044",
+      "name": "演示干部044",
+      "gender": "女",
+      "birth_date": "1946-09-18",
+      "id_card": "00000019460918044X",
+      "phone": "19900000044",
+      "rank": "师职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-14",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-05-28",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-05-28 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-26",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-08-08",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-045",
+      "name": "演示干部045",
+      "gender": "男",
+      "birth_date": "1939-10-19",
+      "id_card": "00000019391019045X",
+      "phone": "19900000045",
+      "rank": "团职",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-17",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-05-31",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-06-29",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-13",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-11",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-08-25",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-046",
+      "name": "演示干部046",
+      "gender": "男",
+      "birth_date": "1964-11-20",
+      "id_card": "00000019641120046X",
+      "phone": "19900000046",
+      "rank": "营职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-05-20",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-06-03",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-02",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-07-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-14",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 2,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-28",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-047",
+      "name": "演示干部047",
+      "gender": "男",
+      "birth_date": "1957-12-21",
+      "id_card": "00000019571221047X",
+      "phone": "19900000047",
+      "rank": "专业技术",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-05-23",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-06-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-05",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 2,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-19",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-19 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-17",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-31",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-31 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-048",
+      "name": "演示干部048",
+      "gender": "女",
+      "birth_date": "1950-01-22",
+      "id_card": "00000019500122048X",
+      "phone": "19900000048",
+      "rank": "师职",
+      "diseases": [],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-05-26",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 2,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-08",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-08-20",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-03",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-03 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-049",
+      "name": "演示干部049",
+      "gender": "男",
+      "birth_date": "1943-02-23",
+      "id_card": "00000019430223049X",
+      "phone": "19900000049",
+      "rank": "团职",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-05-29",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-12",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-12 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-07-11",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-07-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-23",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-050",
+      "name": "演示干部050",
+      "gender": "男",
+      "birth_date": "1936-03-24",
+      "id_card": "00000019360324050X",
+      "phone": "19900000050",
+      "rank": "营职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-06-01",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-06-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-14",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-28",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-26",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 4,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-09",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-051",
+      "name": "演示干部051",
+      "gender": "男",
+      "birth_date": "1961-04-25",
+      "id_card": "00000019610425051X",
+      "phone": "19900000051",
+      "rank": "专业技术",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-04",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-18",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-17",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 4,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-31",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-29",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-09-12",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-052",
+      "name": "演示干部052",
+      "gender": "女",
+      "birth_date": "1954-05-26",
+      "id_card": "00000019540526052X",
+      "phone": "19900000052",
+      "rank": "师职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-07",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 4,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-20",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-03",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-03 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-09-01",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-15",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-15 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-053",
+      "name": "演示干部053",
+      "gender": "男",
+      "birth_date": "1947-06-27",
+      "id_card": "00000019470627053X",
+      "phone": "19900000053",
+      "rank": "团职",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-10",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-06-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-07-23",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-04",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-18",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-18 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-054",
+      "name": "演示干部054",
+      "gender": "男",
+      "birth_date": "1940-07-01",
+      "id_card": "00000019400701054X",
+      "phone": "19900000054",
+      "rank": "营职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-06-13",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-06-27",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-06-27 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-26",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-07",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-055",
+      "name": "演示干部055",
+      "gender": "男",
+      "birth_date": "1965-08-02",
+      "id_card": "00000019650802055X",
+      "phone": "19900000055",
+      "rank": "专业技术",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-16",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-06-30",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-29",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-12",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-10",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-09-24",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-056",
+      "name": "演示干部056",
+      "gender": "女",
+      "birth_date": "1958-09-03",
+      "id_card": "00000019580903056X",
+      "phone": "19900000056",
+      "rank": "师职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-06-19",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-03",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-01",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-08-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-09-13",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-09-27",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-057",
+      "name": "演示干部057",
+      "gender": "男",
+      "birth_date": "1951-10-04",
+      "id_card": "00000019511004057X",
+      "phone": "19900000057",
+      "rank": "团职",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-06-22",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-07-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-08-04",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-18",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-18 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-16",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-30",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-30 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-058",
+      "name": "演示干部058",
+      "gender": "男",
+      "birth_date": "1944-11-05",
+      "id_card": "00000019441105058X",
+      "phone": "19900000058",
+      "rank": "营职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-06-25",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-07",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-19",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-03",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-03 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-059",
+      "name": "演示干部059",
+      "gender": "男",
+      "birth_date": "1937-12-06",
+      "id_card": "00000019371206059X",
+      "phone": "19900000059",
+      "rank": "专业技术",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-06-28",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-12",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-12 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-10",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-22",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-060",
+      "name": "演示干部060",
+      "gender": "女",
+      "birth_date": "1962-01-07",
+      "id_card": "00000019620107060X",
+      "phone": "19900000060",
+      "rank": "师职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-01",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-15",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-13",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-27",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-09-25",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-09",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-061",
+      "name": "演示干部061",
+      "gender": "男",
+      "birth_date": "1955-02-08",
+      "id_card": "00000019550208061X",
+      "phone": "19900000061",
+      "rank": "团职",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-04",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-18",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-08-16",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-30",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-28",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-12",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-062",
+      "name": "演示干部062",
+      "gender": "男",
+      "birth_date": "1948-03-09",
+      "id_card": "00000019480309062X",
+      "phone": "19900000062",
+      "rank": "营职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-07-07",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-19",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-09-02",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-02 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-01",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-15",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-15 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-063",
+      "name": "演示干部063",
+      "gender": "男",
+      "birth_date": "1941-04-10",
+      "id_card": "00000019410410063X",
+      "phone": "19900000063",
+      "rank": "专业技术",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-10",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-07-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-22",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-04",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-18",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-18 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-064",
+      "name": "演示干部064",
+      "gender": "女",
+      "birth_date": "1966-05-11",
+      "id_card": "00000019660511064X",
+      "phone": "19900000064",
+      "rank": "师职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-13",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-07-27",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-07-27 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-25",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-10-07",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-21",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-21 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-065",
+      "name": "演示干部065",
+      "gender": "男",
+      "birth_date": "1959-06-12",
+      "id_card": "00000019590612065X",
+      "phone": "19900000065",
+      "rank": "团职",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-16",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-07-30",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-08-28",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-11",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-10",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-10-24",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-066",
+      "name": "演示干部066",
+      "gender": "男",
+      "birth_date": "1952-07-13",
+      "id_card": "00000019520713066X",
+      "phone": "19900000066",
+      "rank": "营职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-07-19",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-02",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-31",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-09-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-13",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-27",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-067",
+      "name": "演示干部067",
+      "gender": "男",
+      "birth_date": "1945-08-14",
+      "id_card": "00000019450814067X",
+      "phone": "19900000067",
+      "rank": "专业技术",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-07-22",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-08-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-03",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-17",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-17 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-16",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-30",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-30 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-068",
+      "name": "演示干部068",
+      "gender": "女",
+      "birth_date": "1938-09-15",
+      "id_card": "00000019380915068X",
+      "phone": "19900000068",
+      "rank": "师职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-07-25",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-06",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-10-19",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-02",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-02 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-069",
+      "name": "演示干部069",
+      "gender": "男",
+      "birth_date": "1963-10-16",
+      "id_card": "00000019631016069X",
+      "phone": "19900000069",
+      "rank": "团职",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-07-28",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-11",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-11 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-09-09",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-09-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-22",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-070",
+      "name": "演示干部070",
+      "gender": "男",
+      "birth_date": "1956-11-17",
+      "id_card": "00000019561117070X",
+      "phone": "19900000070",
+      "rank": "营职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-07-31",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-08-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-12",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-26",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-25",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 0,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-08",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-071",
+      "name": "演示干部071",
+      "gender": "男",
+      "birth_date": "1949-12-18",
+      "id_card": "00000019491218071X",
+      "phone": "19900000071",
+      "rank": "专业技术",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-03",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-17",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-15",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 0,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-28",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-11-11",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-072",
+      "name": "演示干部072",
+      "gender": "女",
+      "birth_date": "1942-01-19",
+      "id_card": "00000019420119072X",
+      "phone": "19900000072",
+      "rank": "师职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-06",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 0,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-18",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-02",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-02 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-10-31",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-14",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-14 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-073",
+      "name": "演示干部073",
+      "gender": "男",
+      "birth_date": "1935-02-20",
+      "id_card": "00000019350220073X",
+      "phone": "19900000073",
+      "rank": "团职",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-09",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 4,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-09-21",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-05",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-05 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-11-03",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-17",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-17 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-074",
+      "name": "演示干部074",
+      "gender": "男",
+      "birth_date": "1960-03-21",
+      "id_card": "00000019600321074X",
+      "phone": "19900000074",
+      "rank": "营职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-08-12",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-08-26",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-08-26 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-24",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-08",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-08 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-11-06",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-075",
+      "name": "演示干部075",
+      "gender": "男",
+      "birth_date": "1953-04-22",
+      "id_card": "00000019530422075X",
+      "phone": "19900000075",
+      "rank": "专业技术",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-15",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-08-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-27",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-11",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-11-09",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-11-23",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-076",
+      "name": "演示干部076",
+      "gender": "女",
+      "birth_date": "1946-05-23",
+      "id_card": "00000019460523076X",
+      "phone": "19900000076",
+      "rank": "师职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-18",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-30",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-10-14",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-01-06",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-01-20",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-077",
+      "name": "演示干部077",
+      "gender": "男",
+      "birth_date": "1939-06-24",
+      "id_card": "00000019390624077X",
+      "phone": "19900000077",
+      "rank": "团职",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-08-21",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 10,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-09-04",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-04 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-10-03",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-17",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-17 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-09",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-01-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-078",
+      "name": "演示干部078",
+      "gender": "男",
+      "birth_date": "1964-07-25",
+      "id_card": "00000019640725078X",
+      "phone": "19900000078",
+      "rank": "营职",
+      "diseases": [],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-08-24",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-06",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-20",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-20 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-01-12",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-26",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-26 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-079",
+      "name": "演示干部079",
+      "gender": "男",
+      "birth_date": "1957-08-26",
+      "id_card": "00000019570826079X",
+      "phone": "19900000079",
+      "rank": "专业技术",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-08-27",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 5,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-09",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-23",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-23 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-15",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-29",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-29 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-080",
+      "name": "演示干部080",
+      "gender": "女",
+      "birth_date": "1950-09-27",
+      "id_card": "00000019500927080X",
+      "phone": "19900000080",
+      "rank": "师职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-08-30",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 3,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-13",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-12",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-26",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-01-18",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-081",
+      "name": "演示干部081",
+      "gender": "男",
+      "birth_date": "1943-10-01",
+      "id_card": "00000019431001081X",
+      "phone": "19900000081",
+      "rank": "团职",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-02",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-10-15",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-29",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-21",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-02-04",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-082",
+      "name": "演示干部082",
+      "gender": "男",
+      "birth_date": "1936-11-02",
+      "id_card": "00000019361102082X",
+      "phone": "19900000082",
+      "rank": "营职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-09-05",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-19",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-19 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-18",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-11-01",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-01 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-01-24",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-083",
+      "name": "演示干部083",
+      "gender": "男",
+      "birth_date": "1961-12-03",
+      "id_card": "00000019611203083X",
+      "phone": "19900000083",
+      "rank": "专业技术",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-08",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 8,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-09-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-21",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-04",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-04 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-27",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-084",
+      "name": "演示干部084",
+      "gender": "女",
+      "birth_date": "1954-01-04",
+      "id_card": "00000019540104084X",
+      "phone": "19900000084",
+      "rank": "师职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-11",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-09-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-09-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-24",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-01-30",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-02-13",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-13 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-085",
+      "name": "演示干部085",
+      "gender": "男",
+      "birth_date": "1947-02-05",
+      "id_card": "00000019470205085X",
+      "phone": "19900000085",
+      "rank": "团职",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-14",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-09-28",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-10-27",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-10",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-02",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-02-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-086",
+      "name": "演示干部086",
+      "gender": "男",
+      "birth_date": "1940-03-06",
+      "id_card": "00000019400306086X",
+      "phone": "19900000086",
+      "rank": "营职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-09-17",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-01",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-30",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-11-13",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-02-05",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-19",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-087",
+      "name": "演示干部087",
+      "gender": "男",
+      "birth_date": "1965-04-07",
+      "id_card": "00000019650407087X",
+      "phone": "19900000087",
+      "rank": "专业技术",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-09-20",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 8,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-10-04",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-04 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-11-02",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-16",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-16 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-02-08",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-088",
+      "name": "演示干部088",
+      "gender": "女",
+      "birth_date": "1958-05-08",
+      "id_card": "00000019580508088X",
+      "phone": "19900000088",
+      "rank": "师职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-09-23",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-07",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-07 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-11-05",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-19",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-19 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-02-11",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-089",
+      "name": "演示干部089",
+      "gender": "男",
+      "birth_date": "1951-06-09",
+      "id_card": "00000019510609089X",
+      "phone": "19900000089",
+      "rank": "团职",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-09-26",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 9,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-10",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-10 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-11-08",
+          "time": "14:30",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-11-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-14",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-28",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-28 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-090",
+      "name": "演示干部090",
+      "gender": "男",
+      "birth_date": "1944-07-10",
+      "id_card": "00000019440710090X",
+      "phone": "19900000090",
+      "rank": "营职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-09-29",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-10-13",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-05",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-19",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-02-17",
+          "time": "09:00",
+          "dimension": "活动不便",
+          "before": 6,
+          "after": 2,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-03",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-091",
+      "name": "演示干部091",
+      "gender": "男",
+      "birth_date": "1937-08-11",
+      "id_card": "00000019370811091X",
+      "phone": "19900000091",
+      "rank": "专业技术",
+      "diseases": [
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-02",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 3,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-16",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-01-08",
+          "time": "10:30",
+          "dimension": "疲劳感",
+          "before": 6,
+          "after": 2,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-22",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-02-20",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-03-06",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-092",
+      "name": "演示干部092",
+      "gender": "女",
+      "birth_date": "1962-09-12",
+      "id_card": "00000019620912092X",
+      "phone": "19900000092",
+      "rank": "师职",
+      "diseases": [
+        "高血压",
+        "糖尿病"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-05",
+          "time": "11:00",
+          "dimension": "疼痛影响",
+          "before": 6,
+          "after": 2,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-19",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-19 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-11",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-01-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-02-23",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-093",
+      "name": "演示干部093",
+      "gender": "男",
+      "birth_date": "1955-10-13",
+      "id_card": "00000019551013093X",
+      "phone": "19900000093",
+      "rank": "团职",
+      "diseases": [
+        "颈椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-08",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 6,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-22",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-22 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-01-14",
+          "time": "12:30",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 8,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-01-28",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-28 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-02-26",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-12",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-12 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-094",
+      "name": "演示干部094",
+      "gender": "男",
+      "birth_date": "1948-11-14",
+      "id_card": "00000019481114094X",
+      "phone": "19900000094",
+      "rank": "营职",
+      "diseases": [
+        "关节炎"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-10-11",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 8,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-10-25",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-10-25 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-17",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-01-31",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-01-31 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-01",
+          "time": "13:00",
+          "dimension": "活动不便",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-15",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-15 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-095",
+      "name": "演示干部095",
+      "gender": "男",
+      "birth_date": "1941-12-15",
+      "id_card": "00000019411215095X",
+      "phone": "19900000095",
+      "rank": "专业技术",
+      "diseases": [
+        "高血脂"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-14",
+          "time": "14:00",
+          "dimension": "疼痛影响",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-28",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-01-20",
+          "time": "14:30",
+          "dimension": "疲劳感",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-03",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-04",
+          "time": "14:00",
+          "dimension": "活动不便",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-03-18",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": true
+    },
+    {
+      "case_no": "DEMO-096",
+      "name": "演示干部096",
+      "gender": "女",
+      "birth_date": "1966-01-16",
+      "id_card": "00000019660116096X",
+      "phone": "19900000096",
+      "rank": "师职",
+      "diseases": [
+        "听力下降"
+      ],
+      "sleep": "差",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-17",
+          "time": "09:00",
+          "dimension": "疼痛影响",
+          "before": 4,
+          "after": 1,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-10-31",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-01-23",
+          "time": "09:30",
+          "dimension": "疲劳感",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-02-06",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-03-07",
+          "time": "09:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 5,
+          "status": "部分改善",
+          "satisfaction": 4,
+          "adverse": false,
+          "followup_date": "2026-03-21",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-097",
+      "name": "演示干部097",
+      "gender": "男",
+      "birth_date": "1959-02-17",
+      "id_card": "00000019590217097X",
+      "phone": "19900000097",
+      "rank": "团职",
+      "diseases": [
+        "冠心病",
+        "高血压"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "高压氧舱",
+          "date": "2026-10-20",
+          "time": "10:00",
+          "dimension": "疼痛影响",
+          "before": 5,
+          "after": 6,
+          "status": "加重",
+          "satisfaction": 3,
+          "adverse": true,
+          "followup_date": "2026-11-03",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-03 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-01-26",
+          "time": "10:30",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-03-10",
+          "time": "10:00",
+          "dimension": "活动不便",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-03-24",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-24 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-098",
+      "name": "演示干部098",
+      "gender": "男",
+      "birth_date": "1952-03-18",
+      "id_card": "00000019520318098X",
+      "phone": "19900000098",
+      "rank": "营职",
+      "diseases": [],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "听力检测",
+          "date": "2026-10-23",
+          "time": "11:00",
+          "dimension": "听力沟通困扰",
+          "before": 6,
+          "after": 6,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-06",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-06 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "按摩机器人",
+          "date": "2026-01-29",
+          "time": "11:30",
+          "dimension": "疲劳感",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-02-12",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-12 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-03-13",
+          "time": "11:00",
+          "dimension": "活动不便",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-27",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-27 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-099",
+      "name": "演示干部099",
+      "gender": "男",
+      "birth_date": "1945-04-19",
+      "id_card": "00000019450419099X",
+      "phone": "19900000099",
+      "rank": "专业技术",
+      "diseases": [
+        "腰椎病"
+      ],
+      "sleep": "一般",
+      "needs": [
+        "睡眠管理",
+        "定期随访"
+      ],
+      "visits": [
+        {
+          "project": "按摩机器人",
+          "date": "2026-10-26",
+          "time": "12:00",
+          "dimension": "疼痛影响",
+          "before": 7,
+          "after": 7,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-11-09",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-11-09 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "艾灸机器人",
+          "date": "2026-02-01",
+          "time": "12:30",
+          "dimension": "疲劳感",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-15",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-02-15 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-03-16",
+          "time": "12:00",
+          "dimension": "活动不便",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-03-30",
+          "followup_status": "已回访",
+          "followup_completed_at": "2026-03-30 10:00:00",
+          "followup_notes": "演示回访：已核对本人感受，日常活动情况已记录，后续按健康专员安排随访。",
+          "has_feedback": true
+        }
+      ],
+      "home_visit": false
+    },
+    {
+      "case_no": "DEMO-100",
+      "name": "演示干部100",
+      "gender": "女",
+      "birth_date": "1938-05-20",
+      "id_card": "00000019380520100X",
+      "phone": "19900000100",
+      "rank": "师职",
+      "diseases": [
+        "睡眠障碍"
+      ],
+      "sleep": "良好",
+      "needs": [
+        "健康宣教",
+        "日常活动指导"
+      ],
+      "visits": [
+        {
+          "project": "艾灸机器人",
+          "date": "2026-10-29",
+          "time": "13:00",
+          "dimension": "疼痛影响",
+          "before": 8,
+          "after": 5,
+          "status": "明显改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-11-12",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "高压氧舱",
+          "date": "2026-02-04",
+          "time": "13:30",
+          "dimension": "疲劳感",
+          "before": 9,
+          "after": 7,
+          "status": "部分改善",
+          "satisfaction": 5,
+          "adverse": false,
+          "followup_date": "2026-02-18",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": true
+        },
+        {
+          "project": "听力检测",
+          "date": "2026-03-19",
+          "time": "13:00",
+          "dimension": "听力沟通困扰",
+          "before": 4,
+          "after": 4,
+          "status": "无改善",
+          "satisfaction": 3,
+          "adverse": false,
+          "followup_date": "2026-04-02",
+          "followup_status": "待回访",
+          "followup_completed_at": null,
+          "followup_notes": "",
+          "has_feedback": false
+        }
+      ],
+      "home_visit": true
+    }
+  ]
+}

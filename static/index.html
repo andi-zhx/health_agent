@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>健康评估档案</title>
+  <title>健康管理 · 服务工作台</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; color: #333; background: #f5f5f5; }
@@ -374,67 +374,66 @@
     .upload-dropzone.dragover { border-color: #3b82f6; background: #eff6ff; color: #1d4ed8; }
     .upload-dropzone .tip { margin-top: 8px; font-size: 12px; color: #64748b; }
   </style>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="operations.css">
 </head>
 <body>
   <div id="login-screen" class="login-screen">
-    <div class="login-card">
-      <h2>欢迎使用健康管理系统</h2>
-      <p>请输入账号密码，登录后进入系统。</p>
-      <div class="form-row"><label>账号</label></div>
-      <div class="form-row"><input type="text" id="login-username" placeholder="请输入账号"></div>
-      <div class="form-row"><label>密码</label></div>
-      <div class="form-row">
-        <div class="password-input-wrap">
-          <input type="password" id="login-password" placeholder="请输入密码">
-          <button type="button" id="btn-toggle-login-password" class="toggle-password-btn">显示</button>
-        </div>
-      </div>
-      <div class="form-row"><button class="btn btn-primary" id="btn-login" style="width:100%">登录</button></div>
-      <div id="login-msg"></div>
-      <div class="login-tip">默认账号：admin，默认密码：123456（可在后端系统设置中调整）。</div>
-    </div>
+    <section class="login-story" aria-label="健康管理系统介绍">
+      <div class="brand"><span class="brand-mark">＋</span><div>健康管理<span>HEALTH CARE</span></div></div>
+      <div class="story-copy"><div class="eyebrow">每一份关怀，都有迹可循</div><h1>用心守护健康，<br>让服务更有温度。</h1><p>从健康建档到每一次服务，<br>在这里，连接完整的健康管理旅程。</p></div>
+      <svg class="care-illustration" viewBox="0 0 560 220" fill="none" aria-hidden="true"><circle cx="280" cy="110" r="92" stroke="currentColor" opacity=".15"/><circle cx="280" cy="110" r="68" stroke="currentColor" opacity=".25"/><path d="M20 117h142l28-35 33 66 38-102 40 137 34-66h205" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="335" cy="117" r="7" fill="currentColor"/></svg>
+      <div class="story-footer">健康档案 <span>·</span> 预约管理 <span>·</span> 全程关怀</div>
+    </section>
+    <div class="login-panel"><form id="login-form" class="login-card">
+      <span class="login-tag">健康服务工作台</span><h2>欢迎回来</h2><p>登录账号，开启今天的健康服务。</p>
+      <label for="login-username">账号</label><input type="text" id="login-username" placeholder="请输入账号" autocomplete="username" required>
+      <label for="login-password">密码</label><div class="password-input-wrap"><input type="password" id="login-password" placeholder="请输入密码" autocomplete="current-password" required><button type="button" id="btn-toggle-login-password" class="toggle-password-btn" aria-label="显示密码" aria-pressed="false">显示</button></div>
+      <div id="login-msg" role="status" aria-live="polite"></div>
+      <button type="submit" class="btn btn-primary" id="btn-login">登录工作台 <span aria-hidden="true">→</span></button>
+      <div class="login-tip">首次使用：账号 admin · 密码 123456<br>已有数据请使用原账号和密码。</div>
+    </form><p class="login-footer">本地部署 · 数据保存在本机</p></div>
   </div>
   <div id="app-shell" class="app hide">
-    <nav class="sidebar">
-      <h1>健康管理系统</h1>
-      <a href="#" data-page="home" class="active">首页</a>
-      <a href="#" data-page="customers">客户列表</a>
-      <a href="#" data-page="health">健康档案</a>
-      <a href="#" data-page="portrait">健康画像</a>
-      <a href="#" data-page="appointments">预约服务</a>
-      <a href="#" data-page="home-appointments">上门预约</a>
-      <a href="#" data-page="improvement-tracking">理疗记录</a>
-      <a href="#" data-page="query-export">数据查询导出</a>
-      <a href="#" data-page="device-management">设备管理</a>
-      <a href="#" data-page="audit-logs">系统审计日志</a>
+    <button class="sidebar-backdrop" id="sidebar-backdrop" aria-label="关闭导航" tabindex="-1"></button>
+    <nav class="sidebar" id="sidebar" aria-label="主导航">
+      <div class="brand"><span class="brand-mark">＋</span><div>健康管理<span>HEALTH CARE</span></div></div>
+      <div class="nav-group-label">工作空间</div>
+      <a href="#overview" data-page="overview" class="active"><span class="nav-icon" aria-hidden="true">◫</span>年度总览</a>
+      <a href="#home" data-page="home"><span class="nav-icon" aria-hidden="true">⌂</span>工作台</a>
+      <a href="#customers" data-page="customers"><span class="nav-icon" aria-hidden="true">☷</span>客户列表</a>
+      <a href="#health" data-page="health"><span class="nav-icon" aria-hidden="true">▤</span>健康档案</a>
+      <a href="#portrait" data-page="portrait"><span class="nav-icon" aria-hidden="true">◉</span>健康画像</a>
+      <div class="nav-group-label">服务管理</div>
+      <a href="#appointments" data-page="appointments"><span class="nav-icon" aria-hidden="true">▦</span>预约服务</a>
+      <a href="#home-appointments" data-page="home-appointments"><span class="nav-icon" aria-hidden="true">⌘</span>上门预约</a>
+      <a href="#outcomes" data-page="outcomes"><span class="nav-icon" aria-hidden="true">✓</span>体验与回访</a>
+      <a href="#improvement-tracking" data-page="improvement-tracking"><span class="nav-icon" aria-hidden="true">♡</span>理疗记录</a>
+      <div class="nav-group-label">系统管理</div>
+      <a href="#query-export" data-page="query-export"><span class="nav-icon" aria-hidden="true">⇩</span>数据查询导出</a>
+      <a href="#device-management" data-page="device-management"><span class="nav-icon" aria-hidden="true">▣</span>设备管理</a>
+      <a href="#audit-logs" data-page="audit-logs"><span class="nav-icon" aria-hidden="true">≡</span>系统审计日志</a>
+      <div class="sidebar-footer"><span class="status-dot"></span> 本地健康管理系统</div>
     </nav>
-    <main class="main">
-      <div id="page-home" class="page">
-        <div class="card home-hero">
-          <h2 id="current-date" class="home-hero-title"></h2>
-          <p class="home-hero-desc">聚焦军休所健康服务场景，全面展示服务体量、执行质量与标准化体系，提升运营管理效率与服务感知。</p>
-        </div>
-        <div class="card">
-          <h2>核心概览</h2>
-          <div class="stats" id="stats"></div>
-        </div>
-        <div class="card">
-          <h2>服务亮点</h2>
-          <div class="home-highlight-grid">
-            <div class="home-highlight-card">
-              <h3>服务覆盖与响应</h3>
-              <p>全年开展常态化军休所7项理疗服务，理疗服务响应度100%，支撑日常健康服务保障。</p>
-            </div>
-            <div class="home-highlight-card">
-              <h3>团队协同执行力</h3>
-              <p>军休所健康团队与上门智慧康养团队协同执行，配合完成多次对外上级接待任务。</p>
-            </div>
-            <div class="home-highlight-card">
-              <h3>专享服务体验</h3>
-              <p>面向行动不便客户提供上门服务，并为每位客户匹配专享健康专员1对1服务。</p>
-            </div>
-          </div>
-        </div>
+    <main class="main" id="main-content">
+      <header class="topbar"><div class="topbar-location"><button class="menu-toggle" id="menu-toggle" aria-label="打开导航" aria-expanded="false" aria-controls="sidebar">☰</button><span class="breadcrumb">健康管理</span><span class="breadcrumb-divider">/</span><strong id="page-title">工作台</strong></div><div class="topbar-actions"><span id="environment-badge" class="outcome-pill waiting hide">虚构演示数据</span><span id="header-date"></span><span class="user-avatar" aria-hidden="true">健</span><span id="current-user">管理员</span><button class="btn btn-outline btn-small" id="btn-logout">退出登录</button></div></header>
+      <div id="page-overview" class="page hide">
+        <div class="annual-heading"><div><div class="eyebrow">ANNUAL HEALTH SERVICE REVIEW</div><h1>军休健康服务总览</h1><p id="overview-subtitle">服务建设 · 健康画像 · 改善反馈</p></div><div class="annual-actions"><label class="sr-only" for="overview-year">统计年度</label><select id="overview-year"></select><button class="btn btn-outline" id="btn-annual-export">导出数据</button><button class="btn btn-primary" id="btn-annual-report">年度报告 ↗</button></div></div>
+        <div id="overview-message" role="status" aria-live="polite"></div>
+        <div id="overview-content" aria-busy="true"><div class="loading-state">正在汇总年度服务记录…</div></div>
+      </div>
+      <div id="page-outcomes" class="page hide">
+        <div class="annual-heading"><div><div class="eyebrow">CARE EXPERIENCE & FOLLOW-UP</div><h1>体验与回访</h1><p>记录干部的真实感受，让每一次关怀都有后续。</p></div><button class="btn btn-primary" id="btn-new-experience">＋ 登记体验</button></div>
+        <div id="outcomes-message" role="status" aria-live="polite"></div>
+        <div id="outcomes-summary" class="outcome-summary"></div>
+        <section class="card experience-list-card"><div class="outcome-toolbar"><label for="outcomes-year">年度</label><select id="outcomes-year"></select><input id="outcomes-search" type="search" placeholder="查找干部姓名" aria-label="查找干部姓名"><select id="outcomes-project" aria-label="服务项目"><option value="">全部服务项目</option><option>艾灸机器人</option><option>高压氧舱</option><option>听力检测</option><option>按摩机器人</option></select><select id="outcomes-state" aria-label="回访筛选"><option value="">全部反馈</option><option value="due">到期待回访</option><option value="waiting">全部待回访</option><option value="adverse">不适 / 加重</option><option value="done">已回访</option></select><button class="btn btn-outline" id="btn-outcomes-search">查询</button><button class="btn btn-outline" id="btn-outcomes-reset">重置</button></div><p class="section-note">评分为本人自述困扰程度：0 无困扰，10 非常困扰。相同维度前后可比，不代表临床疗效。</p><div class="table-scroll"><table class="outcome-table"><thead><tr><th>干部 / 服务时间</th><th>服务项目</th><th>体验前 → 后</th><th>改善反馈</th><th>满意度</th><th>回访安排</th><th>操作</th></tr></thead><tbody id="outcomes-list"></tbody></table></div><div id="outcomes-pagination" class="section-pagination"></div></section>
+      </div>
+      <div id="page-home" class="page hide">
+        <div class="home-heading"><div><div class="eyebrow">HEALTH CARE WORKSPACE</div><h1>健康服务工作台</h1><p>掌握服务动态，从容安排每一天。</p></div><button class="btn btn-outline" data-quick-page="portrait">查看健康画像 ↗</button></div>
+        <div class="card home-hero"><div><span class="hero-tag">日常关怀 · 全程相伴</span><h2 id="current-date" class="home-hero-title"></h2><p class="home-hero-desc">让健康档案更完整，让每一次服务都有回应。</p><div class="hero-actions"><button class="btn btn-primary" data-quick-page="health">＋ 新建健康档案</button><button class="btn hero-secondary" data-quick-page="appointments">安排预约 →</button></div></div><div class="hero-art" aria-hidden="true"><span>＋</span><svg viewBox="0 0 240 80"><path d="M0 40h65l14-22 20 44 25-58 23 72 20-36h73" fill="none" stroke="currentColor" stroke-width="2"/></svg></div></div>
+        <div class="section-heading"><h2>服务概览</h2><span>按已完成服务统计</span></div>
+        <div class="stats" id="stats" aria-live="polite"><div class="loading-state">正在加载服务数据…</div></div>
+        <div class="quick-links"><button data-quick-page="customers"><span class="quick-icon">☷</span><span><strong>客户档案</strong><small>查找客户与服务记录</small></span><span class="quick-arrow">↗</span></button><button data-quick-page="home-appointments"><span class="quick-icon">⌂</span><span><strong>上门服务</strong><small>安排服务人员与时间</small></span><span class="quick-arrow">↗</span></button><button data-quick-page="query-export"><span class="quick-icon">⇩</span><span><strong>导出与备份</strong><small>整理数据，妥善留存</small></span><span class="quick-arrow">↗</span></button></div>
         <div class="analytics-grid">
           <div class="card">
             <h2>最近 7 天预约趋势</h2>
@@ -452,6 +451,7 @@
             <table class="mini-table"><thead><tr><th>项目类别</th><th>使用次数</th><th>总时长(分钟)</th></tr></thead><tbody id="equipment-usage-top"></tbody></table>
           </div>
         </div>
+        <details class="service-details"><summary>服务团队与标准流程 <span>查看服务说明</span></summary>
         <div class="card home-feature-section">
           <h2 class="home-feature-title">人员配置</h2>
           <div class="home-feature-grid">
@@ -502,6 +502,7 @@
             </div>
           </div>
         </div>
+        </details>
       </div>
       <div id="page-customers" class="page hide">
         <div class="card">
@@ -1259,6 +1260,7 @@
       <div class="form-row"><label>服务前状态</label><textarea id="improvement-pre-service-status"></textarea></div>
       <div class="form-row"><label>服务内容</label><textarea id="improvement-service-content"></textarea></div>
       <div class="form-row"><label>服务后评估</label><textarea id="improvement-post-service-evaluation"></textarea></div>
+      <fieldset class="experience-fieldset"><legend>体验前后与满意度</legend><p class="section-note">选择同一评价维度，填写本人感受。0 无困扰，10 非常困扰；未测量请留空。</p><div class="experience-form-grid"><label>评价维度<select id="experience-dimension"><option value="">请选择</option><option>疼痛影响</option><option>疲劳感</option><option>睡眠困扰</option><option>活动不便</option><option>听力沟通困扰</option><option>其他不适</option></select></label><label>体验前（0–10）<input id="experience-before" type="number" min="0" max="10" step="1" placeholder="未记录"></label><label>体验后（0–10）<input id="experience-after" type="number" min="0" max="10" step="1" placeholder="未记录"></label><label>满意度<select id="experience-satisfaction"><option value="">未评价</option><option value="5">5 · 非常满意</option><option value="4">4 · 满意</option><option value="3">3 · 一般</option><option value="2">2 · 不太满意</option><option value="1">1 · 不满意</option></select></label><label>不适反馈<select id="experience-adverse"><option>未询问</option><option>无不适</option><option>有不适</option></select></label><label>不适表现与处理<input id="experience-adverse-notes" maxlength="2000" placeholder="有不适时请填写"></label></div></fieldset>
       <div class="form-row">
         <label>改善情况</label>
         <select id="improvement-status"></select>
@@ -1271,6 +1273,8 @@
         <label>随访方式</label>
         <select id="improvement-followup-method"></select>
       </div>
+      <fieldset class="experience-fieldset"><legend>回访落实</legend><div class="experience-form-grid"><label>回访状态<select id="experience-followup-status"><option>待回访</option><option>已回访</option><option>无需回访</option></select></label><label>实际回访时间<input id="experience-followup-completed" type="datetime-local"></label></div><label for="experience-followup-notes">回访结果</label><textarea id="experience-followup-notes" maxlength="2000" placeholder="已回访时填写实际结果，未回访请勿预填结论"></textarea></fieldset>
+      <div id="experience-form-message" role="status" aria-live="polite"></div>
       <div class="upload-action-row">
         <button class="btn btn-danger" id="btn-improvement-upload-file" type="button">上传文件</button>
         <span id="improvement-upload-status" class="upload-status-text"></span>
@@ -1361,6 +1365,8 @@
       </div>
     </div>
   </div>
+  <div id="modal-followup" class="modal-mask hide" role="dialog" aria-modal="true" aria-labelledby="followup-title"><form id="followup-form" class="modal"><h3 id="followup-title">完成回访</h3><p id="followup-context" class="section-note"></p><input id="followup-record-id" type="hidden"><label for="followup-completed">实际回访时间</label><input id="followup-completed" type="datetime-local" required><label for="followup-result">回访结果</label><textarea id="followup-result" maxlength="2000" placeholder="记录干部感受、异常处理与后续安排" required></textarea><div id="followup-message" role="status"></div><div class="modal-actions"><button type="button" id="btn-followup-cancel" class="btn btn-outline">取消</button><button type="submit" id="btn-followup-save" class="btn btn-primary">保存回访</button></div></form></div>
+  <script src="operations.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

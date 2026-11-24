@@ -24,6 +24,7 @@
     var appShell = document.getElementById('app-shell');
     if (loginScreen) loginScreen.classList.remove('hide');
     if (appShell) appShell.classList.add('hide');
+    setNavigationOpen(false);
     if (msg) showMsg('login-msg', msg, true);
   }
 
@@ -73,7 +74,16 @@
     var page = document.getElementById('page-' + name);
     var link = document.querySelector('[data-page="' + name + '"]');
     if (page) page.classList.remove('hide');
-    if (link) link.classList.add('active');
+    document.querySelectorAll('.sidebar a').forEach(function (a) { a.removeAttribute('aria-current'); });
+    if (link) {
+      link.classList.add('active');
+      link.setAttribute('aria-current', 'page');
+      document.getElementById('page-title').textContent = link.childNodes[1].textContent.trim();
+    }
+    setNavigationOpen(false);
+    window.scrollTo(0, 0);
+    if (name === 'overview') window.HealthOperations.loadOverview();
+    if (name === 'outcomes') window.HealthOperations.loadOutcomes();
     if (name === 'home') loadStats();
     if (name === 'customers') loadCustomers();
     if (name === 'health') {
@@ -174,22 +184,32 @@
 
   function loadStats() {
     renderCurrentDate();
+    document.getElementById('stats').innerHTML = '<div class="loading-state">正在加载服务数据…</div>';
     get('/api/dashboard/stats').then(function (data) {
+      if (data.error) {
+        document.getElementById('stats').innerHTML = '<div class="msg err">统计加载失败，请检查连接后重新进入工作台。</div>';
+        return;
+      }
       var html = [
         {
           num: data.cumulative_service_count || 0,
           label: '累计服务人次',
           extra: '<div class="stat-extra"><div>男性人次：' + (data.male_service_count || 0) + '</div><div>女性人次：' + (data.female_service_count || 0) + '</div></div>'
         },
-        { num: data.monthly_avg_service_count || 0, label: '月均服务人次' },
-        { num: data.today_service_count || 0, label: '今日服务人次' }
+        { num: data.monthly_avg_service_count || 0, label: '月均服务人次', extra: '<div class="stat-extra">有完成服务月份的平均值</div>' },
+        { num: data.today_service_count || 0, label: '今日服务人次', extra: '<div class="stat-extra">今日已完成的到店与上门服务</div>' }
       ].map(function (s) {
-        return '<div class="stat-box"><div class="num">' + s.num + '</div><div class="label">' + s.label + '</div>' + (s.extra || '') + '</div>';
+        return '<div class="stat-box"><div class="label">' + s.label + '</div><div class="num">' + s.num + '</div>' + (s.extra || '') + '</div>';
       }).join('');
       document.getElementById('stats').innerHTML = html;
     }).catch(function () {});
 
     get('/api/dashboard/analytics' + buildEquipmentRangeQuery()).then(function (data) {
+      if (data.error) {
+        document.getElementById('appointment-trend').textContent = '预约趋势加载失败，请稍后重试。';
+        document.getElementById('equipment-usage-top').innerHTML = '<tr><td colspan="3">设备统计加载失败，请重新查询。</td></tr>';
+        return;
+      }
       renderAppointmentTrend(data.appointment_trend || []);
       renderEquipmentUsageTop(data.equipment_usage_top || []);
     }).catch(function () {
@@ -1004,6 +1024,14 @@
       ['服务内容', data.service_content],
       ['服务后评价', data.post_service_evaluation],
       ['改善情况', data.improvement_status],
+      ['体验评价维度', data.experience_dimension],
+      ['体验前后困扰评分', data.before_score == null ? '未记录' : data.before_score + ' → ' + data.after_score],
+      ['满意度（满分 5）', data.satisfaction_score],
+      ['不适反馈', data.adverse_event],
+      ['不适表现与处理', data.adverse_notes],
+      ['回访状态', data.followup_status],
+      ['实际回访时间', data.followup_completed_at],
+      ['回访结果', data.followup_notes],
       ['随访日期', data.followup_date],
       ['随访时间', data.followup_time],
       ['随访方式', data.followup_method]
@@ -1959,6 +1987,7 @@
         document.getElementById('improvement-followup-time').value = data.followup_time || '';
         document.getElementById('improvement-followup-date').value = data.followup_date || '';
         document.getElementById('improvement-followup-method').value = data.followup_method || '';
+        window.HealthOperations.fillExperience(data);
         setImprovementUploadStatus('', false, false);
         improvementPendingUploadFile = null;
         setImprovementModalReadonly(isViewOnly);
@@ -3483,7 +3512,7 @@
   });
   document.getElementById('btn-improvement-save').addEventListener('click', function () {
     if (improvementViewOnly) {
-      showMsg('improvement-msg', '查看模式不支持修改，请点击“编辑”按钮进行操作', true);
+      showMsg('experience-form-message', '查看模式不支持修改，请点击“编辑”按钮进行操作', true);
       return;
     }
     applyImprovementCustomerByInput();
@@ -3501,29 +3530,31 @@
       followup_date: (document.getElementById('improvement-followup-date').value || '').trim(),
       followup_method: (document.getElementById('improvement-followup-method').value || '').trim()
     };
+    Object.assign(payload, window.HealthOperations.collectExperience());
     if (!payload.customer_id || !payload.service_time || !payload.service_project || !payload.improvement_status) {
-      showMsg('improvement-msg', '请填写改善记录必填项', true);
+      showMsg('experience-form-message', '请填写改善记录必填项', true);
       return;
     }
     payload.customer_id = parseInt(payload.customer_id, 10);
     var id = document.getElementById('improvement-id').value;
     var req = id ? put('/api/improvement-records/' + id, payload) : post('/api/improvement-records', payload);
     req.then(function (ret) {
-      if (ret && ret.error) { showMsg('improvement-msg', ret.error, true); return; }
+      if (ret && ret.error) { showMsg('experience-form-message', ret.error, true); return; }
       var savedId = (ret && ret.id) || id || (ret && ret.data && ret.data.id) || document.getElementById('improvement-id').value;
       if (!savedId) {
-        showMsg('improvement-msg', '保存成功，但未获取记录ID，无法上传附件', true);
+        showMsg('experience-form-message', '保存成功，但未获取记录ID，无法上传附件', true);
         return;
       }
       document.getElementById('improvement-id').value = String(savedId);
       uploadImprovementFileForRecord(savedId, improvementPendingUploadFile).then(function (uploadResult) {
         if (uploadResult && uploadResult.success === false) {
-          showMsg('improvement-msg', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || '') + '。请重试保存或重新上传。', true);
+          showMsg('experience-form-message', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || '') + '。请重试保存或重新上传。', true);
           return;
         }
         document.getElementById('modal-improvement').classList.add('hide');
-        showMsg('improvement-msg', id ? '改善记录已更新' : '改善记录已新增');
+        showMsg('experience-form-message', id ? '改善记录已更新' : '改善记录已新增');
         loadImprovementTrackingPage();
+        document.dispatchEvent(new Event('experience-saved'));
       });
     });
   });
@@ -3737,27 +3768,40 @@
     var username = (document.getElementById('login-username').value || '').trim();
     var password = (document.getElementById('login-password').value || '').trim();
     if (!username || !password) { showMsg('login-msg', '请输入账号和密码', true); return; }
+    var button = document.getElementById('btn-login');
+    if (button.disabled) return;
+    button.disabled = true;
+    button.textContent = '正在登录…';
+    showMsg('login-msg', '');
     post('/api/auth/login', { username: username, password: password }).then(function (res) {
       if (res.error) { showMsg('login-msg', res.error, true); return; }
+      document.getElementById('current-user').textContent = username;
+      document.getElementById('login-password').value = '';
       document.getElementById('login-screen').classList.add('hide');
       document.getElementById('app-shell').classList.remove('hide');
-      showPage('home');
+      showPage('overview');
+    }).finally(function () {
+      button.disabled = false;
+      button.innerHTML = '登录工作台 <span aria-hidden="true">→</span>';
     });
   }
 
-  document.getElementById('btn-login').addEventListener('click', loginSystem);
+  document.getElementById('login-form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    loginSystem();
+  });
   document.getElementById('btn-toggle-login-password').addEventListener('click', function () {
     var pwdInput = document.getElementById('login-password');
     var currentType = pwdInput.getAttribute('type') || 'password';
     var nextType = currentType === 'password' ? 'text' : 'password';
     pwdInput.setAttribute('type', nextType);
     this.textContent = nextType === 'password' ? '显示' : '隐藏';
-  });
-  document.getElementById('login-password').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') loginSystem();
+    this.setAttribute('aria-pressed', String(nextType === 'text'));
+    this.setAttribute('aria-label', nextType === 'password' ? '显示密码' : '隐藏密码');
   });
 
-  var today = new Date().toISOString().slice(0, 10);
+
+  var today = formatDateInput(new Date());
   document.getElementById('health-date').value = today;
   document.getElementById('apt-date').value = today;
   document.getElementById('apt-date').setAttribute('min', today);
@@ -3843,5 +3887,53 @@
     showMsg('health-msg', '', false);
   }
 
+  function setNavigationOpen(open) {
+    document.getElementById('app-shell').classList.toggle('nav-open', open);
+    document.getElementById('menu-toggle').setAttribute('aria-expanded', String(open));
+    document.getElementById('sidebar').inert = window.matchMedia('(max-width: 800px)').matches && !open;
+  }
+  window.matchMedia('(max-width: 800px)').addEventListener('change', function () { setNavigationOpen(false); });
+  setNavigationOpen(false);
+  document.getElementById('menu-toggle').addEventListener('click', function () {
+    var open = this.getAttribute('aria-expanded') !== 'true';
+    setNavigationOpen(open);
+    if (open) document.querySelector('.sidebar a.active').focus();
+  });
+  document.getElementById('sidebar-backdrop').addEventListener('click', function () { setNavigationOpen(false); });
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape' && document.getElementById('app-shell').classList.contains('nav-open')) {
+      setNavigationOpen(false);
+      document.getElementById('menu-toggle').focus();
+    }
+  });
+  document.querySelectorAll('[data-quick-page]').forEach(function (button) {
+    button.addEventListener('click', function () { showPage(button.dataset.quickPage); });
+  });
+  document.getElementById('btn-logout').addEventListener('click', function () {
+    var button = this;
+    button.disabled = true;
+    post('/api/auth/logout', {}).then(function (res) {
+      if (res.error) { alert(res.error); return; }
+      showLoginScreen();
+      document.getElementById('login-password').value = '';
+      document.getElementById('login-username').focus();
+    }).finally(function () { button.disabled = false; });
+  });
+  document.getElementById('header-date').textContent = new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' }).format(new Date());
+  document.querySelectorAll('table').forEach(function (table) {
+    if (getComputedStyle(table.parentElement).overflowX === 'auto') return;
+    var wrap = document.createElement('div');
+    wrap.className = 'table-scroll';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
+  window.HealthOperations.init({get: get, post: post, showPage: showPage, openImprovementModal: openImprovementModal});
+  get('/api/auth/session').then(function (res) {
+    if (!res.authenticated) return;
+    document.getElementById('current-user').textContent = res.username;
+    document.getElementById('login-screen').classList.add('hide');
+    document.getElementById('app-shell').classList.remove('hide');
+    showPage('overview');
+  });
   refreshHealthConditionalInputs();
 })();

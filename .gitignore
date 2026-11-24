@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+.secret_key
+*.db
+*.db-wal
+*.db-shm
+database_backups/
+backups/
+exports/
+uploads/
+logs/
+error_log.txt
+.pytest_cache/
+
+demo_data/
