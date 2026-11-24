@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 import time
 from zoneinfo import ZoneInfo
+from backend.runtime import DATA_DIR
 
 try:
     import tkinter as tk
@@ -80,11 +81,11 @@ def ensure_secret_key_configured(app):
         return
     raise RuntimeError('未配置环境变量 SECRET_KEY，应用禁止启动。')
 
-DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
-LOCAL_FILE_UPLOAD_ROOT = os.path.join(BASE_DIR, 'uploads')
-BACKUP_FOLDER = os.path.join(BASE_DIR, 'database_backups')
-LOG_FOLDER = os.path.join(BASE_DIR, 'logs')
+DB_PATH = os.path.join(DATA_DIR, 'medical_system.db')
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'exports')
+LOCAL_FILE_UPLOAD_ROOT = os.path.join(DATA_DIR, 'uploads')
+BACKUP_FOLDER = os.path.join(DATA_DIR, 'database_backups')
+LOG_FOLDER = os.path.join(DATA_DIR, 'logs')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOCAL_FILE_UPLOAD_ROOT, exist_ok=True)
 os.makedirs(BACKUP_FOLDER, exist_ok=True)
@@ -92,6 +93,7 @@ os.makedirs(LOG_FOLDER, exist_ok=True)
 
 logging.basicConfig(
     filename=os.path.join(LOG_FOLDER, 'app.log'),
+    encoding='utf-8',
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
 )
@@ -809,6 +811,7 @@ def decode_multi_value(value):
 
 PUBLIC_API_PATHS = {
     '/api/auth/login',
+    '/api/health',
 }
 
 
@@ -2737,7 +2740,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print('数据库初始化完成，数据文件: %s' % DB_PATH)
+    logging.info('数据库初始化完成，数据文件: %s', DB_PATH)
 
 
 # ========== 静态页面 ==========
