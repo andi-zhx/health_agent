@@ -20,86 +20,67 @@
 
 ## 2. 技术栈与运行环境
 
-- **后端**：Python 3.8+、Flask 3.x（模块化蓝图结构）
+- **后端**：64 位 Python 3.10–3.14（推荐 3.12）、Flask 3.x（模块化蓝图结构）
 - **数据库**：SQLite（默认 `medical_system.db`）
-- **前端**：`static/index.html` + `static/app.js`（无前端构建流程）
+- **前端**：`static/index.html` + `static/app.js` + `static/theme.css`（无前端构建流程）
 - **数据导出**：pandas + openpyxl
 - **时区语义**：默认 `Asia/Shanghai`（可通过环境变量 `APP_TIMEZONE` 覆盖）
 
-依赖见 `requirements.txt`：
-
-```txt
-Flask==3.0.0
-pandas==2.1.4
-openpyxl==3.1.2
-Werkzeug==3.0.1
-```
+依赖版本见 `requirements.txt`；包含 Windows 所需的 `tzdata`。无需安装 Node.js、数据库服务器或 C++ 编译工具。
 
 ---
 
-## 3. 快速开始
+## 3. 快速开始（Windows）
 
-### 3.1 安装依赖
+1. 安装 [Python](https://www.python.org/downloads/windows/) **64 位 3.10–3.14**，推荐 **3.12**，安装时勾选 **Add Python to PATH**。
+2. 将下载的 ZIP **完整解压**到可写目录，例如 `D:\health_agent`；不要直接在压缩包内运行。
+3. 双击 **`启动医疗系统.bat`**。首次会自动建立 `.venv` 并下载依赖，请保持联网、等待安装完成。
+4. 浏览器自动打开 `http://127.0.0.1:5000`，桌面窗口显示“健康管理系统已启动”。关闭窗口即停止服务。
 
-在项目根目录执行：
+也可先双击 `安装依赖.bat` 安装，再启动。两个入口都使用项目内同一个 `.venv`，不会把依赖安装到其他 Python 中。`.pyw` 入口同样显示安装/启动控制台，避免错误被隐藏。后续启动无需重复安装；更新依赖清单后会自动重新检查安装。
 
-```bash
-pip install -r requirements.txt
-```
+### 会话密钥
 
-> Windows 用户也可双击 `安装依赖.bat`。
+本地首次运行会自动生成随机 `.secret_key` 并保存在数据目录，重启继续使用。**不再需要手动设置 SECRET_KEY 才能打开首页**。该文件已加入 Git 忽略规则，不要分享或提交。已有 `SECRET_KEY` 环境变量时优先使用环境变量，服务器部署仍建议显式配置固定的高强度密钥。
 
-### 3.2 启动方式
-
-> ⚠️ 安全要求：启动前必须设置环境变量 `SECRET_KEY`。  
-> 若未设置，`app.py` 会在启动时直接报错并退出（不提供默认值）。
-
-#### 先设置 SECRET_KEY（必做）
-
-`SECRET_KEY` 用于 Flask 会话签名，建议使用足够随机的长字符串（至少 32 字符）。
-
-- Linux/macOS（临时生效）：
+### 手动启动 / macOS / Linux
 
 ```bash
-export SECRET_KEY='请替换为高强度随机字符串'
-python app.py
+python -m venv .venv
+# Windows PowerShell:
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+.venv\Scripts\python.exe launch.py
+# macOS / Linux:
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python launch.py
 ```
 
-- Windows PowerShell（当前会话生效）：
+不需要激活虚拟环境，因此不受 PowerShell 执行策略影响。已安装依赖的环境也支持 `python app.py` 或 `python -m flask --app app run`，这些入口都会初始化数据库。
+
+无桌面环境使用：
+
+```bash
+python launch.py --no-gui --no-browser --port 5000
+```
+
+按 `Ctrl+C` 退出。Tkinter 不可用时启动器自动保持命令行服务运行；启动失败会返回非零退出码，并写入 `error_log.txt`。只有本系统的健康检查通过后才打开浏览器。
+
+### 端口占用
+
+先关闭已运行的系统。也可指定其他端口（PowerShell）：
 
 ```powershell
-$env:SECRET_KEY='请替换为高强度随机字符串'
-python app.py
+$env:APP_PORT='5050'
+.venv\Scripts\python.exe launch.py
 ```
 
-- Windows CMD（当前窗口生效）：
+或者使用 `launch.py --port 5050`。启动器会显示并打开实际使用的端口，不会跳转到占用 5000 端口的其他应用。
 
-```cmd
-set SECRET_KEY=请替换为高强度随机字符串
-python app.py
-```
+### 数据位置与升级
 
-#### 方式 A（推荐，桌面体验）
+默认沿用项目内的 `medical_system.db`，不会运行清空数据的样本脚本。升级前请备份数据库、附件目录和 `.secret_key`，不要用下载包中的同名数据库覆盖已有数据。
 
-- 双击 `启动医疗系统.bat`
-- 或双击 `启动医疗系统.pyw`
-
-启动后会调用 `launch.py`：
-
-- 自动初始化数据库
-- 自动尝试打开浏览器 `http://127.0.0.1:5000`
-- 弹出桌面提示窗口（关闭窗口即停止服务）
-
-#### 方式 B（命令行）
-
-```bash
-python app.py
-```
-
-然后浏览器访问：
-
-- `http://127.0.0.1:5000`
-- 或 `http://localhost:5000`
+可通过 `HEALTH_AGENT_DATA_DIR` 指定独立的可写数据目录（数据库、附件、日志、密钥及默认备份均放在那里）。指定一个空目录会创建新库，不会自动搬迁旧库；需要继续使用旧数据时，请在停止服务后复制原数据库和附件。
 
 ---
 
@@ -110,7 +91,7 @@ python app.py
 - 默认账号：`admin`
 - 默认密码：`123456`
 
-请在首次登录后尽快修改默认密码（可通过系统设置相关功能维护）。
+已有数据库沿用原账号及密码。系统默认仅监听本机地址。页面右上角支持退出登录；同一浏览器刷新后会恢复有效会话。
 
 ---
 
@@ -168,6 +149,7 @@ health_agent/
 ├─ app.py                              # Flask 入口（创建应用、注册蓝图）
 ├─ backend/
 │  ├─ core.py                          # 数据库初始化、通用钩子、中间逻辑
+│  ├─ runtime.py                       # 数据路径与持久化本地密钥
 │  └─ api/
 │     ├─ auth.py                       # 登录与密码更新
 │     ├─ customers.py                  # 客户档案接口
@@ -180,7 +162,10 @@ health_agent/
 │     ├─ system_misc.py                # 其他系统接口（备份等）
 │     ├─ export.py                     # 导出接口
 │     └─ audit_logs.py                 # 审计日志接口
-├─ launch.py                           # 桌面启动器（自动打开浏览器 + GUI 提示）
+├─ launch.py                           # 就绪检测、桌面窗口与服务生命周期
+├─ bootstrap.py                        # 建立 .venv 并安装依赖
+├─ start.bat                           # Windows 解释器检测入口
+├─ tests/test_runtime.py               # 启动、登录、导出与备份回归测试
 ├─ seed_sample_data.py                 # 清理旧业务数据并生成 50 位客户全链路样本
 ├─ requirements.txt                    # Python 依赖
 ├─ README.md                           # 项目说明（本文件）
@@ -193,6 +178,7 @@ health_agent/
 ├─ static/
 │  ├─ index.html                       # 单页应用页面结构
 │  ├─ app.js                           # 前端交互逻辑（API 调用、页面渲染）
+│  ├─ theme.css                        # 工作台、登录页与响应式主题
 │  └─ images/
 │     ├─ login-bg.svg
 │     └─ login-bg-house.svg
@@ -247,27 +233,27 @@ python seed_sample_data.py
 
 ---
 
-## 9. 常见问题
+## 9. 常见问题与验证
 
-### 9.1 启动失败 / 页面打不开
+| 现象 | 处理方法 |
+| --- | --- |
+| 双击提示找不到 Python | 安装官方 64 位 Python 3.12，勾选 PATH；不要只安装 Microsoft Store 的占位别名。 |
+| 旧 Python 3.13/3.14 安装 pandas 失败 | 使用更新后的 requirements.txt 和启动脚本；pandas 已升级到提供对应预编译包的 2.3.3。 |
+| 安装下载失败 | 查看窗口内 pip 报错，检查网络及 pip 镜像，再双击安装依赖；不需要盲目安装 C++ 编译器。 |
+| `.venv` 来自另一台电脑或旧 Python | 停止服务，重命名或删除 `.venv` 后重试；数据库与附件不在 `.venv` 中。 |
+| 首页报错或打不开 | 查看 `error_log.txt`、`logs/startup.log`、`logs/app.log`；确认使用可写目录和空闲端口。 |
+| 时区错误 | 确认依赖完整，`APP_TIMEZONE` 使用有效的 IANA 名称，例如 `Asia/Shanghai`。 |
+| 自定义备份路径失效 | 在“数据查询导出”中改为当前机器可写的路径。 |
 
-请按顺序排查：
-
-1. 是否已安装 Python（建议 3.8+）
-2. 是否已安装依赖：`pip install -r requirements.txt`
-3. 5000 端口是否被占用
-4. 查看错误日志：
-   - `error_log.txt`
-   - `logs/startup.log`
-   - `logs/app.log`
-
-### 9.2 自动安装依赖失败
-
-`launch.py` 会尝试自动安装依赖；若失败，请手动执行：
+开发回归检查（使用装好依赖的 Python）：
 
 ```bash
-python -m pip install -r requirements.txt
+python -m unittest discover -s tests -v
 ```
+
+测试在临时目录中覆盖：无环境变量启动、密钥持久化、Windows 时区回退、登录/退出、主要页面 API、客户读写、Excel 下载、备份完整性、已有数据库迁移、端口占用和无桌面启动。不会对工作数据库写入测试数据。
+
+GitHub Actions 工作流 `Startup regression` 在 Windows Python 3.10 / 3.12 / 3.14 和 Linux Python 3.12 上运行，并在 Windows 检查 `start.bat` 安装链路。实际通过状态以 Actions 记录为准。
 
 ---
 

@@ -3,6 +3,11 @@ from backend.core import *
 
 bp = Blueprint('auth', __name__)
 
+@bp.route('/api/auth/session')
+def api_auth_session():
+    return jsonify({'authenticated': bool(session.get('logged_in')),
+                    'username': session.get('username', '')})
+
 @bp.route('/api/auth/login', methods=['POST'])
 def api_auth_login():
     data = request.json or {}

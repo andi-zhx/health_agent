@@ -3,6 +3,15 @@ from backend.core import *
 
 bp = Blueprint('system', __name__)
 
+@bp.route('/api/health')
+def health_check():
+    conn = get_db()
+    try:
+        conn.execute('SELECT COUNT(*) FROM system_settings').fetchone()
+    finally:
+        conn.close()
+    return jsonify({'application': 'health-agent', 'status': 'ready'})
+
 @bp.route('/')
 def index():
     return send_from_directory(current_app.static_folder, 'index.html')

@@ -21,6 +21,7 @@ from datetime import datetime
 from datetime import timedelta
 import time
 from zoneinfo import ZoneInfo
+from backend.runtime import DATA_DIR
 
 try:
     import tkinter as tk
@@ -80,11 +81,11 @@ def ensure_secret_key_configured(app):
         return
     raise RuntimeError('未配置环境变量 SECRET_KEY，应用禁止启动。')
 
-DB_PATH = os.path.join(BASE_DIR, 'medical_system.db')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'exports')
-LOCAL_FILE_UPLOAD_ROOT = os.path.join(BASE_DIR, 'uploads')
-BACKUP_FOLDER = os.path.join(BASE_DIR, 'database_backups')
-LOG_FOLDER = os.path.join(BASE_DIR, 'logs')
+DB_PATH = os.path.join(DATA_DIR, 'medical_system.db')
+UPLOAD_FOLDER = os.path.join(DATA_DIR, 'exports')
+LOCAL_FILE_UPLOAD_ROOT = os.path.join(DATA_DIR, 'uploads')
+BACKUP_FOLDER = os.path.join(DATA_DIR, 'database_backups')
+LOG_FOLDER = os.path.join(DATA_DIR, 'logs')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(LOCAL_FILE_UPLOAD_ROOT, exist_ok=True)
 os.makedirs(BACKUP_FOLDER, exist_ok=True)
@@ -809,6 +810,8 @@ def decode_multi_value(value):
 
 PUBLIC_API_PATHS = {
     '/api/auth/login',
+    '/api/auth/session',
+    '/api/health',
 }
 
 
