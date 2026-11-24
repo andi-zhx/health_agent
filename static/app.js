@@ -82,6 +82,8 @@
     }
     setNavigationOpen(false);
     window.scrollTo(0, 0);
+    if (name === 'overview') window.HealthOperations.loadOverview();
+    if (name === 'outcomes') window.HealthOperations.loadOutcomes();
     if (name === 'home') loadStats();
     if (name === 'customers') loadCustomers();
     if (name === 'health') {
@@ -1022,6 +1024,14 @@
       ['服务内容', data.service_content],
       ['服务后评价', data.post_service_evaluation],
       ['改善情况', data.improvement_status],
+      ['体验评价维度', data.experience_dimension],
+      ['体验前后困扰评分', data.before_score == null ? '未记录' : data.before_score + ' → ' + data.after_score],
+      ['满意度（满分 5）', data.satisfaction_score],
+      ['不适反馈', data.adverse_event],
+      ['不适表现与处理', data.adverse_notes],
+      ['回访状态', data.followup_status],
+      ['实际回访时间', data.followup_completed_at],
+      ['回访结果', data.followup_notes],
       ['随访日期', data.followup_date],
       ['随访时间', data.followup_time],
       ['随访方式', data.followup_method]
@@ -1977,6 +1987,7 @@
         document.getElementById('improvement-followup-time').value = data.followup_time || '';
         document.getElementById('improvement-followup-date').value = data.followup_date || '';
         document.getElementById('improvement-followup-method').value = data.followup_method || '';
+        window.HealthOperations.fillExperience(data);
         setImprovementUploadStatus('', false, false);
         improvementPendingUploadFile = null;
         setImprovementModalReadonly(isViewOnly);
@@ -3501,7 +3512,7 @@
   });
   document.getElementById('btn-improvement-save').addEventListener('click', function () {
     if (improvementViewOnly) {
-      showMsg('improvement-msg', '查看模式不支持修改，请点击“编辑”按钮进行操作', true);
+      showMsg('experience-form-message', '查看模式不支持修改，请点击“编辑”按钮进行操作', true);
       return;
     }
     applyImprovementCustomerByInput();
@@ -3519,29 +3530,31 @@
       followup_date: (document.getElementById('improvement-followup-date').value || '').trim(),
       followup_method: (document.getElementById('improvement-followup-method').value || '').trim()
     };
+    Object.assign(payload, window.HealthOperations.collectExperience());
     if (!payload.customer_id || !payload.service_time || !payload.service_project || !payload.improvement_status) {
-      showMsg('improvement-msg', '请填写改善记录必填项', true);
+      showMsg('experience-form-message', '请填写改善记录必填项', true);
       return;
     }
     payload.customer_id = parseInt(payload.customer_id, 10);
     var id = document.getElementById('improvement-id').value;
     var req = id ? put('/api/improvement-records/' + id, payload) : post('/api/improvement-records', payload);
     req.then(function (ret) {
-      if (ret && ret.error) { showMsg('improvement-msg', ret.error, true); return; }
+      if (ret && ret.error) { showMsg('experience-form-message', ret.error, true); return; }
       var savedId = (ret && ret.id) || id || (ret && ret.data && ret.data.id) || document.getElementById('improvement-id').value;
       if (!savedId) {
-        showMsg('improvement-msg', '保存成功，但未获取记录ID，无法上传附件', true);
+        showMsg('experience-form-message', '保存成功，但未获取记录ID，无法上传附件', true);
         return;
       }
       document.getElementById('improvement-id').value = String(savedId);
       uploadImprovementFileForRecord(savedId, improvementPendingUploadFile).then(function (uploadResult) {
         if (uploadResult && uploadResult.success === false) {
-          showMsg('improvement-msg', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || '') + '。请重试保存或重新上传。', true);
+          showMsg('experience-form-message', (id ? '改善记录已更新，' : '改善记录已新增，') + '附件上传失败：' + (uploadResult.error || '') + '。请重试保存或重新上传。', true);
           return;
         }
         document.getElementById('modal-improvement').classList.add('hide');
-        showMsg('improvement-msg', id ? '改善记录已更新' : '改善记录已新增');
+        showMsg('experience-form-message', id ? '改善记录已更新' : '改善记录已新增');
         loadImprovementTrackingPage();
+        document.dispatchEvent(new Event('experience-saved'));
       });
     });
   });
@@ -3766,7 +3779,7 @@
       document.getElementById('login-password').value = '';
       document.getElementById('login-screen').classList.add('hide');
       document.getElementById('app-shell').classList.remove('hide');
-      showPage('home');
+      showPage('overview');
     }).finally(function () {
       button.disabled = false;
       button.innerHTML = '登录工作台 <span aria-hidden="true">→</span>';
@@ -3914,12 +3927,13 @@
     table.parentNode.insertBefore(wrap, table);
     wrap.appendChild(table);
   });
+  window.HealthOperations.init({get: get, post: post, showPage: showPage, openImprovementModal: openImprovementModal});
   get('/api/auth/session').then(function (res) {
     if (!res.authenticated) return;
     document.getElementById('current-user').textContent = res.username;
     document.getElementById('login-screen').classList.add('hide');
     document.getElementById('app-shell').classList.remove('hide');
-    showPage('home');
+    showPage('overview');
   });
   refreshHealthConditionalInputs();
 })();

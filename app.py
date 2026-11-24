@@ -16,6 +16,7 @@ from backend.api.system import bp as system_bp
 from backend.api.system_misc import bp as system_misc_bp
 from backend.api.export import bp as export_bp
 from backend.api.audit_logs import bp as audit_logs_bp
+from backend.api.operations import bp as operations_bp
 
 
 def create_app():
@@ -38,6 +39,7 @@ def create_app():
     app.register_blueprint(audit_logs_bp)
     app.register_blueprint(export_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(operations_bp)
 
     return app
 

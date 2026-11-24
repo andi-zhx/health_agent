@@ -895,6 +895,9 @@ DEFAULT_PROJECT_EQUIPMENT_MAP = {}
 
 APPOINTMENT_PROJECT_DEVICE_CONFIG = {
     '高压氧仓': ['高压氧仓01', '高压氧仓02'],
+    '高压氧舱': ['高压氧舱01', '高压氧舱02'],
+    '听力检测': ['听力检测01', '听力检测02'],
+    '按摩机器人': ['按摩机器人01', '按摩机器人02'],
     '毫米波理疗仪': ['毫米波理疗仪01', '毫米波理疗仪02'],
     '疼痛治疗仪': ['疼痛治疗仪01', '疼痛治疗仪02'],
     '听力检测仪': ['听力检测仪01', '听力检测仪02'],
@@ -2101,7 +2104,7 @@ def init_db():
     })
     normalize_appointment_status_data(c, 'appointments')
 
-    c.execute('DROP TABLE IF EXISTS equipment_usage')
+    # Preserve historical tables during upgrades, even when no longer used by the UI.
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_assessments (
@@ -2227,7 +2230,6 @@ def init_db():
         'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
-    c.execute('DROP TABLE IF EXISTS service_projects')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS staff (
@@ -2505,7 +2507,6 @@ def init_db():
             ],
         )
 
-    c.execute('DROP TABLE IF EXISTS satisfaction_surveys')
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_records (
@@ -2578,6 +2579,8 @@ def init_db():
     })
     migrate_service_improvement_records_drop_followup_result(c)
     migrate_service_improvement_service_type_values(c)
+    from backend.experience import ensure_experience_columns
+    ensure_experience_columns(c)
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS improvement_record_files (
@@ -2736,7 +2739,7 @@ def init_db():
                 (project_name, staff_row['id'], 'enabled'),
             )
 
-    purge_legacy_equipment_and_store_massage(c)
+    # Existing equipment and mappings belong to the user; startup must not purge them.
     ensure_query_indexes(c)
 
     conn.commit()

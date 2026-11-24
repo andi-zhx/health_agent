@@ -12,3 +12,5 @@ uploads/
 logs/
 error_log.txt
 .pytest_cache/
+
+demo_data/
