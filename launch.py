@@ -42,7 +42,10 @@ def show_error(title, message, gui=True):
                 import ctypes
                 ctypes.windll.user32.MessageBoxW(0, full_message, title, 0x10)
                 return
-    print(full_message, file=sys.stderr)
+    if sys.stderr is not None:
+        if hasattr(sys.stderr, 'reconfigure'):
+            sys.stderr.reconfigure(errors='backslashreplace')
+        print(full_message, file=sys.stderr)
 
 
 def wait_until_ready(url, thread, timeout=10):
@@ -67,7 +70,7 @@ def run_desktop(url, thread):
         root = tk.Tk()
     except Exception:
         write_start_log('桌面窗口不可用，保持命令行服务运行。')
-        print('请在浏览器打开 %s；按 Ctrl+C 停止服务。' % url, flush=True)
+        print('Open %s in your browser. Press Ctrl+C to stop.' % url, flush=True)
         while thread.is_alive():
             thread.join(0.5)
         return

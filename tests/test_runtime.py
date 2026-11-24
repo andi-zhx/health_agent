@@ -1,5 +1,7 @@
 """Regression tests use disposable data; never open the user's working database."""
+from contextlib import closing
 import io
+import logging
 import json
 import os
 from pathlib import Path
@@ -63,6 +65,14 @@ class ApplicationTests(unittest.TestCase):
             reset_tzpath()
             ZoneInfo.clear_cache()
 
+    def test_startup_with_legacy_windows_console_encoding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run([sys.executable, '-c', 'from app import app; assert app.test_client().get("/").status_code == 200'],
+                                    cwd=ROOT, env={**os.environ, 'HEALTH_AGENT_DATA_DIR': directory,
+                                                   'PYTHONIOENCODING': 'cp1252'}, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('数据库初始化完成', (Path(directory) / 'logs' / 'app.log').read_text(encoding='utf-8'))
+
     def test_login_session_logout_and_protected_data(self):
         self.assertEqual(self.client.get('/api/customers').status_code, 401)
         self.assertFalse(self.client.get('/api/auth/session').json['data']['authenticated'])
@@ -114,7 +124,7 @@ class ApplicationTests(unittest.TestCase):
     def test_backup_contains_valid_database(self):
         result = core.create_db_backup('test')
         self.assertEqual(result['status'], 'success', result)
-        with sqlite3.connect(result['backup_file']) as conn:
+        with closing(sqlite3.connect(result['backup_file'])) as conn:
             self.assertEqual(conn.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
             self.assertGreater(conn.execute('SELECT COUNT(*) FROM system_settings').fetchone()[0], 0)
 
@@ -122,12 +132,12 @@ class ApplicationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             target = Path(directory) / 'medical_system.db'
             shutil.copy2(ROOT / 'medical_system.db', target)
-            with sqlite3.connect(target) as conn:
+            with closing(sqlite3.connect(target)) as conn:
                 original = conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0]
             result = subprocess.run([sys.executable, '-c', 'from app import app; assert app.test_client().get("/").status_code == 200'],
                                     cwd=ROOT, env={**os.environ, 'HEALTH_AGENT_DATA_DIR': directory}, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            with sqlite3.connect(target) as conn:
+            with closing(sqlite3.connect(target)) as conn:
                 self.assertEqual(conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0], original)
                 self.assertEqual(conn.execute('PRAGMA integrity_check').fetchone()[0], 'ok')
 
@@ -175,6 +185,11 @@ class LauncherTests(unittest.TestCase):
                 finally:
                     process.terminate()
                     process.wait(timeout=10)
+
+
+def tearDownModule():
+    logging.shutdown()
+    TEST_DATA.cleanup()
 
 
 if __name__ == '__main__':

@@ -47,5 +47,5 @@ app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('APP_PORT', '5000'))
-    print('请在浏览器打开: http://127.0.0.1:%s' % port)
+    print('Open in your browser: http://127.0.0.1:%s' % port)
     app.run(host='127.0.0.1', port=port, debug=False)

@@ -93,6 +93,7 @@ os.makedirs(LOG_FOLDER, exist_ok=True)
 
 logging.basicConfig(
     filename=os.path.join(LOG_FOLDER, 'app.log'),
+    encoding='utf-8',
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(message)s',
 )
@@ -2740,7 +2741,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-    print('数据库初始化完成，数据文件: %s' % DB_PATH)
+    logging.info('数据库初始化完成，数据文件: %s', DB_PATH)
 
 
 # ========== 静态页面 ==========
