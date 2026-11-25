@@ -23,9 +23,17 @@ def create_app():
     app.config['SECRET_KEY'] = load_secret_key()
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     now_local()  # Fail early if the configured timezone cannot be loaded.
+    from backend.care_v2.schema import before_upgrade, initialize
+    previous = before_upgrade()
     init_db()
+    initialize(previous)
 
     register_core_hooks(app)
+    from backend.care_v2.security import guard, filter_catalog_response
+    app.before_request(guard)
+    app.after_request(filter_catalog_response)
+    from backend.care_v2.api import bp as care_v2_bp
+    app.register_blueprint(care_v2_bp)
 
     app.register_blueprint(system_bp)
     app.register_blueprint(customers_bp)

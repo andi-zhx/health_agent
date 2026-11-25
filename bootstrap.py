@@ -34,13 +34,20 @@ def prepare_environment():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--install-only', action='store_true')
+    parser.add_argument('--demo', action='store_true')
     args = parser.parse_args()
     try:
         python = prepare_environment()
         if args.install_only:
             print('Ready. Run the startup .bat file to open the app.')
             return 0
-        return subprocess.call([str(python), str(ROOT / 'launch.py')], cwd=ROOT)
+        env = os.environ.copy()
+        if args.demo:
+            data_dir = ROOT / 'demo_v2_data'
+            subprocess.run([str(python), str(ROOT / 'seed_demo_v2.py'), '--data-dir', str(data_dir)], cwd=ROOT, check=True)
+            env['HEALTH_AGENT_DATA_DIR'] = str(data_dir)
+            env['APP_PORT'] = '5050'
+        return subprocess.call([str(python), str(ROOT / 'launch.py')], cwd=ROOT, env=env)
     except Exception as error:
         print('Setup failed: %s' % error, file=sys.stderr)
         print('Check your Python version, network, and folder write permissions.', file=sys.stderr)

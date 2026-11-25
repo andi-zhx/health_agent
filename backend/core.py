@@ -654,9 +654,7 @@ def load_projects_with_parallel_strategy(cursor, enabled_only=False, scene=None)
             "name IN (SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled')"
         )
     if scene == 'store' and table_exists(cursor, 'project_rules'):
-        clauses.append(
-            "name NOT IN (SELECT project_name FROM project_rules WHERE allow_home=1 AND status='enabled')"
-        )
+        clauses.append("name IN ('艾灸','高压氧仓','听力测试','红外理疗','荧光免疫分析仪','按摩机器人')")
     if clauses:
         sql += ' WHERE ' + ' AND '.join(clauses)
     sql += ' ORDER BY id DESC'
@@ -812,6 +810,7 @@ def decode_multi_value(value):
 PUBLIC_API_PATHS = {
     '/api/auth/login',
     '/api/health',
+    '/api/auth/session',
 }
 
 
@@ -893,32 +892,12 @@ def normalize_api_response(response):
 DEFAULT_PROJECT_EQUIPMENT_MAP = {}
 
 APPOINTMENT_PROJECT_DEVICE_CONFIG = {
-    '高压氧仓': ['高压氧仓01', '高压氧仓02'],
-    '毫米波理疗仪': ['毫米波理疗仪01', '毫米波理疗仪02'],
-    '疼痛治疗仪': ['疼痛治疗仪01', '疼痛治疗仪02'],
-    '听力检测仪': ['听力检测仪01', '听力检测仪02'],
-    '太空针灸按摩仪': ['太空针灸按摩仪01', '太空针灸按摩仪02'],
-    '艾灸机器人': ['艾灸机器人01', '艾灸机器人02'],
-    'AI健康检测机器人': ['AI健康检测机器人01', 'AI健康检测机器人02'],
-    '手持式干式荧光免疫分析仪': ['手持式干式荧光免疫分析仪01', '手持式干式荧光免疫分析仪02'],
-    '健康随诊箱': ['健康随诊箱01', '健康随诊箱02'],
+    name: [] for name in ('艾灸','高压氧仓','听力测试','红外理疗','荧光免疫分析仪','按摩机器人')
 }
+DEFAULT_ALLOWED_HOME_PROJECTS = set(APPOINTMENT_PROJECT_DEVICE_CONFIG)
+IMPROVEMENT_SERVICE_PROJECTS = list(APPOINTMENT_PROJECT_DEVICE_CONFIG)
+IMPROVEMENT_STATUS_OPTIONS = ['明显改善','部分改善','无变化','加重','未评价','不适用']
 
-DEFAULT_ALLOWED_HOME_PROJECTS = {'上门康复护理', '中医养生咨询', '康复训练指导', '血糖测试', '按摩'}
-
-IMPROVEMENT_SERVICE_PROJECTS = [
-    '高压氧仓',
-    '毫米波理疗仪',
-    '疼痛治疗仪',
-    '听力检测仪',
-    '太空针灸按摩仪',
-    '艾灸机器人',
-    'AI健康检测机器人',
-    '手持式干式荧光免疫分析仪',
-    '健康随诊箱',
-]
-
-IMPROVEMENT_STATUS_OPTIONS = ['明显改善', '部分改善', '无改善', '加重']
 FOLLOWUP_METHOD_OPTIONS = ['电话', '到店']
 FOLLOWUP_PRESET_OPTIONS = ['1个月', '3个月', '半年', '1年']
 IMPROVEMENT_SERVICE_TYPE_OPTIONS = ('appointments', 'home_appointments')
@@ -946,45 +925,7 @@ def normalize_improvement_service_type(service_type, default='appointments'):
 
 
 def get_improvement_service_projects(cursor=None):
-    own_conn = None
-    c = cursor
-    projects = []
-    seen = set()
-
-    def add_project(name):
-        text = str(name or '').strip()
-        if not text or text in seen:
-            return
-        seen.add(text)
-        projects.append(text)
-
-    try:
-        if c is None:
-            own_conn = get_db()
-            c = own_conn.cursor()
-
-        for item in IMPROVEMENT_SERVICE_PROJECTS:
-            add_project(item)
-
-        c.execute("SELECT name FROM therapy_projects WHERE COALESCE(status, 'enabled')='enabled' ORDER BY id ASC")
-        for row in c.fetchall():
-            add_project(row['name'])
-
-        c.execute("SELECT project_name FROM project_staff_mapping WHERE COALESCE(status, 'enabled')='enabled' ORDER BY id ASC")
-        for row in c.fetchall():
-            add_project(row['project_name'])
-
-        c.execute("SELECT project_name FROM project_rules WHERE allow_home=1 AND COALESCE(status, 'enabled')='enabled' ORDER BY id ASC")
-        for row in c.fetchall():
-            add_project(row['project_name'])
-
-        c.execute("SELECT DISTINCT service_project FROM home_appointments WHERE COALESCE(service_project, '')<>'' ORDER BY service_project ASC")
-        for row in c.fetchall():
-            add_project(row['service_project'])
-        return projects
-    finally:
-        if own_conn:
-            own_conn.close()
+    return list(IMPROVEMENT_SERVICE_PROJECTS)
 
 
 def get_customer_privacy_folder(customer_name, customer_phone, customer_id):
@@ -2100,7 +2041,7 @@ def init_db():
     })
     normalize_appointment_status_data(c, 'appointments')
 
-    c.execute('DROP TABLE IF EXISTS equipment_usage')
+    # Preserve historical equipment_usage for V2 archive and rollback.
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_assessments (
@@ -2226,7 +2167,7 @@ def init_db():
         'created_at': "TEXT DEFAULT (strftime('%Y-%m-%d %H:%M:%S','now','localtime'))",
     })
 
-    c.execute('DROP TABLE IF EXISTS service_projects')
+    # Preserve historical service_projects for V2 archive and rollback.
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS staff (
@@ -2504,7 +2445,7 @@ def init_db():
             ],
         )
 
-    c.execute('DROP TABLE IF EXISTS satisfaction_surveys')
+    # Preserve historical satisfaction_surveys for V2 archive and rollback.
 
     c.execute('''
         CREATE TABLE IF NOT EXISTS health_records (
@@ -2606,24 +2547,7 @@ def init_db():
     if c.fetchone()[0] == 0:
         pass
 
-    c.execute("SELECT COUNT(*) FROM therapy_projects")
-    if c.fetchone()[0] == 0:
-        for row in [
-            ('红外理疗', '理疗', 60, 1, '理疗设备', 0, 'enabled', '红外热疗项目'),
-            ('超声理疗', '理疗', 45, 1, '理疗设备', 0, 'enabled', '超声理疗项目'),
-            ('电刺激治疗', '康复', 45, 1, '康复设备', 0, 'enabled', '电刺激治疗项目'),
-            ('磁疗', '理疗', 40, 1, '理疗设备', 0, 'enabled', '磁疗项目'),
-            ('牵引治疗', '康复', 60, 1, '康复设备', 0, 'enabled', '颈腰椎牵引'),
-            ('中药熏蒸', '中医', 50, 1, '中医设备', 0, 'enabled', '中药熏蒸项目'),
-            ('康复训练指导', '康复', 60, 0, None, 0, 'enabled', '康复训练与指导'),
-            ('中医养生咨询', '中医', 30, 0, None, 0, 'enabled', '中医养生咨询'),
-            ('上门康复护理', '上门', 60, 0, None, 0, 'enabled', '上门康复护理服务'),
-        ]:
-            c.execute('''
-                INSERT INTO therapy_projects (name, category, duration_minutes, need_equipment, equipment_type, price, status, description)
-                VALUES (?,?,?,?,?,?,?,?)
-            ''', row)
-
+    # V2 seeds only project definitions; physical assets are registered from actual inventory.
     required_equipment_seeds = []
     for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
         for idx, equipment_name in enumerate(equipment_names, start=1):
@@ -2684,17 +2608,7 @@ def init_db():
                 INSERT OR IGNORE INTO project_equipment_mapping (project_name, equipment_name, status)
                 VALUES (?,?,?)
             ''', (project_name, equipment_name, 'enabled'))
-    for project_name, equipment_names in APPOINTMENT_PROJECT_DEVICE_CONFIG.items():
-        placeholders = ','.join('?' * len(equipment_names))
-        c.execute(
-            f'''
-            UPDATE project_equipment_mapping
-               SET status='disabled'
-             WHERE project_name=?
-               AND equipment_name NOT IN ({placeholders})
-            ''',
-            (project_name, *equipment_names),
-        )
+    # Preserve explicit equipment mappings; do not disable custom assets on restart.
 
     c.execute('SELECT name, category FROM therapy_projects')
     all_projects = row_list(c.fetchall())
@@ -2735,7 +2649,7 @@ def init_db():
                 (project_name, staff_row['id'], 'enabled'),
             )
 
-    purge_legacy_equipment_and_store_massage(c)
+    # V2 archives old projects; never purge historical equipment on startup.
     ensure_query_indexes(c)
 
     conn.commit()
