@@ -3,7 +3,8 @@
 import os
 from flask import Flask
 
-from backend.core import BASE_DIR, init_db, register_core_hooks
+from backend.core import BASE_DIR, init_db, register_core_hooks, create_db_backup, now_local
+from backend.runtime import load_secret_key
 from backend.api.auth import bp as auth_bp
 from backend.api.customers import bp as customers_bp
 from backend.api.health_assessments import bp as health_assessments_bp
@@ -19,9 +20,20 @@ from backend.api.audit_logs import bp as audit_logs_bp
 
 def create_app():
     app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'static'))
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    app.config['SECRET_KEY'] = load_secret_key()
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    now_local()  # Fail early if the configured timezone cannot be loaded.
+    from backend.care_v2.schema import before_upgrade, initialize
+    previous = before_upgrade()
+    init_db()
+    initialize(previous)
 
     register_core_hooks(app)
+    from backend.care_v2.security import guard, filter_catalog_response
+    app.before_request(guard)
+    app.after_request(filter_catalog_response)
+    from backend.care_v2.api import bp as care_v2_bp
+    app.register_blueprint(care_v2_bp)
 
     app.register_blueprint(system_bp)
     app.register_blueprint(customers_bp)
@@ -42,6 +54,6 @@ app = create_app()
 
 
 if __name__ == '__main__':
-    init_db()
-    print('请在浏览器打开: http://localhost:5000')
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    port = int(os.environ.get('APP_PORT', '5000'))
+    print('Open in your browser: http://127.0.0.1:%s' % port)
+    app.run(host='127.0.0.1', port=port, debug=False)

@@ -74,6 +74,7 @@
     var link = document.querySelector('[data-page="' + name + '"]');
     if (page) page.classList.remove('hide');
     if (link) link.classList.add('active');
+    if (window.CareV2) window.CareV2.onPage(name);
     if (name === 'home') loadStats();
     if (name === 'customers') loadCustomers();
     if (name === 'health') {
@@ -3741,7 +3742,7 @@
       if (res.error) { showMsg('login-msg', res.error, true); return; }
       document.getElementById('login-screen').classList.add('hide');
       document.getElementById('app-shell').classList.remove('hide');
-      showPage('home');
+      window.CareV2.start();
     });
   }
 
@@ -3843,5 +3844,7 @@
     showMsg('health-msg', '', false);
   }
 
+  window.CareV2.init({get:get, post:post, put:put, showPage:showPage, showLogin:showLoginScreen});
+  window.CareV2.restore();
   refreshHealthConditionalInputs();
 })();

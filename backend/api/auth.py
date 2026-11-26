@@ -18,7 +18,12 @@ def api_auth_login():
         # 兼容旧库明文配置：首次成功后自动转为 hash，后续统一走 hash 校验。
         login_ok = True
 
+    if not login_ok:
+        from backend.care_v2.security import login_account
+        login_ok = login_account(username, password)
+
     if login_ok:
+        session.clear()
         session['logged_in'] = True
         session['username'] = username
         audit_log('登录', 'auth', username, '登录成功')
@@ -34,3 +39,9 @@ def api_auth_logout():
     return jsonify({'message': '已退出登录'})
 
 
+
+@bp.route('/api/auth/session')
+def api_auth_session():
+    from backend.care_v2.security import actor
+    user=actor()
+    return success_response({'authenticated':bool(user),'user':user})
