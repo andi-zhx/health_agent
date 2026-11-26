@@ -35,6 +35,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--install-only', action='store_true')
     parser.add_argument('--demo', action='store_true')
+    parser.add_argument('--replace-cases', action='store_true')
     args = parser.parse_args()
     try:
         python = prepare_environment()
@@ -42,9 +43,12 @@ def main():
             print('Ready. Run the startup .bat file to open the app.')
             return 0
         env = os.environ.copy()
+        if args.replace_cases:
+            data_dir = Path(env.get('HEALTH_AGENT_DATA_DIR', str(ROOT))).expanduser().resolve()
+            subprocess.run([str(python), str(ROOT / 'seed_demo_v2.py'), '--data-dir', str(data_dir), '--replace'], cwd=ROOT, env=env, check=True)
         if args.demo:
             data_dir = ROOT / 'demo_v2_data'
-            subprocess.run([str(python), str(ROOT / 'seed_demo_v2.py'), '--data-dir', str(data_dir)], cwd=ROOT, check=True)
+            subprocess.run([str(python), str(ROOT / 'seed_demo_v2.py'), '--data-dir', str(data_dir), '--upgrade-demo'], cwd=ROOT, check=True)
             env['HEALTH_AGENT_DATA_DIR'] = str(data_dir)
             env['APP_PORT'] = '5050'
         return subprocess.call([str(python), str(ROOT / 'launch.py')], cwd=ROOT, env=env)

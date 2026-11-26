@@ -140,20 +140,61 @@
     );
   }
   function table(headers, rows, caption = "") {
-    return rows.length
-      ? '<div class="v2-table-wrap"><table class="v2-table">' +
-          (caption ? "<caption>" + esc(caption) + "</caption>" : "") +
-          "<thead><tr>" +
-          headers.map((h) => "<th>" + esc(h) + "</th>").join("") +
-          "</tr></thead><tbody>" +
-          rows
-            .map(
-              (r) =>
-                "<tr>" + r.map((c) => "<td>" + c + "</td>").join("") + "</tr>",
-            )
-            .join("") +
-          "</tbody></table></div>"
-      : empty();
+    if (!rows.length) return empty();
+    const id = "v2-record-table-" + ++actionID,
+      size = 50;
+    let page = 0;
+    const rowHTML = () =>
+      rows
+        .slice(page * size, (page + 1) * size)
+        .map(
+          (r) => "<tr>" + r.map((c) => "<td>" + c + "</td>").join("") + "</tr>",
+        )
+        .join("");
+    const counter = () =>
+      "第 " +
+      (page * size + 1) +
+      "–" +
+      Math.min((page + 1) * size, rows.length) +
+      " 条 / 共 " +
+      rows.length +
+      " 条";
+    const move = (delta) => {
+      page = Math.max(
+        0,
+        Math.min(Math.ceil(rows.length / size) - 1, page + delta),
+      );
+      const box = $(id);
+      if (!box) return;
+      box.querySelector("tbody").innerHTML = rowHTML();
+      box.querySelector(".v2-page-count").textContent = counter();
+      const buttons = box.querySelectorAll(".v2-pagination button");
+      buttons[0].disabled = page === 0;
+      buttons[1].disabled = (page + 1) * size >= rows.length;
+    };
+    return (
+      '<div id="' +
+      id +
+      '" class="v2-record-table"><div class="v2-table-wrap"><table class="v2-table">' +
+      (caption ? "<caption>" + esc(caption) + "</caption>" : "") +
+      "<thead><tr>" +
+      headers.map((h) => "<th>" + esc(h) + "</th>").join("") +
+      "</tr></thead><tbody>" +
+      rowHTML() +
+      "</tbody></table></div>" +
+      (rows.length > size
+        ? '<div class="v2-pagination"><span class="v2-page-count" aria-live="polite">' +
+          counter() +
+          "</span>" +
+          button("上一页", () => move(-1)).replace(
+            "<button ",
+            "<button disabled ",
+          ) +
+          button("下一页", () => move(1)) +
+          "</div>"
+        : "") +
+      "</div>"
+    );
   }
   function bars(items, total, onClick, colors) {
     if (!items.length) return empty();
@@ -647,9 +688,10 @@
     return html;
   }
   function pyramid(rows) {
+    rows = rows.filter((r) => r.age !== "未知");
     const max = Math.max(1, ...rows.flatMap((r) => [r.male, r.female]));
     return (
-      '<div class="v2-population" role="img" aria-label="年龄性别分布，包含未知组">' +
+      '<div class="v2-population" role="img" aria-label="年龄性别分布，男、女及五个年龄段">' +
       rows
         .map(
           (r) =>
@@ -661,22 +703,20 @@
             (r.male / max) * 100 +
             '%"></i></div>' +
             '<strong title="分组总人数">' +
-            r.total +
+            (r.male + r.female) +
             '</strong><div class="v2-population-bar female" title="女 ' +
             r.female +
             '"><i style="width:' +
             (r.female / max) * 100 +
             '%"></i></div>' +
-            '<span class="v2-population-unknown">未知 ' +
-            r.unknown +
-            "</span></div>",
+            "</div>",
         )
         .join("") +
       "</div>" +
       legend([
         { name: "男", color: "#75a3ce" },
         { name: "女", color: "#a1bfcd" },
-        { name: "中间为总人数，右侧为未知性别", color: "#d9e2eb" },
+        { name: "中间为该年龄段总人数", color: "#d9e2eb" },
       ])
     );
   }
@@ -726,7 +766,7 @@
             : ""),
       ) +
       '<div class="v2-kpis">' +
-      kpi("纳入干部", h.population, "人", "年龄 / 性别未知组包含在总数中") +
+      kpi("纳入干部", h.population, "人", "按干部唯一编号统计") +
       kpi(
         "有健康评估",
         h.assessed,
@@ -751,7 +791,7 @@
       '</div><div class="v2-grid">' +
       panel(
         "年龄与性别",
-        "全体纳入人群 · 人口金字塔，包含未知组",
+        "男、女分列 · 按实际出生日期计算年龄",
         pyramid(h.demographics),
       ) +
       panel(
@@ -782,11 +822,13 @@
         "每行显示纳入人数 n 和病史有效人数；多选可重复归类",
         heatmap(
           h.age_health.labels,
-          h.age_health.rows.map((r) => ({
-            name: r.age,
-            caption: "n=" + r.n + " / 有效 " + r.valid,
-            values: r.counts,
-          })),
+          h.age_health.rows
+            .filter((r) => r.age !== "未知")
+            .map((r) => ({
+              name: r.age,
+              caption: "n=" + r.n + " / 有效 " + r.valid,
+              values: r.counts,
+            })),
         ),
         "",
         "full",
@@ -1707,6 +1749,8 @@
       ensurePeople().then(() => {
         if (meta.user.role === "resident")
           openPerson(meta.user.customer_id, false);
+        else if (!personal && peopleCache.length)
+          openPerson(selectedPerson || peopleCache[0].id, false);
         else render();
       });
     } else if (name === "v2-reports") render();
@@ -2722,7 +2766,7 @@
   }
   function preset() {
     if (!meta) return;
-    const end = meta.today;
+    const end = meta.demo && meta.demo_as_of ? meta.demo_as_of : meta.today;
     const d = new Date(end + "T12:00:00");
     const value = $("v2-preset").value;
     let start = end;

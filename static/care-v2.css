@@ -1136,7 +1136,7 @@ small {
 }
 .v2-population-row {
   display: grid;
-  grid-template-columns: 90px minmax(0, 1fr) 30px minmax(0, 1fr) 60px;
+  grid-template-columns: 90px minmax(0, 1fr) 30px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   font-size: 14px;
@@ -1161,16 +1161,30 @@ small {
 .v2-population-bar.female i {
   background: #a1bfcd;
 }
-.v2-population-unknown {
-  text-align: right;
-}
 #app-shell .page p[style*="color"],
 .modal p[style*="color"] {
   color: #111 !important;
 }
 @media (max-width: 520px) {
   .v2-population-row {
-    grid-template-columns: 78px minmax(0, 1fr) 25px minmax(0, 1fr) 55px;
+    grid-template-columns: 78px minmax(0, 1fr) 25px minmax(0, 1fr);
     gap: 5px;
   }
+}
+
+.v2-record-table {
+  min-width: 0;
+}
+.v2-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: #111;
+}
+.v2-page-count {
+  margin-right: auto;
 }

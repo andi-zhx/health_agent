@@ -14,3 +14,6 @@ error_log.txt
 .pytest_cache/
 
 demo_v2_data/
+
+cases_manifest.json
+.case-build-*/

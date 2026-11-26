@@ -271,15 +271,69 @@ class CareV2Tests(unittest.TestCase):
 
 
 class V2DemoTests(unittest.TestCase):
-    def test_demo_100_cases_isolated_idempotent_and_refuses_non_demo(self):
+    def test_300_complete_cases_cover_every_module_and_replace_old_records(self):
         with tempfile.TemporaryDirectory() as folder:
             command=[sys.executable,str(ROOT/'seed_demo_v2.py'),'--data-dir',folder]
             r=subprocess.run(command,capture_output=True);self.assertEqual(r.returncode,0,r.stderr)
             db=Path(folder)/'medical_system.db'
             with closing(sqlite3.connect(db)) as conn:
-                self.assertEqual(conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0],100)
-                self.assertEqual(conn.execute('SELECT COUNT(*) FROM v2_services').fetchone()[0],610)
+                conn.row_factory=sqlite3.Row
+                self.assertEqual(conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0],300)
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM customers WHERE gender IN ('男','女') AND birth_date IS NOT NULL").fetchone()[0],300)
+                self.assertEqual(conn.execute('SELECT COUNT(*) FROM v2_measurements').fetchone()[0],8100)
+                self.assertEqual(conn.execute('SELECT COUNT(DISTINCT customer_id) FROM health_assessments').fetchone()[0],300)
+                self.assertEqual(conn.execute('SELECT COUNT(DISTINCT metric) FROM v2_measurements').fetchone()[0],9)
+                for table in ('appointments','home_appointments','v2_services','v2_reviews','v2_screenings','v2_surveys','v2_tasks','v2_maintenance','v2_capacity','service_improvement_records','visit_checkins'):
+                    self.assertGreater(conn.execute('SELECT COUNT(*) FROM '+table).fetchone()[0],0,table)
                 self.assertEqual(list(conn.execute('PRAGMA foreign_key_check')),[])
-            digest=hashlib.sha256(db.read_bytes()).hexdigest();self.assertEqual(subprocess.run(command,capture_output=True).returncode,0);self.assertEqual(hashlib.sha256(db.read_bytes()).hexdigest(),digest)
-            with closing(sqlite3.connect(db)) as conn:conn.execute("DELETE FROM system_settings WHERE setting_key='demo_v2'");conn.commit()
-            digest=hashlib.sha256(db.read_bytes()).hexdigest();self.assertNotEqual(subprocess.run(command,capture_output=True).returncode,0);self.assertEqual(hashlib.sha256(db.read_bytes()).hexdigest(),digest)
+                self.assertEqual(conn.execute('PRAGMA integrity_check').fetchone()[0],'ok')
+            from backend.care_v2 import analytics
+            with patch.object(core,'DB_PATH',str(db)):
+                f={'start':'2026-01-01','end':'2026-11-26','gender':'','age':'','project':''}
+                data=analytics.dataset();d=analytics.snapshot(f,data)
+                self.assertEqual(d['health']['population'],300)
+                self.assertTrue(all(r['male']>0 and r['female']>0 for r in d['health']['demographics'] if r['age']!='未知'))
+                self.assertEqual(sum(r['unknown'] for r in d['health']['demographics']),0)
+                self.assertTrue(all(all(n>0 for n in m['projects'].values()) for m in d['operations']['months']))
+                self.assertGreater(len({p['services'] for p in d['operations']['projects']}),3)
+                self.assertTrue(all(m['n']>0 for m in d['effects']['stage_months']))
+                self.assertTrue(all(g['valid']>0 for g in d['effects']['usage_groups']))
+                self.assertTrue(all(p['valid']>=5 and p['rate'] is not None for p in d['effects']['projects'] if p['category']!='screening'))
+                self.assertTrue(all(r['count']>0 for r in d['satisfaction']['distribution']))
+                self.assertEqual(len(d['satisfaction']['needs']),6)
+                self.assertTrue(all(r['services']>0 for r in d['operations']['home_months']))
+                self.assertGreater(d['operations']['summary']['utilization'],0)
+                for r in data['reviews']:
+                    if r['evaluation_type']=='stage':
+                        self.assertTrue(any(s['customer_id']==r['customer_id'] and s['project_code']==r['project_code'] and s['completed_at'] and r['window_start']<=s['completed_at'][:10]<=r['window_end'] for s in data['services']))
+                busy={};person_busy={}
+                for service in sorted((x for x in data['services'] if x['status']=='completed' and x['equipment_id']),key=lambda x:x['scheduled_at']):
+                    eid=service['equipment_id']
+                    self.assertGreaterEqual(service['scheduled_at'][:16],busy.get(eid,''))
+                    busy[eid]=service['completed_at'][:16]
+                for service in sorted((x for x in data['services'] if x['status']=='completed'),key=lambda x:x['scheduled_at']):
+                    cid=service['customer_id']
+                    self.assertGreaterEqual(service['scheduled_at'][:16],person_busy.get(cid,''))
+                    person_busy[cid]=service['completed_at'][:16]
+                client=app.test_client()
+                client.post('/api/auth/login',json={'username':'admin','password':'123456'})
+                self.assertEqual(client.get('/api/v2/meta').json['data']['demo_as_of'],'2026-11-26')
+                excel=client.get('/api/v2/export?kind=portrait&start=2026-01-01&end=2026-11-26')
+                book=load_workbook(io.BytesIO(excel.data));rows=list(book['年龄性别'].values);book.close()
+                self.assertEqual(rows[0],('年龄段','男','女','合计'));self.assertEqual(len(rows),6)
+            digest=hashlib.sha256(db.read_bytes()).hexdigest()
+            self.assertEqual(subprocess.run(command,capture_output=True).returncode,0)
+            self.assertEqual(hashlib.sha256(db.read_bytes()).hexdigest(),digest)
+            with closing(sqlite3.connect(db)) as conn:
+                conn.execute("INSERT INTO customers(name,phone) VALUES ('待覆盖的旧档案','00000000000')")
+                conn.execute("DELETE FROM system_settings WHERE setting_key IN ('case_dataset_version','demo_v2')")
+                conn.commit()
+            digest=hashlib.sha256(db.read_bytes()).hexdigest()
+            self.assertNotEqual(subprocess.run(command,capture_output=True).returncode,0)
+            self.assertEqual(hashlib.sha256(db.read_bytes()).hexdigest(),digest)
+            r=subprocess.run(command+['--replace'],capture_output=True);self.assertEqual(r.returncode,0,r.stderr)
+            with closing(sqlite3.connect(db)) as conn:
+                self.assertEqual(conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0],300)
+                self.assertEqual(conn.execute("SELECT COUNT(*) FROM customers WHERE name='待覆盖的旧档案'").fetchone()[0],0)
+            backups=list((Path(folder)/'database_backups').glob('before_300_cases_*.db'));self.assertEqual(len(backups),1)
+            with closing(sqlite3.connect(backups[0])) as conn:self.assertEqual(conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0],301)

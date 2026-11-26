@@ -82,7 +82,7 @@ def meta():
         projects=a.rows(conn,'SELECT * FROM v2_projects ORDER BY rowid')
         equipment=a.rows(conn,'SELECT v.*,e.name,e.status,e.location FROM v2_equipment v JOIN equipment e ON e.id=v.equipment_id ORDER BY v.project_code,v.equipment_id')
         demo=core.get_setting_value('demo_mode','false')=='true'
-    return core.success_response({'user':user,'roles':ROLES,'projects':projects,'equipment':equipment,'metrics':{k:{'name':x[0],'unit':x[1]} for k,x in v.METRICS.items()},'dimensions':v.DIMENSIONS,'needs':v.NEEDS,'statuses':v.STATUS,'today':core.now_local_date_str(),'demo':demo})
+    return core.success_response({'user':user,'roles':ROLES,'projects':projects,'equipment':equipment,'metrics':{k:{'name':x[0],'unit':x[1]} for k,x in v.METRICS.items()},'dimensions':v.DIMENSIONS,'needs':v.NEEDS,'statuses':v.STATUS,'today':core.now_local_date_str(),'demo':demo,'demo_as_of':core.get_setting_value('demo_as_of','')})
 
 
 @bp.get('/api/v2/snapshot')
@@ -411,7 +411,7 @@ def export():
             sheet('维修故障',['设备编号','故障','报告时间','停机时间','恢复时间','状态'],[[r[k] for k in ('equipment_id','fault_type','reported_at','down_at','restored_at','status')] for r in o['maintenance']])
             sheet('上门服务',['月份','人数','人次'],[[r['month'],r['people'],r['services']] for r in o['home_months']])
         elif context['kind']=='portrait':
-            sheet('年龄性别',['年龄段','男','女','未知','合计'],[[r[k] for k in ('age','male','female','unknown','total')] for r in h['demographics']])
+            sheet('年龄性别',['年龄段','男','女','合计'],[[r['age'],r['male'],r['female'],r['male']+r['female']] for r in h['demographics'] if r['age']!='未知'])
             for key,title in [('diseases','既往病史'),('symptoms','近期症状'),('needs','健康需求')]:sheet(title,['标签','人数','有效分母','比例%'],[[r[k] for k in ('name','count','denominator','percent')] for r in h[key]])
             sheet('专业管理分层',['等级','人数'],[[r['name'],r['count']] for r in h['risk']])
             sheet('资料完整度',['字段','有效人数','应评估人数','比例%'],[[r[k] for k in ('name','valid','expected','percent')] for r in h['completeness']])
