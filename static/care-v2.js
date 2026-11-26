@@ -14,8 +14,7 @@
           })[c],
       );
   const names = {
-    "v2-dashboard": "综合驾驶舱",
-    "v2-portrait": "群体健康画像",
+    "v2-portrait": "主页",
     "v2-operations": "康养服务运营",
     "v2-effects": "康养效果评估",
     "v2-satisfaction": "满意度与需求",
@@ -40,7 +39,7 @@
   };
   let api,
     meta = null,
-    current = "v2-dashboard",
+    current = "v2-portrait",
     cache = null,
     cacheKey = "",
     sequence = 0,
@@ -116,7 +115,7 @@
   }
   function title(name, subtitle, actions = "") {
     return (
-      '<div class="v2-title-row"><div><div class="v2-eyebrow">CONNECTED CARE · 健康服务管理</div><h1>' +
+      '<div class="v2-title-row"><div><div class="v2-eyebrow">静安军休所 · 健康服务管理</div><h1>' +
       esc(name) +
       "</h1><p>" +
       esc(subtitle) +
@@ -302,8 +301,8 @@
     }
     labels.forEach((l, i) => {
       if (
-        labels.length <= 12 ||
-        i % Math.ceil(labels.length / 10) === 0 ||
+        labels.length <= 6 ||
+        i % Math.ceil(labels.length / 6) === 0 ||
         i === labels.length - 1
       )
         svg +=
@@ -368,8 +367,9 @@
       flush();
     });
     return (
+      '<div class="v2-chart-scroll">' +
       svg +
-      "</svg>" +
+      "</svg></div>" +
       legend(
         series.map((s, i) => ({
           name: s.name,
@@ -596,59 +596,8 @@
     );
     modal(projectName(code) + " · 服务明细", serviceTable(list));
   }
-  function dashboard(d) {
-    const s = d.dashboard.summary,
-      p = d.dashboard.previous,
-      h = d.health;
-    let html = title(
-      "综合驾驶舱",
-      "健康问题、服务工作量、有效反馈与待办，一屏掌握。",
-      canWrite()
-        ? button("＋ 快速登记", () => serviceForm(), "v2-btn primary")
-        : "",
-    );
-    html +=
-      '<div class="v2-kpis">' +
-      kpi("健康评估样本", s.assessed, "人", "截至期末最新评估") +
-      kpi("重点关注", s.priority, "人", "专业人员确认 · 含紧急跟进") +
-      kpi("累计服务", s.services, "人次", "等长上期 " + p.services + " 人次") +
-      kpi("实际服务人数", s.people, "人", "跨项目去重 · 上期 " + p.people) +
-      kpi(
-        "有效评价改善率",
-        percent(s.improvement_rate),
-        "",
-        "有效评价 n=" + s.valid_reviews,
-        true,
-      ) +
-      kpi(
-        "总体满意率",
-        percent(s.satisfaction_rate),
-        "",
-        "有效问卷 n=" + s.valid_surveys,
-      ) +
-      "</div>";
-    html +=
-      '<div class="v2-grid">' +
-      panel(
-        "主要健康问题",
-        "病史与症状分别统计，多选按人去重",
-        "<h3>既往病史 · 有效 n=" +
-          h.disease_denominator +
-          "</h3>" +
-          bars(h.diseases.slice(0, 5), null, (r) => drill("diseases", r.name)) +
-          "<h3>近期症状 · 有效 n=" +
-          h.symptom_denominator +
-          "</h3>" +
-          bars(h.symptoms.slice(0, 4), null, (r) => drill("symptoms", r.name)) +
-          "<h3>评估中的检测结论 · 各项单独分母</h3>" +
-          bars(
-            h.detection.map((r) => ({
-              name: r.name + " · 有效 n=" + r.valid,
-              count: r.valid ? r.abnormal : null,
-            })),
-          ),
-        button("群体画像 ↗", () => goto("v2-portrait"), "v2-link"),
-      );
+  function servicePanels(d) {
+    let html = "";
     html += panel(
       "设备服务使用排名",
       rankMode === "people"
@@ -676,90 +625,58 @@
       stacked(d.effects.projects.filter((r) => r.category !== "screening")),
       button("查看评估 ↗", () => goto("v2-effects"), "v2-link"),
     );
-    html +=
-      panel(
-        "管理待办",
-        "由登记记录形成，可点击进入处理",
-        d.dashboard.todos.length
-          ? d.dashboard.todos
-              .map(
-                (t) =>
-                  '<div class="v2-todo"><span>' +
-                  esc(t.name) +
-                  "</span><div><strong>" +
-                  t.count +
-                  "</strong>" +
-                  button("查看 →", () => goto(t.page), "v2-link") +
-                  "</div></div>",
-              )
-              .join("")
-          : empty("当前范围暂无待办。资料不足时请先完成登记。"),
-        button("意见与需求 ↗", () => goto("v2-satisfaction"), "v2-link"),
-      ) + "</div>";
-    html += note(
-      "本期 " +
-        period() +
-        "；等长上期 " +
-        p.start +
-        " 至 " +
-        p.end +
-        "。服务量变化仅表示工作量，不直接判断健康好坏。" +
-        d.cohort_note,
+    html += panel(
+      "管理待办",
+      "由登记记录形成，可点击进入处理",
+      d.dashboard.todos.length
+        ? d.dashboard.todos
+            .map(
+              (t) =>
+                '<div class="v2-todo"><span>' +
+                esc(t.name) +
+                "</span><div><strong>" +
+                t.count +
+                "</strong>" +
+                button("查看 →", () => goto(t.page), "v2-link") +
+                "</div></div>",
+            )
+            .join("")
+        : empty("当前范围暂无待办。资料不足时请先完成登记。"),
+      button("意见与需求 ↗", () => goto("v2-satisfaction"), "v2-link"),
     );
     return html;
   }
   function pyramid(rows) {
     const max = Math.max(1, ...rows.flatMap((r) => [r.male, r.female]));
-    const W = 560,
-      H = 245,
-      mid = 280;
     return (
-      '<svg class="v2-chart" viewBox="0 0 ' +
-      W +
-      " " +
-      H +
-      '" role="img" aria-label="年龄性别分布">' +
+      '<div class="v2-population" role="img" aria-label="年龄性别分布，包含未知组">' +
       rows
-        .map((r, i) => {
-          const y = 15 + i * 36;
-          return (
-            '<text x="0" y="' +
-            (y + 13) +
-            '">' +
+        .map(
+          (r) =>
+            '<div class="v2-population-row"><span>' +
             esc(r.age) +
-            '</text><rect x="' +
-            (mid - 25 - (r.male / max) * 130) +
-            '" y="' +
-            y +
-            '" width="' +
-            (r.male / max) * 130 +
-            '" height="17" fill="#75a3ce"/><rect x="' +
-            (mid + 25) +
-            '" y="' +
-            y +
-            '" width="' +
-            (r.female / max) * 130 +
-            '" height="17" fill="#a1bfcd"/><text x="' +
-            mid +
-            '" y="' +
-            (y + 13) +
-            '" text-anchor="middle">' +
+            '</span><div class="v2-population-bar male" title="男 ' +
+            r.male +
+            '"><i style="width:' +
+            (r.male / max) * 100 +
+            '%"></i></div>' +
+            '<strong title="分组总人数">' +
             r.total +
-            '</text><text x="' +
-            (W - 10) +
-            '" y="' +
-            (y + 13) +
-            '" text-anchor="end">未知 ' +
+            '</strong><div class="v2-population-bar female" title="女 ' +
+            r.female +
+            '"><i style="width:' +
+            (r.female / max) * 100 +
+            '%"></i></div>' +
+            '<span class="v2-population-unknown">未知 ' +
             r.unknown +
-            "</text>"
-          );
-        })
+            "</span></div>",
+        )
         .join("") +
-      "</svg>" +
+      "</div>" +
       legend([
         { name: "男", color: "#75a3ce" },
         { name: "女", color: "#a1bfcd" },
-        { name: "中间为分组总人数，右侧为未知性别", color: "#d9e2eb" },
+        { name: "中间为总人数，右侧为未知性别", color: "#d9e2eb" },
       ])
     );
   }
@@ -795,13 +712,18 @@
       "</tbody></table></div>"
     );
   }
-  function portrait(d) {
-    const h = d.health;
+  function homepage(d) {
+    const h = d.health,
+      s = d.dashboard.summary,
+      p = d.dashboard.previous;
     return (
       title(
-        "群体健康画像",
-        "识别健康问题和服务需求，保留每一份缺失记录的含义。",
-        exportButtons("portrait"),
+        "主页",
+        "集中查看干部健康画像、服务工作量、改善反馈与管理待办。",
+        exportButtons("portrait") +
+          (canWrite()
+            ? button("＋ 快速登记", () => serviceForm(), "v2-btn primary")
+            : ""),
       ) +
       '<div class="v2-kpis">' +
       kpi("纳入干部", h.population, "人", "年龄 / 性别未知组包含在总数中") +
@@ -811,26 +733,20 @@
         "人",
         "评估覆盖 " + percent(h.assessment_coverage),
       ) +
-      h.detection
-        .map((r) =>
-          kpi(
-            r.name,
-            r.valid,
-            "人",
-            "异常 " +
-              r.abnormal +
-              " 人 · 有效分母 " +
-              r.valid +
-              " · " +
-              percent(r.rate),
-          ),
-        )
-        .join("") +
+      kpi("累计服务", s.services, "人次", "等长上期 " + p.services + " 人次") +
+      kpi("实际服务人数", s.people, "人", "跨项目去重 · 上期 " + p.people) +
       kpi(
-        "病史有效记录",
-        h.disease_denominator,
-        "人",
-        "明确填写“无”计为有效回答",
+        "有效评价改善率",
+        percent(s.improvement_rate),
+        "",
+        "有效评价 n=" + s.valid_reviews,
+        true,
+      ) +
+      kpi(
+        "总体满意率",
+        percent(s.satisfaction_rate),
+        "",
+        "有效问卷 n=" + s.valid_surveys,
       ) +
       '</div><div class="v2-grid">' +
       panel(
@@ -839,9 +755,17 @@
         pyramid(h.demographics),
       ) +
       panel(
-        "专业管理分层",
-        "由专业人员确认，系统不自动诊断",
-        ring(h.risk, String(h.population), "纳入干部"),
+        "健康检测概况",
+        "按对应指标有效人数计算，未检测不当作正常",
+        table(
+          ["检测项目", "有效人数", "异常人数", "异常率"],
+          h.detection.map((r) => [
+            esc(r.name),
+            r.valid,
+            r.valid ? r.abnormal : "—",
+            percent(r.rate),
+          ]),
+        ),
       ) +
       panel(
         "既往病史",
@@ -852,22 +776,6 @@
         "近期症状",
         "与病史分开统计 · 有效分母 " + h.symptom_denominator,
         bars(h.symptoms, null, (r) => drill("symptoms", r.name)),
-      ) +
-      panel(
-        "慢病共存",
-        "按明确病史标签数量分组；空白单列未知",
-        bars(h.coexist) + note("病史标签可共存，不用饼图份额解释患病率。"),
-      ) +
-      panel(
-        "病史共存矩阵",
-        "记录两项病史的去重人数；对角线为该项人数",
-        heatmap(
-          h.cooccurrence.labels,
-          h.cooccurrence.matrix.map((values, i) => ({
-            name: h.cooccurrence.labels[i],
-            values,
-          })),
-        ),
       ) +
       panel(
         "年龄 × 健康问题",
@@ -911,8 +819,19 @@
           "<h3>健康需求</h3>" +
           bars(h.needs),
       ) +
+      servicePanels(d) +
       "</div>" +
-      note(h.sampling_note)
+      note(
+        h.sampling_note +
+          " 本期 " +
+          period() +
+          "；等长上期 " +
+          p.start +
+          " 至 " +
+          p.end +
+          "。" +
+          d.cohort_note,
+      )
     );
   }
   function maintenanceTable(rows) {
@@ -1101,7 +1020,7 @@
     const mx = median(xs),
       my = median(ys);
     return (
-      '<svg class="v2-chart" viewBox="0 0 560 275" role="img" aria-label="项目使用人次与自述改善率"><rect x="45" y="20" width="470" height="210" fill="#f7fafc"/><line x1="' +
+      '<div class="v2-chart-scroll"><svg class="v2-chart" viewBox="0 0 560 275" role="img" aria-label="项目使用人次与自述改善率"><rect x="45" y="20" width="470" height="210" fill="#f7fafc"/><line x1="' +
       (45 + (mx / max) * 450) +
       '" x2="' +
       (45 + (mx / max) * 450) +
@@ -1130,7 +1049,7 @@
             "</text>",
         )
         .join("") +
-      "</svg>" +
+      "</svg></div>" +
       note("参考线为本期项目中位数。仅描述观察性关联，不证明设备治疗效果。")
     );
   }
@@ -1709,19 +1628,18 @@
     else if (cache) {
       html = (
         {
-          "v2-dashboard": dashboard,
-          "v2-portrait": portrait,
+          "v2-portrait": homepage,
           "v2-operations": operations,
           "v2-effects": effects,
           "v2-satisfaction": satisfaction,
-        }[current] || dashboard
+        }[current] || homepage
       )(cache);
     }
     if (meta.demo)
       html =
         '<div class="v2-demo"><strong>虚构演示环境</strong> · 所有案例仅用于体验系统功能，不可作为真实服务业绩或医学疗效证据。</div>' +
         html;
-    if (cache && cache.pending_projects && current === "v2-dashboard")
+    if (cache && cache.pending_projects && current === "v2-portrait")
       html =
         '<div class="v2-alert">' +
         cache.pending_projects +
@@ -2871,7 +2789,7 @@
       preset();
       $("login-screen").classList.add("hide");
       $("app-shell").classList.remove("hide");
-      goto(meta.user.role === "resident" ? "v2-personal" : "v2-dashboard");
+      goto(meta.user.role === "resident" ? "v2-personal" : "v2-portrait");
     });
   }
   function restore() {

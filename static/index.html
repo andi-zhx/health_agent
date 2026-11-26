@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>健康评估档案</title>
+  <title>静安军休所 · 健康管理</title>
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; color: #333; background: #f5f5f5; }
@@ -397,9 +397,8 @@
   </div>
   <div id="app-shell" class="app hide">
     <div class="v2-mobile-shade hide" id="v2-shade"></div>
-    <nav class="sidebar" aria-label="主导航"><h1><span class="v2-brand-mark">＋</span>智慧康养<span class="v2-brand-sub">CONNECTED CARE</span></h1><div class="v2-nav-label">健康服务管理</div>
-      <a href="#" data-page="v2-dashboard" data-v2-nav="dashboard"><i aria-hidden="true">▦</i>综合驾驶舱</a>
-      <a href="#" data-page="v2-portrait" data-v2-nav="portrait"><i aria-hidden="true">◉</i>群体健康画像</a>
+    <nav class="sidebar" aria-label="主导航"><h1>静安军休所</h1><div class="v2-nav-label">健康服务管理</div>
+      <a href="#" data-page="v2-portrait" data-v2-nav="portrait"><i aria-hidden="true">◉</i>主页</a>
       <a href="#" data-page="v2-operations" data-v2-nav="operations"><i aria-hidden="true">▤</i>康养服务运营</a>
       <a href="#" data-page="v2-effects" data-v2-nav="effects"><i aria-hidden="true">↗</i>康养效果评估</a>
       <a href="#" data-page="v2-satisfaction" data-v2-nav="satisfaction"><i aria-hidden="true">♡</i>满意度与需求</a>
@@ -414,9 +413,9 @@
         <a href="#" data-page="query-export">原查询导出与备份</a>
         <a href="#" data-page="device-management">原设备配置</a>
         <a href="#" data-page="audit-logs">系统审计日志</a>
-      </details><div class="v2-nav-foot">以个人健康追踪为核心<br>服务 · 记录 · 反馈 · 跟进</div></nav>
+      </details><div class="v2-nav-foot">以个人健康追踪为核心<br>服务记录 · 反馈跟进</div></nav>
     <main class="main">
-      <header class="v2-topbar"><div class="v2-topbar-left"><button class="v2-btn v2-menu" id="v2-menu" aria-label="打开导航">☰</button><span>军休所健康管理</span><span>/</span><strong id="v2-page-label">综合驾驶舱</strong></div><div class="v2-topbar-right"><span id="v2-demo-badge" class="v2-tag alert hide">虚构演示数据</span><span class="v2-avatar">健</span><span id="v2-current-user"></span><button class="v2-btn" id="v2-admin-button">管理设置</button><button class="v2-btn" id="v2-logout">退出</button></div></header>
+      <header class="v2-topbar"><div class="v2-topbar-left"><button class="v2-btn v2-menu" id="v2-menu" aria-label="打开导航">☰</button><span>军休所健康管理</span><span>/</span><strong id="v2-page-label">主页</strong></div><div class="v2-topbar-right"><span id="v2-demo-badge" class="v2-tag alert hide">虚构演示数据</span><span class="v2-avatar">健</span><span id="v2-current-user"></span><button class="v2-btn" id="v2-admin-button">管理设置</button><button class="v2-btn" id="v2-logout">退出</button></div></header>
       <div id="v2-filters" class="v2-filter-bar">
         <label>统计期间<select id="v2-preset"><option value="month">本月</option><option value="30">近30天</option><option value="quarter">本季度</option><option value="year">年度</option><option value="custom">自定义</option></select></label>
         <label>开始日期<input id="v2-start" type="date"></label><label>结束日期<input id="v2-end" type="date"></label>
@@ -425,7 +424,6 @@
         <label>正式项目<select id="v2-project"><option value="">全部项目</option></select></label><button id="v2-apply" class="v2-btn primary">应用筛选</button>
         <div class="v2-filter-note">服务按完成日期，问卷按回答日期；健康画像采用截至期末最新评估。个人档案不受群体筛选限制。</div>
       </div><div id="v2-message" class="v2-inline-message" role="status" aria-live="polite"></div>
-      <section id="page-v2-dashboard" class="page hide"><div id="v2-dashboard-content"></div></section>
       <section id="page-v2-portrait" class="page hide"><div id="v2-portrait-content"></div></section>
       <section id="page-v2-operations" class="page hide"><div id="v2-operations-content"></div></section>
       <section id="page-v2-effects" class="page hide"><div id="v2-effects-content"></div></section>
